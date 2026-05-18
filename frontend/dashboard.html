@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Dashboard | AnthropicBots E-Commerce</title>
+
+    <link rel="stylesheet" href="styles/style.css">
+
+    <link rel="stylesheet" href="styles/dashboard.css">
+
+    <link
+        rel="stylesheet"
+        href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css"
+    >
+</head>
+
+<body>
+
+    <div id="navbar"></div>
+
+    <!-- Dashboard Header -->
+
+    <section id="dashboard-header">
+
+        <h2>User Dashboard</h2>
+
+        <p>
+            Manage your account, wishlist, orders, and profile
+        </p>
+
+    </section>
+
+    <!-- Dashboard -->
+
+    <section id="dashboard" class="section-p1">
+
+        <!-- Sidebar -->
+
+        <div class="dashboard-sidebar">
+
+            <div class="profile-card">
+
+                <div class="avatar-box">
+
+                    <img
+                        id="profile-avatar"
+                        src="../assets/images/user.png"
+                        alt="User Avatar"
+                    >
+
+                </div>
+
+                <h3 id="user-name">Guest User</h3>
+
+                <p id="user-email">
+                    user@example.com
+                </p>
+
+            </div>
+
+            <ul class="dashboard-menu">
+
+                <li class="active-tab" data-tab="overview">
+
+                    <i class="fas fa-home"></i>
+
+                    Overview
+
+                </li>
+
+                <li data-tab="wishlist">
+
+                    <i class="fas fa-heart"></i>
+
+                    Wishlist
+
+                </li>
+
+                <li data-tab="orders">
+
+                    <i class="fas fa-shopping-bag"></i>
+
+                    Orders
+
+                </li>
+
+                <li data-tab="cart">
+
+                    <i class="fas fa-shopping-cart"></i>
+
+                    Saved Cart
+
+                </li>
+
+                <li data-tab="settings">
+
+                    <i class="fas fa-cog"></i>
+
+                    Settings
+
+                </li>
+
+            </ul>
+
+        </div>
+
+        <!-- Main Content -->
+
+        <div class="dashboard-content">
+
+            <!-- Overview -->
+
+            <div class="dashboard-tab active" id="overview">
+
+                <div class="stats-grid">
+
+                    <div class="stat-card">
+
+                        <i class="fas fa-heart"></i>
+
+                        <h3 id="wishlist-count">0</h3>
+
+                        <p>Wishlist Items</p>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <i class="fas fa-shopping-cart"></i>
+
+                        <h3 id="cart-count-dashboard">0</h3>
+
+                        <p>Cart Items</p>
+
+                    </div>
+
+                    <div class="stat-card">
+
+                        <i class="fas fa-box"></i>
+
+                        <h3 id="orders-count">0</h3>
+
+                        <p>Total Orders</p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Wishlist -->
+
+            <div class="dashboard-tab" id="wishlist">
+
+                <h2>Wishlist</h2>
+
+                <div id="wishlist-items"></div>
+
+            </div>
+
+            <!-- Orders -->
+
+            <div class="dashboard-tab" id="orders">
+
+                <h2>Order History</h2>
+
+                <div id="orders-list"></div>
+
+            </div>
+
+            <!-- Cart -->
+
+            <div class="dashboard-tab" id="cart">
+
+                <h2>Saved Cart</h2>
+
+                <div id="saved-cart-items"></div>
+
+            </div>
+
+            <!-- Settings -->
+
+            <div class="dashboard-tab" id="settings">
+
+                <h2>Account Settings</h2>
+
+                <form id="settings-form">
+
+                    <input
+                        type="text"
+                        id="settings-name"
+                        placeholder="Full Name"
+                    >
+
+                    <input
+                        type="email"
+                        id="settings-email"
+                        placeholder="Email Address"
+                    >
+
+                    <button type="submit">
+
+                        Save Changes
+
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <div id="footer"></div>
+
+    <!-- Firebase -->
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+    <script src="scripts/components.js"></script>
+
+    <script src="scripts/auth.js"></script>
+
+    <script src="scripts/dashboard.js"></script>
+
+</body>
+</html>
