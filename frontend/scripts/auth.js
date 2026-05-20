@@ -1,408 +1,119 @@
 console.log("Authentication system loaded successfully!");
 
 // =============================
-// FIREBASE CONFIG
+// BACKEND AUTH FUNCTIONS
 // =============================
 
-const firebaseConfig = {
-
-    apiKey: "YOUR_API_KEY",
-
-    authDomain: "YOUR_AUTH_DOMAIN",
-
-    projectId: "YOUR_PROJECT_ID",
-
-    appId: "YOUR_APP_ID"
-
+const signupUser = async (name, email, password) => {
+    const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password })
+    });
+    return await res.json();
 };
 
-firebase.initializeApp(firebaseConfig);
-
-const auth = firebase.auth();
-
-// =============================
-// AUTH PROVIDERS
-// =============================
-
-const googleProvider =
-    new firebase.auth.GoogleAuthProvider();
-
-const githubProvider =
-    new firebase.auth.GithubAuthProvider();
-
-const appleProvider =
-    new firebase.auth.OAuthProvider("apple.com");
-
-// =============================
-// GOOGLE LOGIN
-// =============================
-
-const googleBtn =
-    document.getElementById("google-login");
-
-if(googleBtn){
-
-    googleBtn.addEventListener(
-        "click",
-        async () => {
-
-            try{
-
-                await auth.signInWithPopup(
-                    googleProvider
-                );
-
-                alert(
-                    "Google Login Successful!"
-                );
-
-                window.location.href =
-                    "index.html";
-
-            }catch(error){
-
-                console.error(error);
-
-                alert(error.message);
-
-            }
-
-        }
-    );
-
-}
-
-// =============================
-// GITHUB LOGIN
-// =============================
-
-const githubBtn =
-    document.getElementById("github-login");
-
-if(githubBtn){
-
-    githubBtn.addEventListener(
-        "click",
-        async () => {
-
-            try{
-
-                await auth.signInWithPopup(
-                    githubProvider
-                );
-
-                alert(
-                    "GitHub Login Successful!"
-                );
-
-                window.location.href =
-                    "index.html";
-
-            }catch(error){
-
-                console.error(error);
-
-                alert(error.message);
-
-            }
-
-        }
-    );
-
-}
-
-// =============================
-// APPLE LOGIN
-// =============================
-
-const appleBtn =
-    document.getElementById("apple-login");
-
-if(appleBtn){
-
-    appleBtn.addEventListener(
-        "click",
-        async () => {
-
-            try{
-
-                await auth.signInWithPopup(
-                    appleProvider
-                );
-
-                alert(
-                    "Apple Login Successful!"
-                );
-
-                window.location.href =
-                    "index.html";
-
-            }catch(error){
-
-                console.error(error);
-
-                alert(error.message);
-
-            }
-
-        }
-    );
-
-}
+const loginUser = async (email, password) => {
+    const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    });
+    return await res.json();
+};
 
 // =============================
 // EMAIL SIGNUP
 // =============================
 
-const signupForm =
-    document.getElementById("signup-form");
-
+const signupForm = document.getElementById("signup-form");
 if(signupForm){
-
-    signupForm.addEventListener(
-        "submit",
-        async (e) => {
-
-            e.preventDefault();
-
-            const name =
-                document.getElementById(
-                    "signup-name"
-                ).value;
-
-            const email =
-                document.getElementById(
-                    "signup-email"
-                ).value;
-
-            const password =
-                document.getElementById(
-                    "signup-password"
-                ).value;
-
-            try{
-
-                const userCredential =
-                    await auth
-                    .createUserWithEmailAndPassword(
-                        email,
-                        password
-                    );
-
-                await userCredential.user
-                    .updateProfile({
-
-                        displayName: name
-
-                    });
-
-                alert(
-                    "Account Created Successfully!"
-                );
-
-                window.location.href =
-                    "signin.html";
-
-            }catch(error){
-
-                console.error(error);
-
-                alert(error.message);
-
+    signupForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("signup-name").value;
+        const email = document.getElementById("signup-email").value;
+        const password = document.getElementById("signup-password").value;
+        try {
+            const response = await signupUser(name, email, password);
+            if(response.success){
+                alert("Account Created Successfully!");
+                window.location.href = "signin.html";
+            } else {
+                alert(response.message);
             }
-
+        } catch(error){
+            console.error(error);
+            alert("Signup failed. Please try again.");
         }
-    );
-
+    });
 }
 
 // =============================
 // EMAIL SIGNIN
 // =============================
 
-const signinForm =
-    document.getElementById("signin-form");
-
+const signinForm = document.getElementById("signin-form");
 if(signinForm){
-
-    signinForm.addEventListener(
-        "submit",
-        async (e) => {
-
-            e.preventDefault();
-
-            const email =
-                document.getElementById(
-                    "signin-email"
-                ).value;
-
-            const password =
-                document.getElementById(
-                    "signin-password"
-                ).value;
-
-            try{
-
-                await auth
-                    .signInWithEmailAndPassword(
-                        email,
-                        password
-                    );
-
+    signinForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("signin-email").value;
+        const password = document.getElementById("signin-password").value;
+        try {
+            const response = await loginUser(email, password);
+            if(response.success){
+                // Store JWT in localStorage
+                localStorage.setItem("token", response.token);
                 alert("Login Successful!");
-
-                window.location.href =
-                    "index.html";
-
-            }catch(error){
-
-                console.error(error);
-
-                alert(error.message);
-
+                window.location.href = "index.html";
+            } else {
+                alert(response.message);
             }
-
+        } catch(error){
+            console.error(error);
+            alert("Login failed. Please try again.");
         }
-    );
-
+    });
 }
 
 // =============================
-// AUTH NAVBAR PROFILE SYSTEM
+// AUTH NAVBAR PROFILE SYSTEM (JWT)
 // =============================
 
-auth.onAuthStateChanged((user) => {
+const token = localStorage.getItem("token");
+const authLink = document.getElementById("auth-link");
+const dropdown = document.getElementById("profile-dropdown");
+const logoutBtn = document.getElementById("logout-btn");
 
-    const authLink =
-        document.getElementById(
-            "auth-link"
-        );
-
-    const dropdown =
-        document.getElementById(
-            "profile-dropdown"
-        );
-
-    const logoutBtn =
-        document.getElementById(
-            "logout-btn"
-        );
-
-    if(!authLink) return;
-
-    // =============================
-    // USER LOGGED IN
-    // =============================
-
-    if(user){
-
-        authLink.innerHTML = `
-            <i class="fas fa-user"></i>
-        `;
-
+if(authLink){
+    if(token){
+        authLink.innerHTML = `<i class="fas fa-user"></i>`;
         authLink.href = "#";
-
-        authLink.classList.add(
-            "profile-active"
-        );
-
-        authLink.title =
-            user.email || "User";
+        authLink.classList.add("profile-active");
 
         // Toggle Dropdown
-
-        authLink.addEventListener(
-            "click",
-            (e) => {
-
-                e.preventDefault();
-
-                if(dropdown){
-
-                    dropdown.classList.toggle(
-                        "active"
-                    );
-
-                }
-
-            }
-        );
+        authLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            if(dropdown) dropdown.classList.toggle("active");
+        });
 
         // Logout
-
         if(logoutBtn){
-
-            logoutBtn.addEventListener(
-                "click",
-                async () => {
-
-                    try{
-
-                        await auth.signOut();
-
-                        window.location.href =
-                            "index.html";
-
-                    }catch(error){
-
-                        console.error(error);
-
-                    }
-
-                }
-            );
-
+            logoutBtn.addEventListener("click", () => {
+                localStorage.removeItem("token");
+                window.location.href = "index.html";
+            });
         }
 
-        // Close Dropdown Outside Click
-
-        document.addEventListener(
-            "click",
-            (e) => {
-
-                if(
-                    !e.target.closest(
-                        ".profile-wrapper"
-                    )
-                ){
-
-                    if(dropdown){
-
-                        dropdown.classList.remove(
-                            "active"
-                        );
-
-                    }
-
-                }
-
+        // Close Dropdown on outside click
+        document.addEventListener("click", (e) => {
+            if(!e.target.closest(".profile-wrapper")){
+                if(dropdown) dropdown.classList.remove("active");
             }
-        );
-
-    }
-
-    // =============================
-    // USER LOGGED OUT
-    // =============================
-
-    else{
-
+        });
+    } else {
         authLink.innerHTML = "Sign In";
-
         authLink.href = "signin.html";
-
-        authLink.classList.remove(
-            "profile-active"
-        );
-
-        if(dropdown){
-
-            dropdown.classList.remove(
-                "active"
-            );
-
-        }
-
+        authLink.classList.remove("profile-active");
+        if(dropdown) dropdown.classList.remove("active");
     }
-
-});
+}

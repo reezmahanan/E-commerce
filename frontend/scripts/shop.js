@@ -1,6 +1,4 @@
-console.log(
-    "Shop page loaded successfully!"
-);
+console.log("Shop page loaded successfully!");
 
 // =============================
 // API BASE URL
@@ -10,43 +8,34 @@ const API_BASE = "http://localhost:5000/api";
 // =============================
 // PRODUCTS ARRAY
 // =============================
-
 let allProducts = [];
 
 // =============================
 // ELEMENTS
 // =============================
-
-const searchInput =
-    document.getElementById(
-        "search-input"
-    );
-
-const filterButtons =
-    document.querySelectorAll(
-        ".filter-btn"
-    );
-
-const sortSelect =
-    document.getElementById(
-        "sort-select"
-    );
-
-const productContainer =
-    document.getElementById(
-        "product-container"
-    );
+const searchInput = document.getElementById("search-input");
+const filterButtons = document.querySelectorAll(".filter-btn");
+const sortSelect = document.getElementById("sort-select");
+const productContainer = document.getElementById("product-container");
 
 // =============================
-// FETCH PRODUCTS
+// FETCH PRODUCTS FROM BACKEND
 // =============================
 async function fetchProducts() {
     try {
-        const response = await fetch(`${API_BASE}/products`);
-        const data = await response.json();
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/products`, {
+            headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            }
+        });
+        const data = await res.json();
         if(data.success) {
             allProducts = data.products;
             renderProducts(allProducts);
+        } else {
+            productContainer.innerHTML = `<h3>${data.message}</h3>`;
         }
     } catch(error) {
         console.error(error);
@@ -55,7 +44,7 @@ async function fetchProducts() {
 }
 
 // =============================
-// RENDER PRODUCTS (MODULAR)
+// RENDER PRODUCTS
 // =============================
 function renderProducts(products) {
     productContainer.innerHTML = "";
@@ -136,136 +125,37 @@ document.addEventListener("DOMContentLoaded", () => {
 // =============================
 // SEARCH FILTER
 // =============================
-
-searchInput.addEventListener(
-    "keyup",
-    () => {
-
-        const value =
-            searchInput.value
-            .toLowerCase();
-
-        const filtered =
-            allProducts.filter(
-                (product) => {
-
-                    return (
-                        product.name
-                        .toLowerCase()
-                        .includes(value)
-                    );
-
-                }
-            );
-
-        renderProducts(filtered);
-
-    }
-);
+searchInput.addEventListener("keyup", () => {
+    const value = searchInput.value.toLowerCase();
+    const filtered = allProducts.filter(product => product.name.toLowerCase().includes(value));
+    renderProducts(filtered);
+});
 
 // =============================
 // CATEGORY FILTER
 // =============================
-
 filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+        filterButtons.forEach((btn) => btn.classList.remove("active-filter"));
+        button.classList.add("active-filter");
 
-    button.addEventListener(
-        "click",
-        () => {
-
-            filterButtons.forEach((btn) => {
-
-                btn.classList.remove(
-                    "active-filter"
-                );
-
-            });
-
-            button.classList.add(
-                "active-filter"
-            );
-
-            const category =
-                button.dataset.category;
-
-            if(category === "all"){
-
-                renderProducts(
-                    allProducts
-                );
-
-                return;
-
-            }
-
-            const filtered =
-                allProducts.filter(
-                    (product) => {
-
-                        return (
-                            product.category
-                            .toLowerCase()
-                            === category
-                        );
-
-                    }
-                );
-
-            renderProducts(filtered);
-
+        const category = button.dataset.category;
+        if(category === "all"){
+            renderProducts(allProducts);
+            return;
         }
-    );
 
+        const filtered = allProducts.filter(product => product.category.toLowerCase() === category);
+        renderProducts(filtered);
+    });
 });
 
 // =============================
 // SORT PRODUCTS
 // =============================
-
-sortSelect.addEventListener(
-    "change",
-    () => {
-
-        let sortedProducts =
-            [...allProducts];
-
-        if(
-            sortSelect.value
-            === "low-high"
-        ){
-
-            sortedProducts.sort(
-                (a, b) => {
-
-                    return (
-                        a.price - b.price
-                    );
-
-                }
-            );
-
-        }
-
-        if(
-            sortSelect.value
-            === "high-low"
-        ){
-
-            sortedProducts.sort(
-                (a, b) => {
-
-                    return (
-                        b.price - a.price
-                    );
-
-                }
-            );
-
-        }
-
-        renderProducts(
-            sortedProducts
-        );
-
-    }
-);
+sortSelect.addEventListener("change", () => {
+    let sortedProducts = [...allProducts];
+    if(sortSelect.value === "low-high") sortedProducts.sort((a,b) => a.price - b.price);
+    if(sortSelect.value === "high-low") sortedProducts.sort((a,b) => b.price - a.price);
+    renderProducts(sortedProducts);
+});

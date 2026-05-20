@@ -1,29 +1,15 @@
 console.log("Wishlist page loaded successfully!");
 
-// =============================
 // API BASE URL & GLOBAL STATE
-// =============================
 const API_BASE = "http://localhost:5000/api";
 let wishlist = JSON.parse(localStorage.getItem("wishlist")) || [];
 let cart = JSON.parse(localStorage.getItem("cart")) || [];
 
-// =============================
 // ELEMENTS
-// =============================
+const wishlistContainer = document.getElementById("wishlist-container");
+const emptyWishlist = document.getElementById("empty-wishlist");
 
-const wishlistContainer =
-    document.getElementById(
-        "wishlist-container"
-    );
-
-const emptyWishlist =
-    document.getElementById(
-        "empty-wishlist"
-    );
-
-// =============================
 // RENDER WISHLIST
-// =============================
 function renderWishlist() {
     wishlistContainer.innerHTML = "";
 
@@ -63,9 +49,7 @@ function renderWishlist() {
     attachWishlistEventListeners();
 }
 
-// =============================
 // WISHLIST EVENT LISTENERS
-// =============================
 function attachWishlistEventListeners() {
     document.querySelectorAll(".add-cart-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
@@ -84,46 +68,73 @@ function attachWishlistEventListeners() {
     });
 }
 
-// =============================
-// =============================
 // REMOVE WISHLIST ITEM
-// =============================
-function removeWishlist(index) {
+async function removeWishlist(index) {
+    const product = wishlist[index];
     wishlist.splice(index, 1);
     localStorage.setItem("wishlist", JSON.stringify(wishlist));
     renderWishlist();
 
-    // Optional: POST to backend for logged-in users
-    // fetch(`${API_BASE}/wishlist/remove`, { method: "POST", body: JSON.stringify({ index }) });
+    // POST to backend if logged in
+    const token = localStorage.getItem("token");
+    if(token){
+        try{
+            const res = await fetch(`${API_BASE}/wishlist/remove`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ productId: product.id })
+            });
+            const data = await res.json();
+            if(!data.success) console.warn("Backend wishlist remove failed:", data.message);
+        } catch(err){
+            console.error("Error removing wishlist item:", err);
+        }
+    }
 }
 
-// =============================
 // ADD TO CART FROM WISHLIST
-// =============================
-function addToCartFromWishlist(index) {
+async function addToCartFromWishlist(index) {
     const product = wishlist[index];
 
     const item = {
+        id: product.id,
         name: product.name,
         price: parseFloat(product.price),
         img: product.image,
         qty: 1
     };
 
-    const existing = cart.find(p => p.name === item.name);
-    if (existing) existing.qty++;
+    const existing = cart.find(p => p.id === item.id);
+    if(existing) existing.qty++;
     else cart.push(item);
 
     localStorage.setItem("cart", JSON.stringify(cart));
     showToast("Added to cart 🛍️");
 
-    // Optional: POST to backend for logged-in users
-    // fetch(`${API_BASE}/cart/add`, { method: "POST", body: JSON.stringify(item) });
+    // POST to backend if logged in
+    const token = localStorage.getItem("token");
+    if(token){
+        try{
+            const res = await fetch(`${API_BASE}/cart/add`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(item)
+            });
+            const data = await res.json();
+            if(!data.success) console.warn("Backend cart add failed:", data.message);
+        } catch(err){
+            console.error("Error adding item to cart:", err);
+        }
+    }
 }
 
-// =============================
 // INITIALIZATION
-// =============================
 document.addEventListener("DOMContentLoaded", () => {
     renderWishlist();
 });

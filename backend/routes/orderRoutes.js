@@ -5,33 +5,15 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 const orderController = require("../controllers/orderController");
 
 // Create new order (protected)
-router.post(
-    "/",
-    authMiddleware,
-    orderController.createOrder
-);
+router.post("/", authMiddleware, orderController.createOrder);
 
-// Get all orders (admin protected if needed)
-router.get(
-    "/",
-    authMiddleware,
-    adminMiddleware,
-    orderController.getOrders
-);
+// Get all orders (admin only)
+router.get("/", authMiddleware, adminMiddleware, orderController.getAllOrders);
 
-// Get single order by ID
-router.get(
-    "/:id",
-    authMiddleware,
-    orderController.getOrderById
-);
+// Get orders for current user
+router.get("/my-orders", authMiddleware, orderController.getUserOrders);
 
-// Update order status
-router.put(
-    "/:id/status",
-    authMiddleware,
-    adminMiddleware,
-    orderController.updateOrderStatus
-);
+// Update order status (admin only)
+router.put("/:id/status", authMiddleware, adminMiddleware, orderController.updateOrderStatus);
 
 module.exports = router;

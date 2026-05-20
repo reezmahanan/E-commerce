@@ -1,496 +1,211 @@
 console.log("Admin panel loaded successfully!");
 
 // =============================
-// DEMO ADMIN CHECK
+// BACKEND API CONFIG
 // =============================
 
-firebase.auth().onAuthStateChanged((user) => {
-
-    if(!user){
-
-        window.location.href = "signin.html";
-
-    }
-
-});
-
-// =============================
-// STORAGE
-// =============================
-
-let products =
-    JSON.parse(
-        localStorage.getItem(
-            "adminProducts"
-        )
-    ) || [];
-
-let orders =
-    JSON.parse(
-        localStorage.getItem(
-            "orders"
-        )
-    ) || [];
+// Helper function for backend requests with JWT
+const apiRequest = async (url, method = "GET", body = null) => {
+    const token = localStorage.getItem("token");
+    const options = {
+        method,
+        headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+    };
+    if (body) options.body = JSON.stringify(body);
+    const res = await fetch(url, options);
+    return await res.json();
+};
 
 // =============================
 // ELEMENTS
 // =============================
 
-const productForm =
-    document.getElementById(
-        "product-form"
-    );
+const productForm = document.getElementById("product-form");
+const productTableBody = document.getElementById("product-table-body");
+const ordersTableBody = document.getElementById("orders-table-body");
 
-const productTableBody =
-    document.getElementById(
-        "product-table-body"
-    );
+// =============================
+// FETCH INITIAL DATA
+// =============================
 
-const ordersTableBody =
-    document.getElementById(
-        "orders-table-body"
-    );
+let products = [];
+let orders = [];
+
+const loadInitialData = async () => {
+    try {
+        const productsRes = await apiRequest("/api/products");
+        if (productsRes.success) products = productsRes.products;
+
+        const ordersRes = await apiRequest("/api/orders");
+        if (ordersRes.success) orders = ordersRes.orders;
+
+        renderProducts();
+        renderOrders();
+        renderStats();
+    } catch (error) {
+        console.error("Failed to load initial data", error);
+    }
+};
 
 // =============================
 // RENDER STATS
 // =============================
 
-function renderStats(){
-
-    document.getElementById(
-        "total-orders"
-    ).innerText =
-        orders.length;
-
-    document.getElementById(
-        "total-products"
-    ).innerText =
-        products.length;
-
-    document.getElementById(
-        "total-users"
-    ).innerText =
-        localStorage.getItem(
-            "visits"
-        ) || 0;
+function renderStats() {
+    document.getElementById("total-orders").innerText = orders.length;
+    document.getElementById("total-products").innerText = products.length;
+    document.getElementById("total-users").innerText =
+        localStorage.getItem("visits") || 0;
 
     let revenue = 0;
-
     orders.forEach((order) => {
-
-        order.items.forEach((item) => {
-
-            const price =
-                parseInt(
-                    item.price.replace(
-                        /\D/g,
-                        ""
-                    )
-                );
-
-            revenue +=
-                price * item.qty;
-
+        order.products.forEach((item) => {
+            const price = parseInt(item.price);
+            revenue += price * item.quantity;
         });
-
     });
-
-    document.getElementById(
-        "total-revenue"
-    ).innerText =
-        `₹${revenue}`;
-
+    document.getElementById("total-revenue").innerText = `₹${revenue}`;
 }
 
 // =============================
 // ADD PRODUCT
 // =============================
 
-productForm.addEventListener(
-    "submit",
-    (e) => {
-
+if (productForm) {
+    productForm.addEventListener("submit", async (e) => {
         e.preventDefault();
-
-        const product = {
-
-            id: Date.now(),
-
-            brand: "AnthropicBots",
-
-            category:
-                document.getElementById(
-                    "product-category"
-                ).value,
-            
-            name:
-                document.getElementById(
-                    "product-name"
-                ).value,
-            
-            price:
-                parseInt(
-                    document.getElementById(
-                        "product-price"
-                    ).value
-                ),
-            
-            description:
-                document.getElementById(
-                    "product-description"
-                ).value,
-            
-            image:
-                document.getElementById(
-                    "product-image"
-                ).value,
-            
-            stock:
-                parseInt(
-                    document.getElementById(
-                        "product-stock"
-                    ).value
-                ),
-            
-            status:
-                document.getElementById(
-                    "product-status"
-                ).value,
-            
-            featured:
-                document.getElementById(
-                    "featured-product"
-                ).checked,
-            
-            rating: 4.5
-            
+        const productData = {
+            name: document.getElementById("product-name").value,
+            category: document.getElementById("product-category").value,
+            price: parseInt(document.getElementById("product-price").value),
+            description: document.getElementById("product-description").value,
+            image: document.getElementById("product-image").value,
+            stock: parseInt(document.getElementById("product-stock").value),
+            featured: document.getElementById("featured-product").checked,
         };
 
-        products.push(product);
-
-        localStorage.setItem(
-            "adminProducts",
-            JSON.stringify(products)
-        );
-
-        productForm.reset();
-
-        renderProducts();
-
-        renderStats();
-
-        alert(
-            "Product added successfully!"
-        );
-
-    }
-);
+        try {
+            const res = await apiRequest("/api/products", "POST", productData);
+            if (res.success) {
+                alert("Product added successfully!");
+                products.push(res.product); // assume backend returns created product
+                renderProducts();
+                renderStats();
+                productForm.reset();
+            } else {
+                alert(res.message);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to add product.");
+        }
+    });
+}
 
 // =============================
 // RENDER PRODUCTS
 // =============================
 
-function renderProducts(){
-
+function renderProducts() {
+    if (!productTableBody) return;
     productTableBody.innerHTML = "";
 
     products.forEach((product) => {
-
-        const row =
-            document.createElement("tr");
-
+        const row = document.createElement("tr");
         row.innerHTML = `
+            <td>${product.name}</td>
+            <td>${product.category}</td>
+            <td>₹${product.price}</td>
+            <td>${product.stock}</td>
+            <td>${product.featured ? "Featured" : "—"}</td>
             <td>
-                ${product.name}
-            </td>
-
-            <td>
-                ${product.category}
-            </td>
-
-            <td>
-                ₹${product.price}
-            </td>
-
-            <td>
-                ${product.stock}
-            </td>
-
-            <td>
-
-                <span class="
-                    stock-badge
-                    ${
-                        product.status === "In Stock"
-                        ? "in-stock"
-                        : product.status === "Out Of Stock"
-                        ? "out-stock"
-                        : "hidden-stock"
-                    }
-                ">
-                
-                    ${product.status}
-                
-                </span>
-                
-            </td>
-                
-            <td>
-                
-                ${
-                    product.featured
-                    ? `
-                        <span class="featured-badge">
-                            Featured
-                        </span>
-                    `
-                    : "—"
-                }
-            
-            </td>
-            
-            <td>
-            
-                <div class="inventory-controls">
-            
-                    <button
-                        class="action-btn"
-                        onclick="increaseStock(${product.id})"
-                    >
-            
-                        +
-            
-                    </button>
-            
-                    <button
-                        class="action-btn delete-btn"
-                        onclick="decreaseStock(${product.id})"
-                    >
-            
-                        -
-            
-                    </button>
-            
-                </div>
-            
-            </td>
-            
-            <td>
-            
-                <button
-                    class="action-btn edit-btn"
-                    onclick="editProduct(${product.id})"
-                >
-            
-                    Edit
-            
-                </button>
-            
-                <button
-                    class="action-btn delete-btn"
-                    onclick="deleteProduct(${product.id})"
-                >
-            
-                    Delete
-            
-                </button>
-            
+                <button class="action-btn" onclick="editProduct(${product.id})">Edit</button>
+                <button class="action-btn delete-btn" onclick="deleteProduct(${product.id})">Delete</button>
             </td>
         `;
-
-        productTableBody.appendChild(
-            row
-        );
-
+        productTableBody.appendChild(row);
     });
-
 }
 
 // =============================
 // DELETE PRODUCT
 // =============================
 
-function deleteProduct(id){
-
-    products =
-        products.filter(
-            (product) =>
-                product.id !== id
-        );
-
-    localStorage.setItem(
-        "adminProducts",
-        JSON.stringify(products)
-    );
-
-    renderProducts();
-
-    renderStats();
-
-}
-
-// =============================
-// INCREASE STOCK
-// =============================
-
-function increaseStock(id){
-
-    const product =
-        products.find(
-            (item) =>
-                item.id === id
-        );
-
-    if(product){
-
-        product.stock++;
-
+async function deleteProduct(id) {
+    try {
+        const res = await apiRequest(`/api/products/${id}`, "DELETE");
+        if (res.success) {
+            products = products.filter((p) => p.id !== id);
+            renderProducts();
+            renderStats();
+        } else {
+            alert(res.message);
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Failed to delete product.");
     }
-
-    localStorage.setItem(
-        "adminProducts",
-        JSON.stringify(products)
-    );
-
-    renderProducts();
-
-}
-
-// =============================
-// DECREASE STOCK
-// =============================
-
-function decreaseStock(id){
-
-    const product =
-        products.find(
-            (item) =>
-                item.id === id
-        );
-
-    if(
-        product &&
-        product.stock > 0
-    ){
-
-        product.stock--;
-
-    }
-
-    localStorage.setItem(
-        "adminProducts",
-        JSON.stringify(products)
-    );
-
-    renderProducts();
-
-}
-
-// =============================
-// RENDER ORDERS
-// =============================
-
-function renderOrders(){
-
-    ordersTableBody.innerHTML = "";
-
-    orders.forEach((order) => {
-
-        const row =
-            document.createElement("tr");
-
-        row.innerHTML = `
-            <td>
-                ${order.id}
-            </td>
-
-            <td>
-                ${order.date}
-            </td>
-
-            <td>
-                ${order.items.length}
-            </td>
-        `;
-
-        ordersTableBody.appendChild(
-            row
-        );
-
-    });
-
 }
 
 // =============================
 // EDIT PRODUCT
 // =============================
 
-function editProduct(id){
+async function editProduct(id) {
+    const product = products.find((p) => p.id === id);
+    if (!product) return;
 
-    const product =
-        products.find(
-            (item) =>
-                item.id === id
-        );
+    const newName = prompt("Edit Product Name", product.name);
+    const newPrice = prompt("Edit Product Price", product.price);
+    const newStock = prompt("Edit Product Stock", product.stock);
 
-    if(!product) return;
+    if (newName && newPrice && newStock) {
+        const updatedData = {
+            name: newName,
+            price: parseInt(newPrice),
+            stock: parseInt(newStock),
+        };
 
-    const newName =
-        prompt(
-            "Edit Product Name",
-            product.name
-        );
-
-    const newPrice =
-        prompt(
-            "Edit Product Price",
-            product.price
-        );
-
-    const newStock =
-        prompt(
-            "Edit Product Stock",
-            product.stock
-        );
-
-    if(
-        newName &&
-        newPrice &&
-        newStock
-    ){
-
-        product.name =
-            newName;
-
-        product.price =
-            parseInt(newPrice);
-
-        product.stock =
-            parseInt(newStock);
-
-        localStorage.setItem(
-            "adminProducts",
-            JSON.stringify(products)
-        );
-
-        renderProducts();
-
-        renderStats();
-
-        alert(
-            "Product updated successfully!"
-        );
-
+        try {
+            const res = await apiRequest(`/api/products/${id}`, "PUT", updatedData);
+            if (res.success) {
+                Object.assign(product, updatedData);
+                renderProducts();
+                renderStats();
+                alert("Product updated successfully!");
+            } else {
+                alert(res.message);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to update product.");
+        }
     }
+}
 
+// =============================
+// RENDER ORDERS
+// =============================
+
+function renderOrders() {
+    if (!ordersTableBody) return;
+    ordersTableBody.innerHTML = "";
+    orders.forEach((order) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${order.id}</td>
+            <td>${order.date}</td>
+            <td>${order.products.length}</td>
+        `;
+        ordersTableBody.appendChild(row);
+    });
 }
 
 // =============================
 // INITIALIZE
 // =============================
 
-renderProducts();
-
-renderOrders();
-
-renderStats();
+loadInitialData();
