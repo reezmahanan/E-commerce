@@ -58,6 +58,7 @@ const allowedOrigins = [
     // custom domain
     "https://www.bhuvansh.xyz"
 ];
+
 // cors
 app.use(
     cors({
