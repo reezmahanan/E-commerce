@@ -1,7 +1,7 @@
 ---
-Name: Feature Request
-About: Suggest a new feature or enhancement for the project
-Title: "[FEATURE]: "
+name: Feature Request
+about: Suggest a new feature or enhancement for the project
+title: "[FEATURE]: "
 
 ---
 
