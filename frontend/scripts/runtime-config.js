@@ -1,12 +1,11 @@
 // app runtime config
 window.APP_CONFIG = {
     firebase: {
-        apiKey: "AIzaSyDwAlsnUMAHSGMcyhAal3bossk-Upgfqd4",
-        authDomain: "myapp-1040f.firebaseapp.com",
-        projectId: "myapp-1040f",
-        storageBucket: "myapp-1040f.firebasestorage.app",
-        messagingSenderId: "794122341869",
-        appId: "1:794122341869:web:a8cfe944a440d872e82be4",
-        measurementId: "G-58T28CTQY0"
+        apiKey: "AIzaSyA16yqEP8cO0MGJpPZMlqZH5Y4A48FopvU",
+        authDomain: "anthropicbots-ecommerce.firebaseapp.com",
+        projectId: "anthropicbots-ecommerce",
+        storageBucket: "anthropicbots-ecommerce.firebasestorage.app",
+        messagingSenderId: "145313639441",
+        appId: "1:145313639441:web:994a71088a3ed3c46d15b0"
     }
 };

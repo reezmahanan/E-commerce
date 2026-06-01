@@ -573,12 +573,9 @@ elements.googleLogin?.addEventListener(
     "click",
     async () => {
         try {
-            if (!window.firebaseAuth || !window.googleProvider) {
-                throw new Error("Firebase authentication service is not loaded.");
-            }
             const result =
-                await window.firebaseAuth.signInWithPopup(
-                    window.googleProvider
+                await auth.signInWithPopup(
+                    googleProvider
                 );
 
             const user =
@@ -618,23 +615,11 @@ elements.googleLogin?.addEventListener(
                 error
             );
 
-            if (error.code === "auth/unauthorized-domain") {
-                AppUtils.notify(
-                    `This domain is not authorized in Firebase. Please access the site via 'http://localhost'/'http://127.0.0.1' or add '${window.location.hostname}' to Firebase Console -> Authentication -> Settings -> Authorized Domains.`,
-                    "error"
-                );
-            } else if (error.code === "auth/configuration-not-found") {
-                AppUtils.notify(
-                    "Google Sign-In is not enabled in your Firebase Console. Go to Firebase Console -> Authentication -> Sign-in method and enable Google.",
-                    "error"
-                );
-            } else {
-                AppUtils.notify(
-                    error.message ||
-                    "Google login failed.",
-                    "error"
-                );
-            }
+            AppUtils.notify(
+                error.message ||
+                "Google login failed.",
+                "error"
+            );
         }
     }
 );
