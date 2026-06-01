@@ -495,7 +495,8 @@ const refreshAccessToken =
                         id,
                         name,
                         email,
-                        role
+                        role,
+                        is_active
                     FROM users
                     WHERE refresh_token = ?
                     LIMIT 1
@@ -523,6 +524,21 @@ const refreshAccessToken =
 
             const user =
                 users[0];
+
+            // inactive account
+            if (
+                user.is_active === 0
+            ) {
+
+                return res.status(403)
+                    .json({
+
+                        success: false,
+
+                        message:
+                            "Account has been deactivated"
+                    });
+            }
 
             // rotate tokens
             const newAccessToken =
