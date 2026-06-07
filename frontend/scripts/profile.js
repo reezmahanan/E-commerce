@@ -274,7 +274,7 @@ function loadProfile() {
 edit profile
 ============================= */
 
-elements.editBtn?.addEventListener(
+profileElements.editBtn?.addEventListener(
     "click",
     () => {
 
@@ -286,7 +286,7 @@ elements.editBtn?.addEventListener(
 save profile
 ============================= */
 
-elements.profileForm?.addEventListener(
+profileElements.profileForm?.addEventListener(
     "submit",
     (event) => {
 
@@ -295,22 +295,22 @@ elements.profileForm?.addEventListener(
         const profile = {
 
             name:
-                elements.profileName.value.trim(),
+                profileElements.profileName.value.trim(),
 
             email:
-                elements.profileEmail.value.trim(),
+                profileElements.profileEmail.value.trim(),
 
             phone:
-                elements.profilePhone.value.trim(),
+                profileElements.profilePhone.value.trim(),
 
             address:
-                elements.profileAddress.value.trim(),
+                profileElements.profileAddress.value.trim(),
 
             bio:
-                elements.profileBio.value.trim(),
+                profileElements.profileBio.value.trim(),
 
             avatar:
-                elements.profilePreview.src
+                profileElements.profilePreview.src
         };
 
         AppUtils.setJSON(
@@ -341,7 +341,7 @@ elements.profileForm?.addEventListener(
 avatar upload
 ============================= */
 
-elements.avatarInput?.addEventListener(
+profileElements.avatarInput?.addEventListener(
     "change",
     (event) => {
 
@@ -358,7 +358,7 @@ elements.avatarInput?.addEventListener(
         reader.onload =
             (loadEvent) => {
 
-                elements.profilePreview.src =
+                profileElements.profilePreview.src =
                     loadEvent.target.result;
             };
 
