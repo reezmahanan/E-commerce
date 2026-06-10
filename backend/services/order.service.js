@@ -30,7 +30,13 @@ const createOrderService =
                     const { user_id, customer_name, customer_email, customer_phone, city, state, zip, full_address, payment_method, items } = orderData;
                     // validated items
                     const validatedItems = [];
-
+                   // validate empty cart
+                   if (!safeArray(items).length)
+             {
+                   return reject(
+                     new Error("Cart is empty")
+             ); 
+       }
                     // secure total
                     let calculatedTotal =
                         0;

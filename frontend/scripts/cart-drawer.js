@@ -119,7 +119,7 @@ function renderCartDrawer() {
 
     cartDrawerItems.innerHTML =
         drawerCart.map(
-            (item) => {
+            (item, index) => {
                 const qty =
                     safeQty(
                         item.qty
@@ -168,8 +168,8 @@ function renderCartDrawer() {
                         <button
                             type="button"
                             class="remove-drawer-item"
-                            data-id="${
-                                item.id
+                            data-index="${
+                                index
                             }"
                             aria-label="Remove item"
                         >
@@ -209,20 +209,26 @@ function renderCartDrawer() {
 
 // remove item
 function removeDrawerItem(
-    id
+    index
 ) {
     if (
-        !id
+        index === undefined || index === null
     ) {
         return;
     }
 
-    drawerCart =
-        drawerCart.filter(
-            (item) =>
-                String(item.id)
-                !== String(id)
-        );
+    const parsedIndex = parseInt(index, 10);
+
+    if (
+        isNaN(parsedIndex) || !drawerCart[parsedIndex]
+    ) {
+        return;
+    }
+
+    drawerCart.splice(
+        parsedIndex,
+        1
+    );
 
     AppUtils.saveCart(
         drawerCart
@@ -325,7 +331,7 @@ document.addEventListener(
         ) {
             event.preventDefault();
             removeDrawerItem(
-                removeBtn.dataset.id
+                removeBtn.dataset.index
             );
         }
     }

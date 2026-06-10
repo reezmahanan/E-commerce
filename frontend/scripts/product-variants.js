@@ -120,6 +120,12 @@ function updateVariant() {
                 currentVariant.image
             );
     }
+
+    window.selectedColor =
+        selectedColor;
+
+    window.selectedSize =
+        selectedSize;
 }
 
 // color events

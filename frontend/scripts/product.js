@@ -364,6 +364,9 @@ function initializeProductPage() {
             product
         );
     }
+    setCurrentProduct(
+        product
+    );
 
     setupCartActions(
         product
