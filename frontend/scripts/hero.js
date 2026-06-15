@@ -84,7 +84,7 @@ if (countdown) {
 
         if (distance < 0) {
             countdown.innerHTML =
-                "Offer Expired";
+                "Offer Expired ";
 
             return;
         }
@@ -144,45 +144,3 @@ if (countdown) {
     );
 }
 
-// newsletter validation
-const newsletterForm =
-    document.querySelector(
-        "#newsletter .form"
-    );
-
-if (newsletterForm) {
-    newsletterForm.addEventListener(
-        "submit",
-        (event) => {
-            event.preventDefault();
-            const input =
-                newsletterForm.querySelector(
-                    "input"
-                );
-
-            const email =
-                input?.value.trim();
-
-            const validEmail =
-                /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            if (
-                !email ||
-                !validEmail.test(email)
-            ) {
-                notify(
-                    "Please enter a valid email",
-                    "error"
-                );
-
-                return;
-            }
-
-            notify(
-                "Newsletter subscription successful!",
-                "success"
-            );
-            newsletterForm.reset();
-        }
-    );
-}
