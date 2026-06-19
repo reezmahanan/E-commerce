@@ -61,6 +61,7 @@ h2{
     font-size: 46px;
     line-height: 54px;
     color: var(--text-dark);
+    color: black;  
 }
 
 /* added missing heading style */
@@ -238,7 +239,7 @@ body.dark-theme label,
 body.dark-theme .form-group,
 body.dark-theme p,
 body.dark-theme a {
-    color: #ffffff;
+    color: rgba(27, 26, 26);
 }
 body.dark-theme footer {
     background-color: #1a1a1a;
@@ -288,7 +289,7 @@ body.dark-theme .order-content {
     border: 1px solid #333 !important;
 }
 body.dark-theme h3 {
-    color: #ffffff !important;
+    color:#000 ! important;
 }
 body.dark-theme .toast-container,
 body.dark-theme .toast,
