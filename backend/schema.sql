@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS orders (
 
     FOREIGN KEY (user_id)
         REFERENCES users(id)
-        ON DELETE SET NULL,
+        ON DeleteE SET NULL,
 
     CHECK (total >= 0)
 );
@@ -150,11 +150,11 @@ CREATE TABLE IF NOT EXISTS order_items (
 
     FOREIGN KEY (order_id)
         REFERENCES orders(id)
-        ON DELETE CASCADE,
+        ON DeleteE CASCADE,
 
     FOREIGN KEY (product_id)
         REFERENCES products(id)
-        ON DELETE SET NULL,
+        ON DeleteE SET NULL,
 
     CHECK (price >= 0),
 
@@ -195,11 +195,11 @@ CREATE TABLE IF NOT EXISTS wishlist_items (
 
     FOREIGN KEY (user_id)
         REFERENCES users(id)
-        ON DELETE CASCADE,
+        ON DeleteE CASCADE,
 
     FOREIGN KEY (product_id)
         REFERENCES products(id)
-        ON DELETE CASCADE,
+        ON DeleteE CASCADE,
 
     UNIQUE KEY user_product_unique (user_id, product_id)
 );

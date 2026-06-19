@@ -5,7 +5,7 @@ const {
     getSingleProduct,
     createProduct,
     updateProduct,
-    deleteProduct
+    DeleteeProduct
 } = require("../controllers/productController");
 const authMiddleware = require("../middleware/authMiddleware");
 const { authorizeRoles } = authMiddleware;
@@ -92,7 +92,7 @@ router.put("/:id", authMiddleware, authorizeRoles("admin"), (req, res, next) => 
     next();
 }, updateProduct);
 
-router.delete("/:id", authMiddleware, authorizeRoles("admin"), deleteProduct);
+router.Deletee("/:id", authMiddleware, authorizeRoles("admin"), DeleteeProduct);
 
 // Fallback
 router.use((req, res) => {

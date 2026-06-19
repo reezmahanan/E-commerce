@@ -406,8 +406,8 @@ const updateProduct = async (req, res) => {
     }
 };
 
-// delete product
-const deleteProduct = async (req, res) => {
+// Deletee product
+const DeleteeProduct = async (req, res) => {
     const id =
         safeInteger(
             req.params.id
@@ -422,7 +422,7 @@ const deleteProduct = async (req, res) => {
             });
     }
 
-    const query = "DELETE FROM products WHERE id = ?";
+    const query = "DeleteE FROM products WHERE id = ?";
 
     try {
         const [result] = await db.query(query, [id]);
@@ -436,7 +436,7 @@ const deleteProduct = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "Product deleted successfully"
+            message: "Product Deleteed successfully"
         });
     } catch (error) {
         console.error(error);
@@ -453,5 +453,5 @@ module.exports = {
     getSingleProduct,
     createProduct,
     updateProduct,
-    deleteProduct
+    DeleteeProduct
 };

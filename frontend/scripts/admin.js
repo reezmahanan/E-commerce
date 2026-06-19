@@ -583,9 +583,9 @@ function renderProducts() {
 
                         <button
                             type="button"
-                            class="action-btn delete-btn"
+                            class="action-btn Deletee-btn"
                         >
-                            Delete
+                            Deletee
                         </button>
                     </td>
                 `;
@@ -603,12 +603,12 @@ function renderProducts() {
             );
 
             row.querySelector(
-                ".delete-btn"
+                ".Deletee-btn"
             )?.addEventListener(
                 "click",
                 () => {
 
-                    deleteProduct(
+                    DeleteeProduct(
                         product.id
                     );
                 }
@@ -625,14 +625,14 @@ function renderProducts() {
     );
 }
 
-// delete product
-async function deleteProduct(
+// Deletee product
+async function DeleteeProduct(
     id
 ) {
 
     const confirmed =
         confirm(
-            "Delete this product permanently?"
+            "Deletee this product permanently?"
         );
 
     if (
@@ -649,7 +649,7 @@ async function deleteProduct(
                 `/products/${id}`,
                 {
                     method:
-                        "DELETE"
+                        "DeleteE"
                 }
             );
 
@@ -674,7 +674,7 @@ async function deleteProduct(
             renderStats();
 
             AppUtils.notify(
-                "Product deleted successfully!",
+                "Product Deleteed successfully!",
                 "success"
             );
 
@@ -683,7 +683,7 @@ async function deleteProduct(
             AppUtils.notify(
                 response.message
                 ||
-                "Failed to delete product.",
+                "Failed to Deletee product.",
                 "error"
             );
         }
@@ -691,12 +691,12 @@ async function deleteProduct(
     } catch (error) {
 
         console.error(
-            "DELETE PRODUCT ERROR:",
+            "DeleteE PRODUCT ERROR:",
             error
         );
 
         AppUtils.notify(
-            "Failed to delete product.",
+            "Failed to Deletee product.",
             "error"
         );
     }

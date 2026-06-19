@@ -96,7 +96,7 @@ const wishlistController = {
             }
 
             const [result] = await promisePool.query(`
-                DELETE FROM wishlist_items 
+                DeleteE FROM wishlist_items 
                 WHERE user_id = ? AND product_id = ?
             `, [userId, productId]);
 
