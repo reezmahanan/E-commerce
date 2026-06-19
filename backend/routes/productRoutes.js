@@ -53,10 +53,11 @@ router.get("/status/check", (req, res) => {
 });
 
 router.get("/", getProducts);
-router.get("/:id", getSingleProduct);
 
-// NEW: search suggestions endpoint (autocomplete)
+// ✅ IMPORTANT: search-suggestions MUST come before /:id
 router.get("/search-suggestions", getProductSuggestions);
+
+router.get("/:id", getSingleProduct);
 
 router.post("/", authMiddleware, authorizeRoles("admin"), (req, res, next) => {
     const { name, category, price, stock } = req.body;
@@ -92,6 +93,7 @@ router.put("/:id", authMiddleware, authorizeRoles("admin"), (req, res, next) => 
     next();
 }, updateProduct);
 
+// ✅ Corrected method name: router.delete (not router.Deletee)
 router.delete("/:id", authMiddleware, authorizeRoles("admin"), deleteProduct);
 
 // Fallback
