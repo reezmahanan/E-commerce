@@ -33,7 +33,8 @@ function safePrice(
 
 // render product card
 function createProductCard(
-    product
+    product,
+    wishlistIds = null
 ) {
     const rating =
         Math.min(
@@ -160,7 +161,7 @@ function createProductCard(
                         data-id="${product.id}"
                         aria-label="Add to Wishlist"
                     >
-                        <i class="${ AppUtils.getWishlist().some(item => String(item.id) === String(product.id)) ? 'fas' : 'far' } fa-heart"></i>
+                        <i class="${ (wishlistIds ? wishlistIds.has(String(product.id)) : AppUtils.getWishlist().some(item => String(item.id) === String(product.id))) ? 'fas' : 'far' } fa-heart"></i>
                     </button>
 
                 </div>
@@ -185,13 +186,13 @@ function renderFeaturedProducts(
                 product.featured
         );
 
+    const wishlistIds = new Set(AppUtils.getWishlist().map(item => String(item.id)));
+
     homeFeaturedContainer.innerHTML =
         featured.length
             ? featured
                 .slice(0, 8)
-                .map(
-                    createProductCard
-                )
+                .map(p => createProductCard(p, wishlistIds))
                 .join("")
             : `
                 <p class="empty-products">
@@ -239,12 +240,12 @@ function renderNewArrivals(
                 Number(product.featured) !== 1
         ).slice(0, 8);
 
+    const wishlistIds = new Set(AppUtils.getWishlist().map(item => String(item.id)));
+
     homeArrivalsContainer.innerHTML =
         arrivals.length
             ? arrivals
-                .map(
-                    createProductCard
-                )
+                .map(p => createProductCard(p, wishlistIds))
                 .join("")
             : `
                 <p class="empty-products">
