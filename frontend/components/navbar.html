@@ -23,13 +23,13 @@
 
     <ul class="nav-actions">
         <li class="wishlist-link">
-            <a href="wishlist.html">
+            <a href="wishlist.html" aria-label="Wishlist">
                 <i class="far fa-heart"></i>
             </a>
         </li>
 
         <li class="cart-link">
-            <a href="cart.html">
+            <a href="cart.html" aria-label="Shopping Cart">
                 <i class="far fa-shopping-bag"></i>
                 <span id="cart-badge">0</span>
             </a>
@@ -40,36 +40,12 @@
         </li>
 
         <li class="theme-toggle-item">
-            <button id="theme-toggle">
+            <button id="theme-toggle" aria-label="Toggle theme">
                 <span id="theme-icon">🌙</span>
             </button>
         </li>
     </ul>
-
 </nav>
-            <!-- Profile -->
-            <li class="profile-wrapper">
-                <a href="signin.html" id="auth-link">
-                    Sign In <i class="fas fa-caret-down" style="font-size: 12px; margin-left: 3px;"></i>
-                </a>
-                <!-- Dropdown -->
-                <div id="profile-dropdown">
-                    <a href="profile.html"><i class="fas fa-user"></i> My Profile</a>
-                    <a href="dashboard.html#orders"><i class="fas fa-shopping-bag"></i> Orders</a>
-                    <a href="dashboard.html#wishlist"><i class="fas fa-heart"></i> Wishlist</a>
-                    <a href="dashboard.html#settings"><i class="fas fa-cog"></i> Settings</a>
-                    <a href="dashboard.html#cart"><i class="fas fa-shopping-cart"></i> Saved Cart</a>
-                    <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
-                </div>
-            </li>
-
-            <li class="theme-toggle-item">
-                <button id="theme-toggle" aria-label="Toggle theme">
-                    <span id="theme-icon">🌙</span>
-                </button>
-            </li>
-        </ul>
-    </nav>
 
     <!-- Mobile Menu Button -->
     <button id="mobile-menu-btn" aria-label="Toggle Navigation">
