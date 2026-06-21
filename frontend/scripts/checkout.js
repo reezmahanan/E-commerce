@@ -122,8 +122,30 @@ const elements = {
     placeOrderBtn:
         document.querySelector(
             '#checkout-form button[type="submit"]'
-        )
+        ),
+
+    promoInput:
+        document.getElementById("promo-code-input"),
+
+    applyPromoBtn:
+        document.getElementById("apply-promo-btn"),
+
+    promoMessage:
+        document.getElementById("promo-message"),
+
+    discountRow:
+        document.getElementById("checkout-discount-row"),
+
+    discountAmount:
+        document.getElementById("checkout-discount"),
+
+    promoLabel:
+        document.getElementById("applied-promo-label")
 };
+
+// PROMO STATE
+let appliedPromo = null;
+let currentDiscount = 0;
 
 // escape html
 function escapeHTML(
@@ -229,7 +251,7 @@ function calculateTotals() {
             : 0;
 
     const total =
-        subtotal +
+        Math.max(0, subtotal - currentDiscount) +
         tax +
         shipping;
 
@@ -237,6 +259,7 @@ function calculateTotals() {
         subtotal,
         tax,
         shipping,
+        discount: currentDiscount,
         total
     };
 }
@@ -354,6 +377,20 @@ function renderCheckout() {
     }
 
     if (
+        elements.discountRow
+    ) {
+        if (currentDiscount > 0) {
+            elements.discountRow.style.display = "flex";
+            elements.discountAmount.innerText = "- " + AppUtils.formatPrice(currentDiscount);
+            if (appliedPromo) {
+                elements.promoLabel.innerText = appliedPromo.code;
+            }
+        } else {
+            elements.discountRow.style.display = "none";
+        }
+    }
+
+    if (
         elements.total
     ) {
 
@@ -365,6 +402,73 @@ function renderCheckout() {
 }
 
 renderCheckout();
+
+// PROMO LOGIC
+if (elements.applyPromoBtn) {
+    elements.applyPromoBtn.addEventListener("click", async () => {
+        const code = elements.promoInput.value.trim();
+        
+        if (!code) {
+            elements.promoMessage.innerText = "Please enter a promo code";
+            elements.promoMessage.style.color = "red";
+            return;
+        }
+
+        if (appliedPromo && appliedPromo.code === code) {
+            return; // Already applied
+        }
+
+        // If removing
+        if (elements.applyPromoBtn.innerText === "Remove") {
+            appliedPromo = null;
+            currentDiscount = 0;
+            elements.promoInput.value = "";
+            elements.promoInput.disabled = false;
+            elements.applyPromoBtn.innerText = "Apply";
+            elements.applyPromoBtn.style.background = "#088178";
+            elements.promoMessage.innerText = "Promo code removed";
+            elements.promoMessage.style.color = "#333";
+            renderCheckout();
+            return;
+        }
+
+        elements.applyPromoBtn.innerText = "Validating...";
+        elements.applyPromoBtn.disabled = true;
+
+        try {
+            const { subtotal } = calculateTotals();
+            
+            const data = await AppUtils.apiRequest("/promos/validate", {
+                method: "POST",
+                body: JSON.stringify({ promoCode: code, cartTotal: subtotal })
+            });
+
+            if (data.success) {
+                appliedPromo = data.promo;
+                currentDiscount = data.discount;
+                elements.promoMessage.innerText = `Promo applied successfully! You saved ${AppUtils.formatPrice(currentDiscount)}`;
+                elements.promoMessage.style.color = "green";
+                
+                elements.promoInput.disabled = true;
+                elements.applyPromoBtn.innerText = "Remove";
+                elements.applyPromoBtn.style.background = "#d9534f";
+                
+                renderCheckout();
+            } else {
+                elements.promoMessage.innerText = data.message || "Invalid promo code";
+                elements.promoMessage.style.color = "red";
+            }
+        } catch (error) {
+            elements.promoMessage.innerText = "Error validating promo code";
+            elements.promoMessage.style.color = "red";
+        } finally {
+            elements.applyPromoBtn.disabled = false;
+            if (!appliedPromo) {
+                elements.applyPromoBtn.innerText = "Apply";
+            }
+        }
+    });
+}
 
 // PAYMENT METHOD TOGGLE
 elements.paymentMethods.forEach(
@@ -540,6 +644,8 @@ function createOrderPayload() {
 
         total:
             totals.total,
+            
+        promoCode: appliedPromo ? appliedPromo.code : null,
 
         items:
             AppUtils.safeArray(
