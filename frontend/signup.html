@@ -97,10 +97,11 @@
             </p>
 
             <!-- Signup Form -->
-            <form id="signup-form">
+            <form id="signup-form" data-auth-form="signup">
                 <input
                     type="text"
                     id="signup-name"
+                    name="name"
                     placeholder="Full Name"
                     autocomplete="name"
                     required
@@ -108,6 +109,7 @@
                 <input
                     type="email"
                     id="signup-email"
+                    name="email"
                     placeholder="Email Address"
                     autocomplete="email"
                     required
@@ -118,6 +120,7 @@
                     <input
                         type="password"
                         id="signup-password"
+                        name="password"
                         placeholder="Password"
                         autocomplete="new-password"
                         required
