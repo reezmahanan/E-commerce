@@ -966,11 +966,170 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
         } else if (target === 'products') {
             document.getElementById('section-products-form').style.display = 'block';
             document.getElementById('section-products-list').style.display = 'block';
-        } else if (target === 'orders') {
-            document.getElementById('section-orders').style.display = 'block';
+        } else if (target === 'support') {
+            document.getElementById('section-support').style.display = 'block';
+            initAdminChat();
         }
     });
 });
+
+// Admin Chat Logic
+let adminChatSocket = null;
+let currentAdminConversation = null;
+
+function initAdminChat() {
+    if (adminChatSocket) return; // already initialized
+    
+    const token = AppUtils.getToken();
+    if (!token) return;
+
+    adminChatSocket = io(CONFIG.API_BASE.replace('/api', ''), { auth: { token } });
+    
+    adminChatSocket.on('connect', () => {
+        adminChatSocket.emit('join_admin_room');
+        loadAdminConversations();
+    });
+
+    adminChatSocket.on('conversation_updated', () => {
+        loadAdminConversations();
+    });
+
+    adminChatSocket.on('message_received', (msg) => {
+        if (currentAdminConversation && msg.conversation_id === currentAdminConversation) {
+            renderAdminMessage(msg);
+        } else {
+            loadAdminConversations(); // Update previews
+        }
+    });
+
+    document.getElementById('admin-chat-send').addEventListener('click', sendAdminMessage);
+    const input = document.getElementById('admin-chat-input');
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendAdminMessage();
+        }
+    });
+
+    document.getElementById('admin-chat-search').addEventListener('input', AppUtils.debounce(loadAdminConversations, 500));
+    document.getElementById('admin-chat-filter').addEventListener('change', loadAdminConversations);
+}
+
+async function loadAdminConversations() {
+    const search = document.getElementById('admin-chat-search').value;
+    const filter = document.getElementById('admin-chat-filter').value;
+    
+    // Convert filter to API params
+    let status = filter !== 'unassigned' ? filter : '';
+    let assigned_to = filter === 'unassigned' ? 'unassigned' : '';
+
+    try {
+        const res = await AppUtils.apiRequest(`/chat/conversations?search=${search}&status=${status}&assigned_to=${assigned_to}`);
+        if (res.success) {
+            const list = document.getElementById('admin-conversations-list');
+            list.innerHTML = '';
+            res.conversations.forEach(c => {
+                const div = document.createElement('div');
+                div.style.padding = '15px';
+                div.style.borderBottom = '1px solid #eee';
+                div.style.cursor = 'pointer';
+                div.style.background = (currentAdminConversation === c.id) ? '#e6f2f1' : '#fff';
+                div.innerHTML = `
+                    <div style="font-weight: bold;">${AppUtils.escapeHTML(c.customer_name)}</div>
+                    <div style="font-size: 12px; color: #888; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${c.last_message ? AppUtils.escapeHTML(c.last_message) : '<i>New Conversation</i>'}
+                    </div>
+                `;
+                div.addEventListener('click', () => openAdminConversation(c));
+                list.appendChild(div);
+            });
+        }
+    } catch(e) {}
+}
+
+async function openAdminConversation(c) {
+    currentAdminConversation = c.id;
+    adminChatSocket.emit('join_conversation', { conversationId: c.id });
+    
+    // Update UI
+    document.getElementById('admin-chat-customer-name').innerText = c.customer_name;
+    document.getElementById('admin-chat-customer-status').innerText = `Status: ${c.status} | Priority: ${c.priority}`;
+    document.getElementById('admin-chat-actions').style.display = 'block';
+    
+    document.getElementById('admin-chat-input').disabled = false;
+    document.getElementById('admin-chat-send').disabled = false;
+
+    // Load info
+    document.getElementById('admin-chat-info-content').innerHTML = `
+        <p><strong>Email:</strong> ${AppUtils.escapeHTML(c.customer_email)}</p>
+        <p><strong>Created:</strong> ${new Date(c.created_at).toLocaleDateString()}</p>
+        <p><strong>Status:</strong> <span class="badge" style="background:#088178; color:white;">${c.status}</span></p>
+    `;
+
+    // Load messages
+    try {
+        const res = await AppUtils.apiRequest(`/chat/conversations/${c.id}`);
+        if (res.success) {
+            const msgList = document.getElementById('admin-chat-messages');
+            msgList.innerHTML = '';
+            res.messages.forEach(renderAdminMessage);
+        }
+    } catch(e) {}
+    
+    // Bind buttons
+    document.getElementById('admin-chat-assign-btn').onclick = async () => {
+        await AppUtils.apiRequest(`/chat/conversations/${c.id}/assign`, { method: 'PATCH' });
+        loadAdminConversations();
+        openAdminConversation({...c, assigned_admin_id: currentAdmin.id});
+    };
+    
+    document.getElementById('admin-chat-close-btn').onclick = async () => {
+        await AppUtils.apiRequest(`/chat/conversations/${c.id}/status`, { method: 'PATCH', body: JSON.stringify({ status: 'closed' }) });
+        loadAdminConversations();
+        openAdminConversation({...c, status: 'closed'});
+    };
+    
+    loadAdminConversations(); // highlight active
+}
+
+function renderAdminMessage(msg) {
+    const list = document.getElementById('admin-chat-messages');
+    const isAdmin = msg.sender_type === 'admin';
+    const div = document.createElement('div');
+    div.style.maxWidth = '80%';
+    div.style.padding = '10px 14px';
+    div.style.borderRadius = '18px';
+    div.style.fontSize = '14px';
+    div.style.alignSelf = isAdmin ? 'flex-end' : 'flex-start';
+    div.style.background = isAdmin ? '#088178' : '#e6f2f1';
+    div.style.color = isAdmin ? '#fff' : '#333';
+    
+    if (isAdmin) {
+        div.style.borderBottomRightRadius = '4px';
+    } else {
+        div.style.borderBottomLeftRadius = '4px';
+    }
+    
+    div.innerHTML = `
+        ${AppUtils.escapeHTML(msg.message)}
+        <div style="font-size:10px; opacity:0.8; margin-top:4px; text-align:${isAdmin ? 'right' : 'left'}">
+            ${new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+        </div>
+    `;
+    list.appendChild(div);
+    list.scrollTop = list.scrollHeight;
+}
+
+function sendAdminMessage() {
+    const input = document.getElementById('admin-chat-input');
+    const text = input.value.trim();
+    if (!text || !currentAdminConversation) return;
+
+    input.value = '';
+    adminChatSocket.emit('send_message', { conversationId: currentAdminConversation, message: text }, () => {
+        // Callback can handle failures
+    });
+}
 
 let revenueChartInstance = null;
 let orderStatusChartInstance = null;
