@@ -1,3 +1,8 @@
+// Wrapped in an IIFE so top-level names (cart, elements, escapeHTML, ...)
+// stay local and don't collide with the globals declared by other scripts
+// loaded on this page (e.g. auth.js also declares `const elements`).
+(() => {
+
 // CART STATE
 // kept in a mutable binding and re-read on every render so the summary
 // reflects the latest cart (e.g. after the backend sync finishes on login)
@@ -941,3 +946,5 @@ if (
         }
     );
 }
+
+})();
