@@ -240,11 +240,11 @@ async function removeWishlist(
         "success"
     );
 
-    const token =
-        AppUtils.getToken();
+    const user =
+        AppUtils.getUser();
 
     if (
-        token
+        user
     ) {
         try {
             await AppUtils.apiRequest(
@@ -325,11 +325,11 @@ async function addToCartFromWishlist(
         "success"
     );
 
-    const token =
-        AppUtils.getToken();
+    const user =
+        AppUtils.getUser();
 
     if (
-        token
+        user
     ) {
         try {
             await AppUtils.apiRequest(
@@ -356,8 +356,8 @@ async function addToCartFromWishlist(
 
 // init
 async function initWishlist() {
-    const token = AppUtils.getToken();
-    if (token) {
+    const user = AppUtils.getUser();
+    if (user) {
         try {
             const response = await AppUtils.apiRequest("/wishlist");
             if (response.success && response.wishlist) {

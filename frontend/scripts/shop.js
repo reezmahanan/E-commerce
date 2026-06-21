@@ -497,12 +497,12 @@ function setupProductCard(
             } else {
                 let wishlist = AppUtils.getWishlist();
                 const exists = wishlist.some(item => String(item.id) === String(product.id));
-                const token = AppUtils.getToken();
+                const user = AppUtils.getUser();
 
                 if (exists) {
                     wishlist = wishlist.filter(item => String(item.id) !== String(product.id));
                     AppUtils.notify("Removed from wishlist", "info");
-                    if (token) {
+                    if (user) {
                         try {
                             await AppUtils.apiRequest("/wishlist/remove", {
                                 method: "POST",
@@ -513,7 +513,7 @@ function setupProductCard(
                 } else {
                     wishlist.push(product);
                     AppUtils.notify("Added to wishlist ❤️", "success");
-                    if (token) {
+                    if (user) {
                         try {
                             await AppUtils.apiRequest("/wishlist/add", {
                                 method: "POST",

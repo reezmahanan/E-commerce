@@ -92,7 +92,7 @@ async function toggleWishlist(
                 === String(product.id)
         );
 
-    const token = AppUtils.getToken();
+    const user = AppUtils.getUser();
 
     if (
         exists
@@ -109,7 +109,7 @@ async function toggleWishlist(
             "info"
         );
         
-        if (token) {
+        if (user) {
             try {
                 await AppUtils.apiRequest("/wishlist/remove", {
                     method: "POST",
@@ -129,7 +129,7 @@ async function toggleWishlist(
             "success"
         );
         
-        if (token) {
+        if (user) {
             try {
                 await AppUtils.apiRequest("/wishlist/add", {
                     method: "POST",
