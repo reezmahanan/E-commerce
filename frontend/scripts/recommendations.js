@@ -32,6 +32,7 @@ const Recommendations = (() => {
       
       if (response && response.success && response.data && response.data.length > 0) {
 // Ensure UI functions are available and use the correct arguments
+
         if (typeof window.createProductCard === "function") {
           container.innerHTML = response.data.map(window.createProductCard).join("");
           if (typeof window.addProductCardAnimations === "function") {
