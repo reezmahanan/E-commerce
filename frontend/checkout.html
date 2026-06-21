@@ -220,7 +220,7 @@
                             checked
                         >
 
-                        . . Credit / Debit Card
+                         Credit / Debit Card
 
                     </label>
 
@@ -232,7 +232,7 @@
                             value="upi"
                         >
 
-                        . . UPI Payment
+                         UPI Payment
 
                     </label>
 
@@ -244,7 +244,7 @@
                             value="cod"
                         >
 
-                       . . Cash On Delivery
+                        Cash On Delivery
 
                     </label>
 
@@ -302,6 +302,12 @@
 
             <div id="checkout-items"></div>
 
+            <div id="promo-section" style="display: flex; gap: 10px; margin: 20px 0;">
+                <input type="text" id="promo-code-input" placeholder="Enter Promo Code" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                <button type="button" id="apply-promo-btn" style="padding: 10px 20px; background: #088178; color: white; border: none; border-radius: 4px; cursor: pointer;">Apply</button>
+            </div>
+            <div id="promo-message" style="margin-bottom: 20px; font-size: 14px;"></div>
+
             <div class="summary-row">
 
                 <span>
@@ -345,6 +351,22 @@
                 <span id="checkout-shipping">
 
                     Free
+
+                </span>
+
+            </div>
+
+            <div class="summary-row discount" id="checkout-discount-row" style="display: none; color: #088178;">
+
+                <span>
+
+                    Discount <small id="applied-promo-label" style="background: #e8f6f5; padding: 2px 6px; border-radius: 4px;"></small>
+
+                </span>
+
+                <span id="checkout-discount">
+
+                    - ₹0
 
                 </span>
 

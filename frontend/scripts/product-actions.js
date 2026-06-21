@@ -225,6 +225,10 @@ function addProductToCart() {
         renderCartDrawer();
     }
 
+    if (window.Recommendations && typeof window.Recommendations.postInteraction === 'function') {
+        window.Recommendations.postInteraction(product.id, "cart_add");
+    }
+
     AppUtils.notify(
         "Added to cart",
         "success"
@@ -328,6 +332,10 @@ async function toggleProductWishlist() {
             } catch (e) {
                 console.error("Failed to add to wishlist backend:", e);
             }
+        }
+
+        if (window.Recommendations && typeof window.Recommendations.postInteraction === 'function') {
+            window.Recommendations.postInteraction(currentProduct.id, "wishlist_add");
         }
     }
 

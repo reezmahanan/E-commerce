@@ -4,6 +4,12 @@
         <img src="assets/images/logo.png" class="logo" alt="AnthropicBots Logo" loading="lazy">
     </a>
 
+    <!-- Search Autocomplete Container -->
+    <div class="search-container" style="position: relative; margin-right: 16px;">
+        <input type="text" id="searchInput" placeholder="Search products..." autocomplete="off" class="search-input">
+        <div id="suggestionsDropdown" class="suggestions-dropdown" style="display: none;"></div>
+    </div>
+
     <!-- Desktop Navigation -->
     <nav class="desktop-nav">
         <ul id="navbar-links">
@@ -15,14 +21,15 @@
 
             <!-- Wishlist -->
             <li class="wishlist-link">
-                <a href="wishlist.html" aria-label="Wishlist" style="display: flex; align-items: center; gap: 6px;">
+                <a href="wishlist.html" aria-label="Wishlist" title="Wishlist" style="display: flex; align-items: center; gap: 6px;">
                     <i class="far fa-heart"></i>
                 </a>
             </li>
 
             <!-- Cart -->
             <li class="cart-link">
-                <a href="cart.html" aria-label="Shopping Cart">
+                <a href="cart.html" aria-label="Shopping Cart" title="Shopping-Cart">
+                    
                     <i class="far fa-shopping-bag"></i>
                     <span id="cart-badge">0</span>
                 </a>
@@ -43,23 +50,18 @@
                     <button id="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
                 </div>
             </li>
-            
 
- <li class="theme-toggle-item">
-    <button id="theme-toggle" aria-label="Toggle theme">
-        <span id="theme-icon">🌙</span>
-    </button>
-
- </li>
- 
+            <li class="theme-toggle-item">
+                <button id="theme-toggle" aria-label="Toggle theme">
+                    <span id="theme-icon">🌙</span>
+                </button>
+            </li>
         </ul>
     </nav>
 
     <!-- Mobile Menu Button -->
     <button id="mobile-menu-btn" aria-label="Toggle Navigation">
-        <span class="hamburger-line"></span>
-        <span class="hamburger-line"></span>
-        <span class="hamburger-line"></span>
+       <i class="fas fa-bars"></i>
     </button>
 
     <!-- Mobile Menu Overlay -->

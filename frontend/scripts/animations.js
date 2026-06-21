@@ -12,8 +12,8 @@ const AnimationController = (() => {
   };
 
   const observerOptions = {
-    threshold: 0.12,
-    rootMargin: "0px 0px -80px 0px",
+    threshold: 0.01,
+    rootMargin: "0px",
   };
 
   let observer = null;
@@ -148,7 +148,21 @@ const AnimationController = (() => {
 })();
 
 function initializeScrollAnimations() {
-  if (AnimationController.prefersReduced) return;
+  // Reduced-motion: skip animations but make all flagged content visible,
+  // otherwise the opacity:0 sections would stay permanently blank.
+  if (AnimationController.prefersReduced) {
+    document
+      .querySelectorAll(".animate-on-scroll")
+      .forEach((el) => el.classList.add("in-view"));
+    return;
+  }
+
+  // Register every section flagged with .animate-on-scroll so the section
+  // wrappers themselves get revealed. Previously only their children were
+  // observed, leaving #feature / #product1 / #new-arrivals stuck at opacity:0.
+  AnimationController.registerGroup(".animate-on-scroll", {
+    variant: "fade-up",
+  });
 
   AnimationController.registerGroup("#feature .fe-box", {
     variant: "zoom",
@@ -174,19 +188,27 @@ function initializeScrollAnimations() {
 
 function addProductCardAnimations(containerSelector) {
   const container = document.querySelector(containerSelector);
-  if (!container) return;
+
+  if (!container) {
+    return;
+  }
 
   container
-    .querySelectorAll(".pro:not([data-anim-registered])")
+    .querySelectorAll(".pro")
     .forEach((card, index) => {
-      card.dataset.animRegistered = "true";
-      AnimationController.registerElement(card, {
-        variant: "fade-up",
-        index,
-      });
+      if (!card.dataset.animRegistered) {
+        card.dataset.animRegistered = "true";
+
+        AnimationController.registerElement(card, {
+          variant: "fade-up",
+          index,
+        });
+      }
     });
 
-  AnimationController.revealVisibleElements(containerSelector);
+  requestAnimationFrame(() => {
+    AnimationController.revealAll(containerSelector);
+  });
 }
 
 function animateProductsOnLoad() {
@@ -314,10 +336,23 @@ function initializeParallaxEffects() {
 
 function runHeroOnceOnly() {
   const hero = document.getElementById("hero");
-  if (!hero) return;
-  if (hero.dataset.heroAnimated === "1") return;
+
+  if (!hero) {
+    return;
+  }
+
+  if (hero.dataset.heroAnimated === "1") {
+    return;
+  }
 
   hero.dataset.heroAnimated = "1";
+
+  hero.classList.remove("animate-on-scroll");
+  hero.classList.add("in-view");
+
+  hero.style.opacity = "1";
+  hero.style.transform = "none";
+
   hero.classList.add("hero-animate-once");
 
   requestAnimationFrame(() => {

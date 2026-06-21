@@ -697,47 +697,41 @@ function renderProduct(
         `${product.name} | AnthropicBots E-Commerce`;
 }
 
-// image zoom
 function initializeImageZoom() {
 
-    if (
-        !productElements.mainImage
-    ) {
+    const mainImage = productElements.mainImage;
 
+    if (!mainImage) {
+        return;
+    }
+
+    const container = document.getElementById("zoom-container");
+    if (!container) {
         return;
     }
 
     // avoid duplicate listeners
-    if (
-        productElements.mainImage.dataset.zoomReady
-    ) {
-
+    if (mainImage.dataset.zoomReady) {
         return;
     }
 
-    productElements.mainImage.dataset.zoomReady =
-        "true";
+    mainImage.dataset.zoomReady = "true";
 
-    productElements.mainImage.style.transition =
-        "0.3s ease";
+    container.addEventListener("mousemove", (e) => {
+        const rect = container.getBoundingClientRect();
+        
+        // Calculate cursor position as a percentage
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-    productElements.mainImage.addEventListener(
-        "mouseenter",
-        () => {
+        mainImage.style.transformOrigin = `${x}% ${y}%`;
+        mainImage.style.transform = "scale(2.5)";
+    });
 
-            productElements.mainImage.style.transform =
-                "scale(1.05)";
-        }
-    );
-
-    productElements.mainImage.addEventListener(
-        "mouseleave",
-        () => {
-
-            productElements.mainImage.style.transform =
-                "scale(1)";
-        }
-    );
+    container.addEventListener("mouseleave", () => {
+        mainImage.style.transformOrigin = "center center";
+        mainImage.style.transform = "scale(1)";
+    });
 }
 
 // gallery

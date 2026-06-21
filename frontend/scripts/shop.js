@@ -130,7 +130,18 @@ async function fetchProducts(
             );
 
         if (!data.success) {
-            renderEmptyState(data.message || "Failed to load products.");
+            const normCat = normalizeCategoryString(currentCategory);
+            const fallback = normCat === 'all'
+                ? fallbackProducts
+                : fallbackProducts.filter(p => categoriesMatch(p.category, currentCategory));
+            if (fallback.length > 0) {
+                currentProducts = fallback;
+                totalPages = 1;
+                applySorting();
+                renderPagination();
+            } else {
+                renderEmptyState("No products found.");
+            }
             return;
         }
 
@@ -146,16 +157,15 @@ async function fetchProducts(
                 ? fallbackProducts
                 : fallbackProducts.filter(p => categoriesMatch(p.category, currentCategory));
 
+            totalPages =
+                Number(
+                    data.totalPages || 1
+                );
             if (fallback.length > 0) {
-                currentProducts = fallback;
-                totalPages = 1;
+                    currentProducts = fallback;
+                    totalPages = 1;
+                }
             }
-        }
-
-        totalPages =
-            Number(
-                data.totalPages || 1
-            );
 
         // sorting
         applySorting();
@@ -164,15 +174,22 @@ async function fetchProducts(
         renderPagination();
 
     } catch (error) {
-
         console.error(
             "SHOP FETCH ERROR:",
             error
         );
-
-        renderEmptyState(
-            "Failed to load products."
-        );
+        const normCat = normalizeCategoryString(currentCategory);
+        const fallback = normCat === 'all'
+            ? fallbackProducts
+            : fallbackProducts.filter(p => categoriesMatch(p.category, currentCategory));
+        if (fallback.length > 0) {
+            currentProducts = fallback;
+            totalPages = 1;
+            applySorting();
+            renderPagination();
+        } else {
+            renderEmptyState("No products found.");
+        }
     }
 }
 
@@ -415,17 +432,51 @@ function setupProductCard(
                             item.id
                     );
 
-                if (
-                    existingIndex >= 0
-                ) {
-                    cart[
-                        existingIndex
-                    ].qty += 1;
-                } else {
-                    cart.push(
-                        item
-                    );
-                }
+                    const stock =
+                        Number(product.stock) || 0;
+
+                    if (
+                        existingIndex >= 0
+                    ) {
+
+                        if (
+                            cart[existingIndex].qty + 1 >
+                            stock
+                        ) {
+
+                            AppUtils.notify(
+                                `Only ${stock} item(s) available`,
+                                "error"
+                            );
+
+                            return;
+                        }
+
+                        cart[
+                            existingIndex
+                        ].qty += 1;
+
+                    } else {
+
+                        if (
+                            stock <= 0
+                        ) {
+
+                            AppUtils.notify(
+                                "Product out of stock",
+                                "error"
+                            );
+
+                            return;
+                        }
+
+                        item.stock =
+                            stock;
+
+                        cart.push(
+                            item
+                        );
+                    }
 
                 AppUtils.saveCart(
                     cart

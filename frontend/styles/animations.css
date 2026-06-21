@@ -110,10 +110,6 @@
   }
 }
 
-.animate-on-scroll.in-view {
-  animation: staggerFadeUp 0.6s ease-out both;
-}
-
 .animate-on-scroll[data-anim-variant="fade-down"].in-view {
   animation: fadeInDown 0.6s ease-out both;
 }
@@ -131,32 +127,32 @@
   animation: scaleInCenter 0.6s ease-out both;
 }
 
-#hero.hero-animate-once #hero h4,
-#hero.hero-animate-once #hero h2,
-#hero.hero-animate-once #hero h1,
-#hero.hero-animate-once #hero p,
-#hero.hero-animate-once #hero .hero-ctas {
+#hero.hero-animate-once h4,
+#hero.hero-animate-once h2,
+#hero.hero-animate-once h1,
+#hero.hero-animate-once p,
+#hero.hero-animate-once .hero-ctas {
   opacity: 0;
   transform: translateY(18px);
 }
 
-#hero.hero-animate-once.page-loaded #hero h4 {
+#hero.hero-animate-once.page-loaded h4 {
   animation: slideInLeft 0.8s ease-out 0.08s both;
 }
 
-#hero.hero-animate-once.page-loaded #hero h2 {
+#hero.hero-animate-once.page-loaded h2 {
   animation: slideInLeft 0.8s ease-out 0.16s both;
 }
 
-#hero.hero-animate-once.page-loaded #hero h1 {
+#hero.hero-animate-once.page-loaded h1 {
   animation: slideInLeft 0.8s ease-out 0.24s both;
 }
 
-#hero.hero-animate-once.page-loaded #hero p {
+#hero.hero-animate-once.page-loaded p {
   animation: fadeInUp 0.8s ease-out 0.32s both;
 }
 
-#hero.hero-animate-once.page-loaded #hero .hero-ctas {
+#hero.hero-animate-once.page-loaded .hero-ctas {
   animation: fadeInUp 0.8s ease-out 0.4s both;
 }
 
@@ -222,6 +218,8 @@
 }
 
 .pro.animate-on-scroll.in-view {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
   animation: staggerFadeUp 0.6s ease-out both;
 }
 
@@ -374,8 +372,8 @@
 }
 
 .animate-on-scroll.in-view {
-  opacity: 1;
-  transform: translateY(0);
+  opacity: 1 !important;
+  transform: translateY(0) !important;
 }
 
 .animate-on-scroll.anim-fade {
@@ -465,4 +463,9 @@ button {
       color 0.3s,
       background-color 0.3s !important;
   }
+}
+
+#hero {
+  opacity: 1 !important;
+  transform: none !important;
 }

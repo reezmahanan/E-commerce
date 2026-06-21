@@ -97,10 +97,11 @@
             </p>
 
             <!-- Signup Form -->
-            <form id="signup-form">
+            <form id="signup-form" data-auth-form="signup">
                 <input
                     type="text"
                     id="signup-name"
+                    name="name"
                     placeholder="Full Name"
                     autocomplete="name"
                     required
@@ -108,20 +109,45 @@
                 <input
                     type="email"
                     id="signup-email"
+                    name="email"
                     placeholder="Email Address"
                     autocomplete="email"
                     required
                 >
-                <input
-                    type="password"
-                    id="signup-password"
-                    placeholder="Password"
-                    autocomplete="new-password"
-                    required
-                >
+
+                <!-- Password input with toggle -->
+                <div class="password-field">
+                    <input
+                        type="password"
+                        id="signup-password"
+                        name="password"
+                        placeholder="Password"
+                        autocomplete="new-password"
+                        required
+                    >
+                    <button
+                        type="button"
+                        class="password-toggle"
+                        aria-label="Show password"
+                        aria-pressed="false"
+                    >
+                        <i class="fas fa-eye" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <!-- Password Strength Meter -->
+                <div id="password-strength-container" style="margin-top: 8px;">
+                    <div id="password-strength-bar" style="height: 6px; border-radius: 4px; background: #e0e0e0; overflow: hidden;">
+                        <div id="password-strength-fill" style="height: 100%; width: 0%; border-radius: 4px; transition: width 0.3s ease;"></div>
+                    </div>
+                    <div id="password-strength-text" style="font-size: 0.85rem; margin-top: 4px; font-weight: 500; color: #666;">Weak</div>
+                    <div id="password-strength-tips" style="font-size: 0.8rem; color: #888; margin-top: 4px; min-height: 20px;"></div>
+                </div>
+
                 <button
                     type="submit"
                     class="auth-btn"
+                    id="signup-btn"
                 >
                     Create Account
                 </button>

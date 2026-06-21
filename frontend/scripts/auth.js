@@ -181,16 +181,8 @@ function saveAuthSession(
         return;
     }
 
-    localStorage.setItem(
-        CONFIG.STORAGE_KEYS.TOKEN,
-        response.accessToken || ""
-    );
-
-    localStorage.setItem(
-        CONFIG.STORAGE_KEYS.REFRESH_TOKEN,
-        response.refreshToken || ""
-    );
-
+    // Tokens are securely stored in HttpOnly cookies by the backend.
+    
     AppUtils.setJSON(
         CONFIG.STORAGE_KEYS.USER,
         response.user || {}
@@ -204,7 +196,7 @@ async function clearAuthSession() {
 
         // invalidate refresh token
         if (
-            AppUtils.getToken()
+            AppUtils.getUser()
         ) {
 
             await logoutUser();
@@ -765,18 +757,7 @@ function initializeAuthUI() {
         return;
     }
 
-    const token =
-        AppUtils.getToken();
-    
-    // invalid token cleanup
-    if (
-        token
-        &&
-        !AppUtils.getUser()
-    ) {
-
-        AppUtils.clearAuthData();
-    }
+    const user = AppUtils.getUser();
 
     const socialUser =
         AppUtils.getJSON(
@@ -785,7 +766,7 @@ function initializeAuthUI() {
         );
 
     if (
-        token
+        user
         || socialUser
     ) {
         authLink.innerHTML =
@@ -870,7 +851,70 @@ document.addEventListener(
     }
 );
 
-// google login 
+// password visibility toggle
+document.querySelectorAll(
+    ".password-toggle"
+).forEach((toggle) => {
+
+    toggle.addEventListener(
+        "click",
+        () => {
+
+            const field =
+                toggle.closest(
+                    ".password-field"
+                );
+
+            const input =
+                field?.querySelector(
+                    "input"
+                );
+
+            if (
+                !input
+            ) {
+                return;
+            }
+
+            const isHidden =
+                input.type === "password";
+
+            input.type =
+                isHidden
+                    ? "text"
+                    : "password";
+
+            toggle.setAttribute(
+                "aria-pressed",
+                String(isHidden)
+            );
+
+            toggle.setAttribute(
+                "aria-label",
+                isHidden
+                    ? "Hide password"
+                    : "Show password"
+            );
+
+            const icon =
+                toggle.querySelector("i");
+
+            if (icon) {
+                icon.classList.toggle(
+                    "fa-eye",
+                    !isHidden
+                );
+
+                icon.classList.toggle(
+                    "fa-eye-slash",
+                    isHidden
+                );
+            }
+        }
+    );
+});
+
+// google login
 elements.googleLogin?.addEventListener(
     "click",
     async () => {
@@ -925,3 +969,70 @@ elements.googleLogin?.addEventListener(
         }
     }
 );
+
+// ========================================
+// Password Strength Meter (Issue #166)
+// ========================================
+function evaluatePasswordStrength(password) {
+    let score = 0;
+    const tips = [];
+
+    if (password.length >= 8) score++;
+    else tips.push('At least 8 characters');
+
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+    else tips.push('Include both uppercase and lowercase letters');
+
+    if (/\d/.test(password)) score++;
+    else tips.push('Include at least one number');
+
+    if (/[^a-zA-Z0-9]/.test(password)) score++;
+    else tips.push('Include at least one special character');
+
+    let level = 'Weak';
+    let color = 'strength-weak';
+    let percent = 25;
+    if (score === 4) { level = 'Strong'; color = 'strength-strong'; percent = 100; }
+    else if (score === 3) { level = 'Medium'; color = 'strength-medium'; percent = 70; }
+    else if (score === 2) { level = 'Weak'; color = 'strength-weak'; percent = 45; }
+    else { percent = 20; }
+
+    return { level, color, percent, tips };
+}
+
+function updatePasswordStrength() {
+    const passwordInput = document.getElementById('signup-password');
+    const fill = document.getElementById('password-strength-fill');
+    const text = document.getElementById('password-strength-text');
+    const tips = document.getElementById('password-strength-tips');
+    const signupBtn = document.getElementById('signup-btn');
+
+    if (!passwordInput || !fill || !text || !tips) return;
+
+    const password = passwordInput.value;
+    const result = evaluatePasswordStrength(password);
+
+    fill.style.width = result.percent + '%';
+    fill.className = result.color;
+    text.textContent = result.level;
+    text.style.color = result.level === 'Strong' ? '#28a745' : result.level === 'Medium' ? '#ffa500' : '#ff4d4d';
+
+    if (password.length === 0) {
+        tips.textContent = '';
+        if (signupBtn) signupBtn.disabled = true;
+        return;
+    }
+
+    tips.textContent = result.tips.join(' • ');
+    if (signupBtn) signupBtn.disabled = (result.level === 'Weak');
+}
+
+// Attach event listener after DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('signup-password');
+    if (passwordInput) {
+        passwordInput.addEventListener('input', updatePasswordStrength);
+        // Initial check
+        updatePasswordStrength();
+    }
+});
