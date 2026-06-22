@@ -5,33 +5,12 @@ const {
     getSingleProduct,
     createProduct,
     updateProduct,
-    deleteProduct
+    deleteProduct,
+    getProductSuggestions  // ✅ imported from controller
 } = require("../controllers/productController");
 const authMiddleware = require("../middleware/authMiddleware");
-const { authorizeRoles } = authMiddleware;
+const { authorizeRoles } = require("../middleware/rbacMiddleware");
 const { sanitizeString, safeNumber } = require("../utils/helpers");
-
-// --------------------------------------------------------------
-// Helper: get product suggestions for autocomplete (Issue #165)
-// Uses promisePool from config/db.js
-// --------------------------------------------------------------
-const getProductSuggestions = async (req, res) => {
-    const keyword = req.query.q;
-    if (!keyword || keyword.trim() === '') {
-        return res.json([]);
-    }
-    const searchTerm = `%${keyword}%`;
-    const query = `SELECT id, name FROM products WHERE name LIKE ? LIMIT 10`;
-
-    const db = require("../config/db");   // promisePool
-    try {
-        const [results] = await db.query(query, [searchTerm]);
-        res.json(results);
-    } catch (err) {
-        console.error("Suggestions error:", err);
-        res.status(500).json({ success: false, message: "Database error" });
-    }
-};
 
 // --------------------------------------------------------------
 // Validate product ID
@@ -55,7 +34,7 @@ router.get("/status/check", (req, res) => {
 router.get("/", getProducts);
 router.get("/:id", getSingleProduct);
 
-// NEW: search suggestions endpoint (autocomplete)
+// ✅ search-suggestions must come before /:id
 router.get("/search-suggestions", getProductSuggestions);
 
 router.post("/", authMiddleware, authorizeRoles("admin"), (req, res, next) => {

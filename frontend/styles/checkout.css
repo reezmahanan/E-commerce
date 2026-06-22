@@ -83,6 +83,8 @@
 }
 
 .payment-options label{
+    position: relative !important;
+    padding-left: 40px !important;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -169,6 +171,7 @@
     justify-content: space-between;
     margin-top: 20px;
     font-size: 16px;
+    color: black;
 }
 
 .summary-row.total{
@@ -191,4 +194,67 @@
         flex-direction: column;
     }
 
+}
+
+.payment-options input[type="radio"]:checked + span {
+    font-weight: 700;
+    color: #088178;
+}
+
+.payment-options label {
+    position: relative;
+}
+
+.payment-options label input[type="radio"] {
+    display: none;
+}
+
+.payment-options label::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: 2px solid #ddd;
+    border-radius: 50%;
+    background: #fff;
+    transition: 0.3s ease;
+}
+
+.payment-options input[type="radio"]:checked + span::before {
+    background: #088178;
+    border-color: #088178;
+}
+
+
+body.dark-theme .checkout-form-container,
+body.dark-theme .checkout-summary {
+    background: #1e1e1e;
+    color: #fff;
+}
+
+body.dark-theme .checkout-form-container h2,
+body.dark-theme .checkout-summary h2,
+body.dark-theme .summary-row,
+body.dark-theme .checkout-item {
+    color: #fff;
+}
+
+body.dark-theme #checkout-form input,
+body.dark-theme #checkout-form textarea {
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #444;
+}
+
+body.dark-theme .checkout-item {
+    border-bottom: 1px solid #444;
+}
+
+body.dark-theme .payment-options label {
+    background: #2a2a2a;
+    color: #fff;
+    border-color: #444;
 }

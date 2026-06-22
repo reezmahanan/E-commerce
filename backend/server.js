@@ -43,10 +43,13 @@ const authRoutes = require("./routes/authRoutes");
 
 const orderRoutes = require("./routes/orderRoutes");
 
+const promoRoutes = require("./routes/promoRoutes");
+
 const wishlistRoutes =
     require(
         "./routes/wishlistRoutes"
     );
+const recommendationRoutes = require("./routes/recommendationRoutes");
 
 const pincodeRoutes = require("./routes/pincodeRoutes");
 
@@ -130,7 +133,11 @@ const allowedOrigins = [
 
   // production
   "https://e-commerce-git-main-bhuvanshs-projects.vercel.app",
-  "https://www.bhuvansh.xyz",
+
+    "https://www.bhuvansh.xyz",
+    
+    // local file execution
+    "null"
 ];
 
 // cors
@@ -255,13 +262,15 @@ app.use("/api/auth", authRoutes);
 
 app.use("/api/orders", orderRoutes);
 
+app.use("/api/promos", promoRoutes);
+
 app.use(
     "/api/wishlist",
     wishlistRoutes
 );
 
+app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/pincode", pincodeRoutes);
-
 // 404 handler
 app.use((req, res) => {
   return res.status(404).json({

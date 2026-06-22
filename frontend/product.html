@@ -108,13 +108,15 @@
 
         <div class="single-product-image">
 
-            <img
-                src=""
-                width="100%"
-                id="main-product-image"
-                alt="Product"
-                loading="lazy"
-            >
+            <div id="zoom-container" class="zoom-container">
+                <img
+                    src=""
+                    width="100%"
+                    id="main-product-image"
+                    alt="Product"
+                    loading="lazy"
+                >
+            </div>
 
             <div class="small-image-group">
 
@@ -633,7 +635,7 @@
 
         <div
             class="pro-container"
-            id="recently-viewed-products"
+            id="recommended-products-container"
         ></div>
 
     </section>
@@ -788,6 +790,8 @@
         src="scripts/product.js"
     ></script>
     <script defer src="scripts/ui.js"></script>
+
+    <script defer src="scripts/recommendations.js"></script>
 
 </body>
 </html>
