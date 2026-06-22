@@ -8,12 +8,28 @@
     width: 40%;
 }
 
-#main-product-image{
+.zoom-container {
+    overflow: hidden;
+    position: relative;
+    border-radius: 12px;
+    cursor: crosshair;
+    width: 100%;
+}
+
+#main-product-image {
     width: 100%;
     border-radius: 12px;
     object-fit: cover;
     background: #f7f7f7;
     border: 1px solid #eee;
+    transition: transform 0.1s ease, transform-origin 0.1s ease;
+    will-change: transform;
+}
+
+@media (hover: none) {
+    .zoom-container {
+        cursor: default;
+    }
 }
 
 .small-image-group{
