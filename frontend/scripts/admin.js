@@ -1,6 +1,6 @@
 // admin auth
-const token =
-    AppUtils.getToken();
+const user =
+    AppUtils.getUser();
 
 // auth state
 let currentAdmin =
@@ -23,7 +23,7 @@ let orders = [];
 
 // require authentication
 if (
-    !token
+    !user
 ) {
 
     redirectUnauthorized();

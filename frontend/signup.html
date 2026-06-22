@@ -153,6 +153,30 @@
                 </button>
             </form>
 
+            <!-- OTP Verification Form (Hidden by default) -->
+            <form id="otp-form" style="display: none;">
+                <p>We've sent a 6-digit OTP to your email. Please enter it to verify your account.</p>
+                <input
+                    type="text"
+                    id="otp-input"
+                    placeholder="Enter 6-digit OTP"
+                    maxlength="6"
+                    required
+                >
+                <button
+                    type="submit"
+                    class="auth-btn"
+                >
+                    Verify OTP
+                </button>
+                <div style="text-align: center; margin-top: 15px;">
+                    <p class="auth-switch" style="margin-top: 15px;">
+                        Didn't receive code? <a href="#" id="resend-signup-otp-link">Resend OTP</a>
+                        <span id="resend-signup-timer" style="display: none; color: #777;">(60s)</span>
+                    </p>
+                </div>
+            </form>
+
             <!-- Divider -->
             <div class="divider">
                 <span>
@@ -216,6 +240,12 @@
         defer
         src="scripts/components.js"
     ></script>
+
+    <!-- Firebase -->
+    <script src="scripts/runtime-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="scripts/firebase.js"></script>
 
     <!-- Auth Script -->
     <script
