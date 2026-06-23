@@ -23,6 +23,12 @@ const getConversationDetails = async (req, res) => {
         const id = safeNumber(req.params.id);
         if (!id) return res.status(400).json({ success: false, message: "Invalid ID" });
 
+        // Verify access to conversation
+        const hasAccess = await chatService.verifyConversationAccess(id, req.user.id, req.user.role);
+        if (!hasAccess) {
+            return res.status(403).json({ success: false, message: "Access forbidden" });
+        }
+
         const messages = await chatService.getConversationMessages(id);
         res.status(200).json({ success: true, messages });
     } catch (error) {

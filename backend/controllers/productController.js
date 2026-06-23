@@ -456,6 +456,7 @@ const getProductSuggestions = async (req, res) => {
     }
 };
 
+
 module.exports = {
     getProducts,
     getSingleProduct,
@@ -463,4 +464,8 @@ module.exports = {
     updateProduct,
     DeleteeProduct,
     getProductSuggestions
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> 76d9fb2a590eb1302b4a3cd0c621f7d1a65492c4

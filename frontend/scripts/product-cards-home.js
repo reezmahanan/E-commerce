@@ -16,7 +16,7 @@ function safePrice(value) {
 }
 
 // render product card
-function createProductCard(product) {
+function createProductCard(product, wishlistIds = null) {
   const rating = Math.min(5, Math.max(0, Number(product.rating || 4)));
 
   const stars = Array.from(
@@ -29,6 +29,10 @@ function createProductCard(product) {
                 `;
     },
   ).join("");
+
+  const isWishlisted = (wishlistIds instanceof Set)
+    ? wishlistIds.has(String(product.id))
+    : AppUtils.getWishlist().some((item) => String(item.id) === String(product.id));
 
   return `
         <div class="pro fade-in" data-id="${product.id}">
@@ -93,7 +97,7 @@ function createProductCard(product) {
                         class="wishlist-btn secondary-action"
                         data-id="${product.id}"
                     >
-                        <i class="${AppUtils.getWishlist().some((item) => String(item.id) === String(product.id)) ? "fas" : "far"} fa-heart"></i>
+                        <i class="${isWishlisted ? "fas" : "far"} fa-heart"></i>
                         Wishlist
                     </button>
                 </div>
@@ -108,9 +112,10 @@ function renderFeaturedProducts(products = []) {
   }
 
   const featured = products.filter((product) => product.featured);
+  const wishlistIds = new Set(AppUtils.getWishlist().map((item) => String(item.id)));
 
   homeFeaturedContainer.innerHTML = featured.length
-    ? featured.slice(0, 8).map(createProductCard).join("")
+    ? featured.slice(0, 8).map((product) => createProductCard(product, wishlistIds)).join("")
     : `
                 <p class="empty-products">
                     No featured products found
@@ -142,8 +147,10 @@ function renderNewArrivals(products = []) {
     .filter((product) => Number(product.featured) !== 1)
     .slice(0, 8);
 
+  const wishlistIds = new Set(AppUtils.getWishlist().map((item) => String(item.id)));
+
   homeArrivalsContainer.innerHTML = arrivals.length
-    ? arrivals.map(createProductCard).join("")
+    ? arrivals.map((product) => createProductCard(product, wishlistIds)).join("")
     : `
                 <p class="empty-products">
                     No new arrivals found

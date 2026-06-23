@@ -137,13 +137,14 @@ function renderProducts(container, products = []) {
   }
 
   const fragment = document.createDocumentFragment();
+  const wishlistIds = new Set(AppUtils.getWishlist().map((item) => String(item.id)));
 
   AppUtils.safeArray(products).forEach((product) => {
     if (!product || !product.id) return;
 
     const card = document.createElement("div");
     card.innerHTML =
-      typeof createProductCard === "function" ? createProductCard(product) : "";
+      typeof createProductCard === "function" ? createProductCard(product, wishlistIds) : "";
 
     const productElement = card.firstElementChild;
     if (productElement) {

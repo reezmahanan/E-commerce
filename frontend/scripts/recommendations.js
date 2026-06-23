@@ -40,8 +40,9 @@ const Recommendations = (() => {
       ) {
         // Ensure UI functions are available and use the correct arguments
         if (typeof window.createProductCard === "function") {
+          const wishlistIds = new Set(AppUtils.getWishlist().map((item) => String(item.id)));
           container.innerHTML = response.data
-            .map(window.createProductCard)
+            .map((product) => window.createProductCard(product, wishlistIds))
             .join("");
 
           if (typeof window.addProductCardAnimations === "function") {

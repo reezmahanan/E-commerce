@@ -4,13 +4,15 @@ const authMiddleware = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/rbacMiddleware");
 const { getConversations, getConversationDetails, updateStatus, assignAdmin } = require("../controllers/chat.controller");
 
-// Admin only routes
+// Require auth for all chat routes
 router.use(authMiddleware);
-router.use(authorizeRoles("admin"));
 
-router.get("/conversations", getConversations);
+// Admin-only routes
+router.get("/conversations", authorizeRoles("admin"), getConversations);
+router.patch("/conversations/:id/status", authorizeRoles("admin"), updateStatus);
+router.patch("/conversations/:id/assign", authorizeRoles("admin"), assignAdmin);
+
+// Accessible by admin or the owner customer
 router.get("/conversations/:id", getConversationDetails);
-router.patch("/conversations/:id/status", updateStatus);
-router.patch("/conversations/:id/assign", assignAdmin);
 
 module.exports = router;
