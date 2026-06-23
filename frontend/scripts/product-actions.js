@@ -146,6 +146,11 @@ function buildCartProduct() {
 
 // add to cart
 function addProductToCart() {
+    // cart is account-bound: guests must sign in first
+    if (!AppUtils.requireLogin("Please sign in to add items to your cart")) {
+        return;
+    }
+
     const product =
         buildCartProduct();
 
@@ -248,10 +253,15 @@ function buyNow() {
 }
 
 // wishlist
-async function toggleProductWishlist() {
+function toggleProductWishlist() {
     if (
         !currentProduct
     ) {
+        return;
+    }
+
+    // wishlist is account-bound: guests must sign in first
+    if (!AppUtils.requireLogin("Please sign in to use your wishlist")) {
         return;
     }
 
@@ -339,6 +349,7 @@ async function toggleProductWishlist() {
         }
     }
 
+    // saveWishlist persists locally and syncs the whole list to the backend
     AppUtils.saveWishlist(wishlist);
     
     // Update DOM icon

@@ -68,6 +68,25 @@ async function initializeComponents() {
 
     // notify components ready
     document.dispatchEvent(new CustomEvent("componentsLoaded"));
+
+    // Inject chat widget
+    injectChatWidgetDependencies();
+}
+
+// ===== INJECT CHAT WIDGET =====
+function injectChatWidgetDependencies() {
+    if (window.location.pathname.includes('admin.html') || window.location.pathname.includes('signin.html') || window.location.pathname.includes('signup.html')) {
+        return; // Do not load on admin or auth pages
+    }
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'styles/chat-widget.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'scripts/chat-widget.js';
+    document.body.appendChild(script);
 }
 
 // ===== SEARCH AUTOCOMPLETE FUNCTIONALITY =====

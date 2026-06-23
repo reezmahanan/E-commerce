@@ -30,6 +30,7 @@ const {
 } = require(
     "../utils/helpers"
 );
+const { signupLimiter, loginLimiter, forgotPasswordLimiter, refreshTokenLimiter } = require("../middleware/rateLimiter");
 
 // auth api status
 router.get(
@@ -53,6 +54,7 @@ router.get(
 // signup
 router.post(
     "/signup",
+    signupLimiter,
     (
         req,
         res,
@@ -124,6 +126,7 @@ router.post(
 // verify signup
 router.post(
     "/verify-signup",
+    signupLimiter,
     (req, res, next) => {
         const { email, otp } = req.body;
         if (!sanitizeString(email) || !sanitizeString(otp)) {
@@ -137,6 +140,7 @@ router.post(
 // login
 router.post(
     "/login",
+    loginLimiter,
     (
         req,
         res,
@@ -190,6 +194,7 @@ router.post(
 // forgot password
 router.post(
     "/forgot-password",
+    forgotPasswordLimiter,
     (req, res, next) => {
         const { email } = req.body;
         if (!sanitizeString(email)) {
@@ -203,6 +208,7 @@ router.post(
 // reset password
 router.post(
     "/reset-password",
+    forgotPasswordLimiter,
     (req, res, next) => {
         const { userId, otp, newPassword } = req.body;
         if (!sanitizeString(userId) || !sanitizeString(otp) || !sanitizeString(newPassword)) {
@@ -216,6 +222,7 @@ router.post(
 // refresh access token
 router.post(
     "/refresh-token",
+    refreshTokenLimiter,
     (
         req,
         res,

@@ -1,16 +1,18 @@
 const express = require("express");
 const router = express.Router();
+
 const {
     getProducts,
     getSingleProduct,
     createProduct,
     updateProduct,
-    deleteProduct,
-    getProductSuggestions  // ✅ imported from controller
+    DeleteeProduct,
+    getProductSuggestions
 } = require("../controllers/productController");
+
 const authMiddleware = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/rbacMiddleware");
-const { sanitizeString, safeNumber } = require("../utils/helpers");
+const { validateCreateProduct, validateUpdateProduct } = require("../middleware/validators/productValidator");
 
 // --------------------------------------------------------------
 // Validate product ID
@@ -31,47 +33,15 @@ router.get("/status/check", (req, res) => {
     res.status(200).json({ success: true, message: "Product API running" });
 });
 
+router.get("/search-suggestions", getProductSuggestions);
 router.get("/", getProducts);
 router.get("/:id", getSingleProduct);
 
-// ✅ search-suggestions must come before /:id
-router.get("/search-suggestions", getProductSuggestions);
+router.post("/", authMiddleware, authorizeRoles("admin"), validateCreateProduct, createProduct);
 
-router.post("/", authMiddleware, authorizeRoles("admin"), (req, res, next) => {
-    const { name, category, price, stock } = req.body;
-    if (!sanitizeString(name)) {
-        return res.status(400).json({ success: false, message: "Product name is required" });
-    }
-    if (!sanitizeString(category)) {
-        return res.status(400).json({ success: false, message: "Product category is required" });
-    }
-    if (safeNumber(price) < 0) {
-        return res.status(400).json({ success: false, message: "Price must be valid" });
-    }
-    if (safeNumber(stock) < 0) {
-        return res.status(400).json({ success: false, message: "Stock must be valid" });
-    }
-    next();
-}, createProduct);
+router.put("/:id", authMiddleware, authorizeRoles("admin"), validateUpdateProduct, updateProduct);
 
-router.put("/:id", authMiddleware, authorizeRoles("admin"), (req, res, next) => {
-    const { name, category, price, stock } = req.body;
-    if (name !== undefined && !sanitizeString(name)) {
-        return res.status(400).json({ success: false, message: "Product name cannot be empty" });
-    }
-    if (category !== undefined && !sanitizeString(category)) {
-        return res.status(400).json({ success: false, message: "Category cannot be empty" });
-    }
-    if (price !== undefined && safeNumber(price) < 0) {
-        return res.status(400).json({ success: false, message: "Price cannot be negative" });
-    }
-    if (stock !== undefined && safeNumber(stock) < 0) {
-        return res.status(400).json({ success: false, message: "Stock cannot be negative" });
-    }
-    next();
-}, updateProduct);
-
-router.delete("/:id", authMiddleware, authorizeRoles("admin"), deleteProduct);
+router.delete("/:id", authMiddleware, authorizeRoles("admin"), DeleteeProduct);
 
 // Fallback
 router.use((req, res) => {

@@ -131,25 +131,31 @@
 
             </h2>
 
-            <form id="checkout-form">
+            <form id="checkout-form" novalidate>
 
                 <!-- Row -->
 
                 <div class="form-row">
 
-                    <input
-                        type="text"
-                        id="full-name"
-                        placeholder="Full Name"
-                        required
-                    >
+                    <div class="form-field">
+                        <input
+                            type="text"
+                            id="full-name"
+                            placeholder="Full Name"
+                            required
+                        >
+                        <small class="field-error" id="full-name-error"></small>
+                    </div>
 
-                    <input
-                        type="email"
-                        id="email"
-                        placeholder="Email Address"
-                        required
-                    >
+                    <div class="form-field">
+                        <input
+                            type="email"
+                            id="email"
+                            placeholder="Email Address"
+                            required
+                        >
+                        <small class="field-error" id="email-error"></small>
+                    </div>
 
                 </div>
 
@@ -157,19 +163,25 @@
 
                 <div class="form-row">
 
-                    <input
-                        type="tel"
-                        id="phone"
-                        placeholder="Phone Number"
-                        required
-                    >
+                    <div class="form-field">
+                        <input
+                            type="tel"
+                            id="phone"
+                            placeholder="Phone Number"
+                            required
+                        >
+                        <small class="field-error" id="phone-error"></small>
+                    </div>
 
-                    <input
-                        type="text"
-                        id="city"
-                        placeholder="City"
-                        required
-                    >
+                    <div class="form-field">
+                        <input
+                            type="text"
+                            id="city"
+                            placeholder="City"
+                            required
+                        >
+                        <small class="field-error" id="city-error"></small>
+                    </div>
 
                 </div>
 
@@ -177,29 +189,38 @@
 
                 <div class="form-row">
 
-                    <input
-                        type="text"
-                        id="state"
-                        placeholder="State"
-                        required
-                    >
+                    <div class="form-field">
+                        <input
+                            type="text"
+                            id="state"
+                            placeholder="State"
+                            required
+                        >
+                        <small class="field-error" id="state-error"></small>
+                    </div>
 
-                    <input
-                        type="text"
-                        id="zip"
-                        placeholder="ZIP Code"
-                        required
-                    >
+                    <div class="form-field">
+                        <input
+                            type="text"
+                            id="zip"
+                            placeholder="ZIP Code"
+                            required
+                        >
+                        <small class="field-error" id="zip-error"></small>
+                    </div>
 
                 </div>
 
                 <!-- Address -->
 
-                <textarea
-                    id="address"
-                    placeholder="Full Address"
-                    required
-                ></textarea>
+                <div class="form-field">
+                    <textarea
+                        id="address"
+                        placeholder="Full Address"
+                        required
+                    ></textarea>
+                    <small class="field-error" id="address-error"></small>
+                </div>
 
                 <!-- Payment -->
 
@@ -220,7 +241,7 @@
                             checked
                         >
 
-                         Credit / Debit Card
+                        Credit / Debit Card
 
                     </label>
 
@@ -232,7 +253,7 @@
                             value="upi"
                         >
 
-                         UPI Payment
+                        UPI Payment
 
                     </label>
 
@@ -250,14 +271,14 @@
 
                 </div>
 
-                <!-- Card -->
-
+                <!-- Card Details (with required) -->
                 <div id="card-details">
 
                     <input
                         type="text"
                         id="card-number"
                         placeholder="Card Number"
+                        required
                     >
 
                     <div class="form-row">
@@ -266,12 +287,16 @@
                             type="text"
                             id="expiry"
                             placeholder="MM/YY"
+                            required
                         >
+                        <small class="field-error" id="card-number-error"></small>
+                    </div>
 
                         <input
                             type="password"
                             id="cvv"
                             placeholder="CVV"
+                            required
                         >
 
                     </div>

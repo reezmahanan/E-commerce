@@ -233,7 +233,8 @@ function renderStars(
 
 // PRODUCT CARD
 function createProductCard(
-    product
+    product,
+    wishlistIds = null
 ) {
     const displayName =
         product.name ||
@@ -241,6 +242,10 @@ function createProductCard(
 
     const stock =
         Number(product.stock) || 0;
+
+    const isWishlisted = (wishlistIds instanceof Set)
+        ? wishlistIds.has(String(product.id))
+        : AppUtils.getWishlist().some(item => String(item.id) === String(product.id));
 
     return `
         <div
@@ -292,7 +297,7 @@ function createProductCard(
                     : `
                         <div style="position: absolute; bottom: 20px; right: 12px; display: flex; gap: 8px; z-index: 2;">
                             <button class="wishlist-btn-shop cart" data-id="${product.id}" aria-label="Add to Wishlist" style="position: relative; bottom: 0; right: 0;">
-                                <i class="${ AppUtils.getWishlist().some(item => String(item.id) === String(product.id)) ? 'fas' : 'far' } fa-heart"></i>
+                                <i class="${ isWishlisted ? 'fas' : 'far' } fa-heart"></i>
                             </button>
                             <button class="add-to-cart-icon cart" aria-label="Add to cart" style="position: relative; bottom: 0; right: 0;">
                                 <i class="fal fa-shopping-cart"></i>
@@ -326,10 +331,11 @@ function renderProducts(products = []) {
     }
 
     const fragment = document.createDocumentFragment();
+    const wishlistIds = new Set(AppUtils.getWishlist().map((item) => String(item.id)));
 
     displayList.forEach((product) => {
         const wrapper = document.createElement('div');
-        wrapper.innerHTML = createProductCard(product);
+        wrapper.innerHTML = createProductCard(product, wishlistIds);
         const card = wrapper.firstElementChild;
         if (card) {
             setupProductCard(card, product);
@@ -390,6 +396,12 @@ function setupProductCard(
         async (event) => {
             event.preventDefault();
             event.stopPropagation();
+
+            // cart is account-bound: guests must sign in first
+            if (!AppUtils.requireLogin("Please sign in to add items to your cart")) {
+                return;
+            }
+
             const item = {
                 id: product.id,
                 name:
@@ -479,6 +491,20 @@ function setupProductCard(
                     cart
                 );
 
+                if (
+                    typeof updateCartCount ===
+                    "function"
+                ) {
+                    updateCartCount();
+                }
+
+                if (
+                    typeof renderCartDrawer ===
+                    "function"
+                ) {
+                    renderCartDrawer();
+                }
+
                 AppUtils.notify(
                     "Added to cart =���n+�",
                     "success"
@@ -504,7 +530,12 @@ function setupProductCard(
         wishlistBtn.addEventListener("click", async (event) => {
             event.preventDefault();
             event.stopPropagation();
-            
+
+            // wishlist is account-bound: guests must sign in first
+            if (!AppUtils.requireLogin("Please sign in to use your wishlist")) {
+                return;
+            }
+
             // Re-use logic from product-actions-home.js if it's available, otherwise fallback
             if (typeof window.toggleWishlist === "function") {
                 await window.toggleWishlist(product);
@@ -536,6 +567,7 @@ function setupProductCard(
                         } catch (e) {}
                     }
                 }
+                // saveWishlist persists locally and syncs the whole list to the backend
                 AppUtils.saveWishlist(wishlist);
                 
                 // Update DOM icons dynamically

@@ -62,7 +62,7 @@ function setupVariants(
         productVariants
     ).forEach(
         (key) => {
-            delete productVariants[
+            Deletee productVariants[
                 key
             ];
         }
@@ -142,6 +142,11 @@ function updateVariant() {
             stock <= 3
                 ? "red"
                 : "#088178";
+
+        // re-clamp the quantity selector to the new stock
+        if (typeof window.syncProductQtyControls === "function") {
+            window.syncProductQtyControls();
+        }
     }
 
 

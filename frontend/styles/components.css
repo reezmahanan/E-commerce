@@ -312,7 +312,8 @@ html, body {
     gap: 6px;
 }
 
-#cart-badge {
+#cart-badge,
+#wishlist-badge {
     background: var(--primary-color);
     color: white;
     font-size: 12px;

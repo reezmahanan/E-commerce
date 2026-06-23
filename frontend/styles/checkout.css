@@ -54,6 +54,37 @@
     flex: 1;
 }
 
+/* field wrapper: input + its inline error message stacked */
+.form-field{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+.form-row .form-field{
+    margin-bottom: 0;
+}
+
+.field-error{
+    color: #e63946;
+    font-size: 12.5px;
+    margin-top: 6px;
+    min-height: 14px;
+    line-height: 1.2;
+}
+
+#checkout-form input.invalid,
+#checkout-form textarea.invalid{
+    border-color: #e63946;
+}
+
+#checkout-form input.invalid:focus,
+#checkout-form textarea.invalid:focus{
+    border-color: #e63946;
+    box-shadow: 0 0 0 4px rgba(230,57,70,0.12);
+}
+
 #checkout-form input,
 #checkout-form textarea{
     width: 100%;
@@ -76,6 +107,11 @@
     min-height: 120px;
     resize: vertical;
     margin-bottom: 20px;
+}
+
+/* the field wrapper provides the spacing, so drop the textarea's own */
+.form-field textarea{
+    margin-bottom: 0;
 }
 
 .payment-options{
