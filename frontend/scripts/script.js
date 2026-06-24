@@ -43,6 +43,8 @@ const fallbackProducts = [
   },
 ];
 
+
+
 let isLoading = false;
 
 const featuredContainer = document.getElementById("featured-products");
@@ -138,6 +140,8 @@ function renderProducts(container, products = []) {
 
   const fragment = document.createDocumentFragment();
   const wishlistIds = new Set(AppUtils.getWishlist().map((item) => String(item.id)));
+
+  const wishlistIds = new Set(AppUtils.getWishlist().map(item => String(item.id)));
 
   AppUtils.safeArray(products).forEach((product) => {
     if (!product || !product.id) return;
