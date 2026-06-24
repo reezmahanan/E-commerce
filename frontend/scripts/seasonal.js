@@ -1,9 +1,4 @@
-/**
- * E-Commerce Website - Seasonnal Collection Logic
- * Handles product fetching, local fallbacks, filtering, sorting, and UI rendering.
- */
 (function() {
-    // 1. STATE VARIABLES
     let allProducts = [];
     let currentProducts = [];
     let currentPage = 1;
@@ -12,7 +7,6 @@
     let currentCategory = "all"; 
     let currentSort = "";
 
-    // 2. HARDCODED FALLBACK DATA (Backend offline hone par yeh show hoga)
     const fallbackProducts = [
         { 
             id: '301', 
@@ -56,7 +50,6 @@
         }
     ];
 
-    // 3. DOM ELEMENTS
     const elements = {
         searchInput: document.getElementById("search-input"),
         filterButtons: document.querySelectorAll(".filter-btn"),
@@ -64,7 +57,6 @@
         productContainer: document.getElementById("product-container")
     };
 
-    // 4. FETCH PRODUCTS FUNCTION (With API & Fallback handling)
     async function fetchProducts(page = 1) {
         try {
             currentPage = page;
@@ -72,7 +64,6 @@
                 elements.productContainer.innerHTML = `<div class="loading-products">Loading Seasonal collection...</div>`;
             }
 
-            // Backend URL parameters create karna
             const params = new URLSearchParams({
                 page: currentPage,
                 limit: 8,
@@ -89,7 +80,6 @@
                 currentProducts = data.products;
                 totalPages = Number(data.totalPages || 1);
             } else {
-                // Agar API respond kare par data na ho, toh local data use karein
                 useFallbackData();
             }
 
@@ -97,14 +87,12 @@
             renderProducts(currentProducts);
         } catch (error) {
             console.warn("MEN FETCH ERROR (Using Fallback Data):", error);
-            // BACKEND OFF HONE PAR YEH BLOCK CHALEGA
             useFallbackData();
             applySorting();
             renderProducts(currentProducts);
         }
     }
 
-    // Helper to filter fallback array locally based on user selection
     function useFallbackData() {
         if (currentCategory === 'all') {
             currentProducts = [...fallbackProducts];
@@ -114,7 +102,6 @@
             );
         }
         
-        // Search filter injection for fallback
         if (currentSearch) {
             currentProducts = currentProducts.filter(p => 
                 p.name.toLowerCase().includes(currentSearch.toLowerCase())
@@ -123,7 +110,6 @@
         totalPages = 1;
     }
 
-    // 5. SORTING LOGIC
     function applySorting() {
         if (!currentSort) return;
         
@@ -134,10 +120,9 @@
         }
     }
 
-    // 6. UI RENDERING FUNCTIONS
     function renderProducts(products) {
         if (!elements.productContainer) return;
-        elements.productContainer.innerHTML = ""; // Container clear karna
+        elements.productContainer.innerHTML = "";
 
         if (products.length === 0) {
             elements.productContainer.innerHTML = `<p class="no-products">No products found in Seasonal Collection.</p>`;
@@ -154,7 +139,6 @@
         const div = document.createElement("div");
         div.className = "pro";
         
-        // Dynamic Stars rendering logic
         const starsHtml = '<i class="fas fa-star"></i>'.repeat(product.rating || 5);
         
         div.innerHTML = `
@@ -172,7 +156,6 @@
             </button>
         `;
         
-        // Cart click setup helper
         const cartBtn = div.querySelector('.add-to-cart-btn');
         if (cartBtn) {
             cartBtn.addEventListener('click', (e) => {
@@ -186,7 +169,6 @@
             });
         }
 
-        // Product details page redirection (Optional feature if implemented in your ui.js)
         div.addEventListener('click', () => {
             window.location.href = `product.html?id=${product.id}`;
         });
@@ -194,9 +176,7 @@
         return div;
     }
 
-    // 7. CONTROLS & LISTENERS INITIALIZATION
     function initListeners() {
-        // Search Input Control
         if (elements.searchInput) {
             elements.searchInput.addEventListener("input", AppUtils.debounce((e) => {
                 currentSearch = e.target.value.trim();
@@ -204,7 +184,6 @@
             }, 300));
         }
 
-        // Category Filter Buttons Control
         if (elements.filterButtons) {
             elements.filterButtons.forEach(btn => {
                 btn.addEventListener("click", (e) => {
@@ -216,7 +195,6 @@
             });
         }
 
-        // Sort Select Control
         if (elements.sortSelect) {
             elements.sortSelect.addEventListener("change", (e) => {
                 currentSort = e.target.value;
@@ -226,7 +204,6 @@
         }
     }
 
-    // Initialize execution
     initListeners();
     fetchProducts(1);
 

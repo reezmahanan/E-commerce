@@ -583,9 +583,9 @@ function renderProducts() {
 
                         <button
                             type="button"
-                            class="action-btn Deletee-btn"
+                            class="action-btn delete-btn"
                         >
-                            Deletee
+                            Delete
                         </button>
                     </td>
                 `;
@@ -603,12 +603,12 @@ function renderProducts() {
             );
 
             row.querySelector(
-                ".Deletee-btn"
+                ".delete-btn"
             )?.addEventListener(
                 "click",
                 () => {
 
-                    DeleteeProduct(
+                    deleteProduct(
                         product.id
                     );
                 }
@@ -625,14 +625,14 @@ function renderProducts() {
     );
 }
 
-// Deletee product
-async function DeleteeProduct(
+// delete product
+async function deleteProduct(
     id
 ) {
 
     const confirmed =
         confirm(
-            "Deletee this product permanently?"
+            "Delete this product permanently?"
         );
 
     if (
@@ -649,7 +649,7 @@ async function DeleteeProduct(
                 `/products/${id}`,
                 {
                     method:
-                        "DeleteE"
+                        "DELETE"
                 }
             );
 
@@ -674,7 +674,7 @@ async function DeleteeProduct(
             renderStats();
 
             AppUtils.notify(
-                "Product Deleteed successfully!",
+                "Product deleted successfully!",
                 "success"
             );
 
@@ -683,7 +683,7 @@ async function DeleteeProduct(
             AppUtils.notify(
                 response.message
                 ||
-                "Failed to Deletee product.",
+                "Failed to delete product.",
                 "error"
             );
         }
@@ -691,12 +691,12 @@ async function DeleteeProduct(
     } catch (error) {
 
         console.error(
-            "DeleteE PRODUCT ERROR:",
+            "DELETE PRODUCT ERROR:",
             error
         );
 
         AppUtils.notify(
-            "Failed to Deletee product.",
+            "Failed to delete product.",
             "error"
         );
     }
@@ -849,6 +849,8 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
         } else if (target === 'products') {
             document.getElementById('section-products-form').style.display = 'block';
             document.getElementById('section-products-list').style.display = 'block';
+        } else if (target === 'orders') {
+            document.getElementById('section-orders').style.display = 'block';
         } else if (target === 'support') {
             document.getElementById('section-support').style.display = 'block';
             initAdminChat();
@@ -1171,6 +1173,7 @@ setTimeout(() => {
     loadAdminDashboard();
 }, 500);
 
+
 // Initialize Edit Modal Events
 document.addEventListener("DOMContentLoaded", () => {
     const editModal = document.getElementById("edit-product-modal");
@@ -1222,3 +1225,4 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+

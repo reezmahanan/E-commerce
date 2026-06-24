@@ -39,7 +39,65 @@
     cursor: pointer;
     background: var(--white);
 }
+.banner-btn {
+    margin-top: 20px;
+    border: 1px solid rgba(255, 255, 255, .3);
+    background: rgba(255, 255, 255, .08);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    transition: all .4s ease;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, .15);
+}
 
+.banner-btn a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 34px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .8px;
+    transition: .4s;
+}
+
+.banner-btn::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, .25),
+            rgba(255, 255, 255, .05));
+    opacity: 0;
+    transition: .4s;
+}
+
+.banner-btn:hover::before {
+    opacity: 1;
+}
+
+.banner-btn:hover {
+    transform: translateY(-5px);
+    border-color: #088178;
+    box-shadow: 0 15px 35px rgba(8, 129, 120, .3);
+}
+
+.banner-btn:active {
+    transform: scale(.97);
+}
+.banner-btn:focus,
+.banner-btn:focus-visible {
+    outline: 3px solid #7fffd4;
+    outline-offset: 4px;
+    box-shadow:
+        0 0 0 5px rgba(8, 129, 120, .25);
+}
 /* responsive layout */
 @media(max-width:1024px){
     .product-controls{
@@ -77,6 +135,7 @@
 #recently-viewed .pro{
     flex: 0 0 calc(25% - 20px);
     max-width: 320px;
+    cursor: pointer;
 }
 
 #product1 .pro img,
@@ -114,6 +173,20 @@
     }
 }
 
-/* =============================
-Password Strength Meter (Issue #166)
+@media(max-width:768px) {
+
+    .banner-btn a {
+        padding: 14px 24px;
+        font-size: 14px;
+    }
+
+}
+
+@media(max-width:480px) {
+
+    .banner-btn a {
+        padding: 12px 20px;
+        font-size: 13px;
+    }
+
 }

@@ -1,7 +1,3 @@
-/**
- * E-Commerce Website - Buy1Get1Free Collection Logic
- * Handles product fetching, local fallbacks, filtering, sorting, and UI rendering.
- */
 (function() {
     // 1. STATE VARIABLES
     let allProducts = [];
