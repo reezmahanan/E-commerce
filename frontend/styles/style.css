@@ -39,10 +39,10 @@
     cursor: pointer;
     background: var(--white);
 }
-.white {
+.banner-btn {
     margin-top: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, .3);
+    background: rgba(255, 255, 255, .08);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
     border-radius: 14px;
@@ -50,11 +50,10 @@
     cursor: pointer;
     position: relative;
     transition: all .4s ease;
-    box-shadow:
-        0 8px 25px rgba(0, 0, 0, .15);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, .15);
 }
 
-.white a {
+.banner-btn a {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -68,37 +67,36 @@
     transition: .4s;
 }
 
-.white::before {
+.banner-btn::before {
     content: "";
     position: absolute;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     background: linear-gradient(135deg,
             rgba(255, 255, 255, .25),
             rgba(255, 255, 255, .05));
-    top: 0;
-    left: 0;
     opacity: 0;
     transition: .4s;
 }
 
-.white:hover::before {
+.banner-btn:hover::before {
     opacity: 1;
 }
 
-.white:hover {
+.banner-btn:hover {
     transform: translateY(-5px);
     border-color: #088178;
-    box-shadow:
-        0 15px 35px rgba(8, 129, 120, .3);
+    box-shadow: 0 15px 35px rgba(8, 129, 120, .3);
 }
 
-.white:hover a {
-    color: #fff;
-}
-
-.white:active {
+.banner-btn:active {
     transform: scale(.97);
+}
+.banner-btn:focus,
+.banner-btn:focus-visible {
+    outline: 3px solid #7fffd4;
+    outline-offset: 4px;
+    box-shadow:
+        0 0 0 5px rgba(8, 129, 120, .25);
 }
 /* responsive layout */
 @media(max-width:1024px){
@@ -174,6 +172,20 @@
     }
 }
 
-/* =============================
-Password Strength Meter (Issue #166)
+@media(max-width:768px) {
+
+    .banner-btn a {
+        padding: 14px 24px;
+        font-size: 14px;
+    }
+
+}
+
+@media(max-width:480px) {
+
+    .banner-btn a {
+        padding: 12px 20px;
+        font-size: 13px;
+    }
+
 }
