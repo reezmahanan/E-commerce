@@ -9,7 +9,9 @@ let currentSearch = "";
 let currentCategory = "all";
 let currentSort = "";
 let currentProducts = [];
+let showAllHoodies = false;
 
+// Local fallback sample products (used when backend returns no products)
 const fallbackProducts = [
     // T-SHIRTS (~5)
     { id: 'ft1', name: 'Classic Cotton T-Shirt', description: 'Summer collection soft cotton tee.', price: 19.99, image: 'data:image/jpeg;base64,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', category: 'T-Shirts', stock: 50, rating: 4 },
@@ -127,23 +129,10 @@ async function fetchProducts(
                 `/products?${params.toString()}`
             );
 
-        if (!data.success) {
-            const normCat = normalizeCategoryString(currentCategory);
-            const fallback = normCat === 'all'
-                ? fallbackProducts
-                : fallbackProducts.filter(p => categoriesMatch(p.category, currentCategory));
-            if (fallback.length > 0) {
-                currentProducts = fallback;
-                totalPages = 1;
-                applySorting();
-                renderPagination();
-            } else {
-                renderEmptyState("No products found.");
-            }
-            return;
-        }
-
-        currentProducts = Array.isArray(data.products) ? data.products : [];
+        currentProducts =
+            data.success && Array.isArray(data.products)
+                ? data.products
+                : [];
 
         // If backend returned no products for the selected category/search,
         // fall back to local sample products so the shop isn't empty.
@@ -155,15 +144,14 @@ async function fetchProducts(
                 ? fallbackProducts
                 : fallbackProducts.filter(p => categoriesMatch(p.category, currentCategory));
 
-            totalPages =
-                Number(
-                    data.totalPages || 1
-                );
-            if (fallback.length > 0) {
-                    currentProducts = fallback;
-                    totalPages = 1;
-                }
-            }
+            currentProducts = fallback;
+            totalPages = 1;
+        }
+
+        totalPages =
+            Number(
+                data.totalPages || 1
+            );
 
         // sorting
         applySorting();
@@ -172,37 +160,51 @@ async function fetchProducts(
         renderPagination();
 
     } catch (error) {
+
         console.error(
             "SHOP FETCH ERROR:",
             error
         );
-        const normCat = normalizeCategoryString(currentCategory);
-        const fallback = normCat === 'all'
-            ? fallbackProducts
-            : fallbackProducts.filter(p => categoriesMatch(p.category, currentCategory));
-        if (fallback.length > 0) {
-            currentProducts = fallback;
-            totalPages = 1;
-            applySorting();
-            renderPagination();
-        } else {
-            renderEmptyState("No products found.");
-        }
+
+        const normCat =
+            normalizeCategoryString(
+                currentCategory
+            );
+
+        currentProducts =
+            normCat === "all"
+                ? fallbackProducts
+                : fallbackProducts.filter(
+                    (product) =>
+                        categoriesMatch(
+                            product.category,
+                            currentCategory
+                        )
+                );
+
+        totalPages =
+            1;
+
+        applySorting();
+        renderPagination();
     }
 }
 
 // EMPTY STATE
-function renderEmptyState(message) {
-    if (!elements.productContainer) return;
-    const isError = message.toLowerCase().includes("failed") || message.toLowerCase().includes("error");
-    elements.productContainer.innerHTML = `
-        <div class="empty-state-container">
-            <div class="empty-state-icon">${isError ? '📡' : '🛍️'}</div>
-            <h3 class="empty-state-title">${isError ? "Couldn't load products" : "No products found"}</h3>
-            <p class="empty-state-message">${isError ? "Please check your connection and try again." : message}</p>
-            ${isError ? `<button class="retry-btn" onclick="window.fetchProducts(1)">🔄 Retry</button>` : ''}
-        </div>
-    `;
+function renderEmptyState(
+    message
+) {
+    if (
+        !elements.productContainer
+    ) {
+        return;
+    }
+    elements.productContainer.innerHTML =
+        `
+            <div class="empty-products">
+                <h3>${message}</h3>
+            </div>
+        `;
 }
 
 // STAR RATINGS
@@ -231,8 +233,7 @@ function renderStars(
 
 // PRODUCT CARD
 function createProductCard(
-    product,
-    wishlistIds = null
+    product
 ) {
     const displayName =
         product.name ||
@@ -240,10 +241,6 @@ function createProductCard(
 
     const stock =
         Number(product.stock) || 0;
-
-    const isWishlisted = (wishlistIds instanceof Set)
-        ? wishlistIds.has(String(product.id))
-        : AppUtils.getWishlist().some(item => String(item.id) === String(product.id));
 
     return `
         <div
@@ -295,7 +292,7 @@ function createProductCard(
                     : `
                         <div style="position: absolute; bottom: 20px; right: 12px; display: flex; gap: 8px; z-index: 2;">
                             <button class="wishlist-btn-shop cart" data-id="${product.id}" aria-label="Add to Wishlist" style="position: relative; bottom: 0; right: 0;">
-                                <i class="${ isWishlisted ? 'fas' : 'far' } fa-heart"></i>
+                                <i class="${ AppUtils.getWishlist().some(item => String(item.id) === String(product.id)) ? 'fas' : 'far' } fa-heart"></i>
                             </button>
                             <button class="add-to-cart-icon cart" aria-label="Add to cart" style="position: relative; bottom: 0; right: 0;">
                                 <i class="fal fa-shopping-cart"></i>
@@ -318,14 +315,21 @@ function renderProducts(products = []) {
 
     elements.productContainer.innerHTML = "";
 
-    const displayList = products;
+    // If current category is Hoodies and we're not showing all, limit hoodies to 3
+    const isHoodies = currentCategory && categoriesMatch(currentCategory, 'Hoodies');
+    let displayList = products;
+
+    if (isHoodies && !showAllHoodies) {
+        const hoodies = products.filter(p => categoriesMatch(p.category, 'Hoodies'));
+        const others = products.filter(p => !categoriesMatch(p.category, 'Hoodies'));
+        displayList = hoodies.slice(0, 3).concat(others);
+    }
 
     const fragment = document.createDocumentFragment();
-    const wishlistIds = new Set(AppUtils.getWishlist().map((item) => String(item.id)));
 
     displayList.forEach((product) => {
         const wrapper = document.createElement('div');
-        wrapper.innerHTML = createProductCard(product, wishlistIds);
+        wrapper.innerHTML = createProductCard(product);
         const card = wrapper.firstElementChild;
         if (card) {
             setupProductCard(card, product);
@@ -335,7 +339,20 @@ function renderProducts(products = []) {
 
     elements.productContainer.appendChild(fragment);
 
-
+    // Add View More button for Hoodies when applicable
+    if (isHoodies && !showAllHoodies) {
+        const moreBtn = document.createElement('button');
+        moreBtn.textContent = 'View more Hoodies';
+        moreBtn.className = 'view-more-hoodies';
+        moreBtn.addEventListener('click', () => {
+            showAllHoodies = true;
+            renderProducts(currentProducts);
+        });
+        const wrapper = document.createElement('div');
+        wrapper.className = 'view-more-wrapper';
+        wrapper.appendChild(moreBtn);
+        elements.productContainer.appendChild(wrapper);
+    }
 }
 
 // PRODUCT CARD EVENTS
@@ -373,12 +390,6 @@ function setupProductCard(
         async (event) => {
             event.preventDefault();
             event.stopPropagation();
-
-            // cart is account-bound: guests must sign in first
-            if (!AppUtils.requireLogin("Please sign in to add items to your cart")) {
-                return;
-            }
-
             const item = {
                 id: product.id,
                 name:
@@ -408,64 +419,8 @@ function setupProductCard(
                 }
 
                 // fallback cart
-                let cart =
-                    AppUtils.getCart();
-
-                const existingIndex =
-                    cart.findIndex(
-                        (p) =>
-                            p.id ===
-                            item.id
-                    );
-
-                    const stock =
-                        Number(product.stock) || 0;
-
-                    if (
-                        existingIndex >= 0
-                    ) {
-
-                        if (
-                            cart[existingIndex].qty + 1 >
-                            stock
-                        ) {
-
-                            AppUtils.notify(
-                                `Only ${stock} item(s) available`,
-                                "error"
-                            );
-
-                            return;
-                        }
-
-                        cart[
-                            existingIndex
-                        ].qty += 1;
-
-                    } else {
-
-                        if (
-                            stock <= 0
-                        ) {
-
-                            AppUtils.notify(
-                                "Product out of stock",
-                                "error"
-                            );
-
-                            return;
-                        }
-
-                        item.stock =
-                            stock;
-
-                        cart.push(
-                            item
-                        );
-                    }
-
-                AppUtils.saveCart(
-                    cart
+                AppUtils.addCartItem(
+                    item
                 );
 
                 if (
@@ -483,7 +438,7 @@ function setupProductCard(
                 }
 
                 AppUtils.notify(
-                    "Added to cart 🛒",
+                    "Added to cart 🛍️",
                     "success"
                 );
 
@@ -507,24 +462,19 @@ function setupProductCard(
         wishlistBtn.addEventListener("click", async (event) => {
             event.preventDefault();
             event.stopPropagation();
-
-            // wishlist is account-bound: guests must sign in first
-            if (!AppUtils.requireLogin("Please sign in to use your wishlist")) {
-                return;
-            }
-
+            
             // Re-use logic from product-actions-home.js if it's available, otherwise fallback
             if (typeof window.toggleWishlist === "function") {
                 await window.toggleWishlist(product);
             } else {
                 let wishlist = AppUtils.getWishlist();
                 const exists = wishlist.some(item => String(item.id) === String(product.id));
-                const user = AppUtils.getUser();
+                const token = AppUtils.getToken();
 
                 if (exists) {
                     wishlist = wishlist.filter(item => String(item.id) !== String(product.id));
                     AppUtils.notify("Removed from wishlist", "info");
-                    if (user) {
+                    if (token) {
                         try {
                             await AppUtils.apiRequest("/wishlist/remove", {
                                 method: "POST",
@@ -535,7 +485,7 @@ function setupProductCard(
                 } else {
                     wishlist.push(product);
                     AppUtils.notify("Added to wishlist ❤️", "success");
-                    if (user) {
+                    if (token) {
                         try {
                             await AppUtils.apiRequest("/wishlist/add", {
                                 method: "POST",
@@ -544,7 +494,6 @@ function setupProductCard(
                         } catch (e) {}
                     }
                 }
-                // saveWishlist persists locally and syncs the whole list to the backend
                 AppUtils.saveWishlist(wishlist);
                 
                 // Update DOM icons dynamically
@@ -593,7 +542,8 @@ function setupSearch() {
                             elements.searchInput.value
                                 .trim();
 
-
+                        // reset hoodies expansion on new search
+                        showAllHoodies = false;
 
                         fetchProducts(1);
 
@@ -635,7 +585,8 @@ function setupCategoryFilters() {
                         button.dataset.category
                         || "all";
 
-
+                    // reset hoodies expansion when category changes
+                    showAllHoodies = false;
 
                     fetchProducts(1);
                 }
@@ -759,7 +710,7 @@ function renderPagination() {
         );
 
     prevBtn.innerText =
-        "« Prev";
+        "← Prev";
 
     prevBtn.className = 
         "pagination-btn";
@@ -807,7 +758,7 @@ function renderPagination() {
         );
 
     nextBtn.innerText =
-        "Next »";
+        "Next →";
 
     nextBtn.className = 
         "pagination-btn";
@@ -843,6 +794,4 @@ document.addEventListener(
         setupSorting();
     }
 );
-window.fetchProducts = fetchProducts;
 })()
-

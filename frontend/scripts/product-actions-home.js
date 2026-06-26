@@ -1,6 +1,14 @@
 (function(){
+// cart storage
+let cart =
+    AppUtils.getCart();
+
+// wishlist storage
+let wishlist =
+    AppUtils.getWishlist();
+
 // save cart
-function saveHomeCart(cart) {
+function saveHomeCart() {
     AppUtils.saveCart(
         cart
     );
@@ -14,7 +22,7 @@ function saveHomeCart(cart) {
 }
 
 // save wishlist
-function saveHomeWishlist(wishlist) {
+function saveHomeWishlist() {
     AppUtils.saveWishlist(
         wishlist
     );
@@ -32,160 +40,32 @@ function addToCart(
         return;
     }
 
-    // cart is account-bound: guests must sign in first
-    if (!AppUtils.requireLogin("Please sign in to add items to your cart")) {
-        return;
-    }
-
-    const cart = AppUtils.getCart();
-
-    const existing =
-        cart.find(
-            (item) =>
-                String(item.id)
-                === String(product.id)
-        );
-
-    if (
-        existing
-    ) {
-        existing.qty =
-            Math.max(
-                1,
-                Number(
-                    existing.qty || 1
-                ) + 1
-            );
-
-    } else {
-        cart.push({
+    cart =
+        AppUtils.addCartItem({
             ...product,
             qty: 1
         });
+
+    saveHomeCart();
+
+    if (
+        typeof renderCartDrawer ===
+        "function"
+    ) {
+        renderCartDrawer();
     }
 
-    saveHomeCart(cart);
+    if (
+        typeof openCartDrawer ===
+        "function"
+    ) {
+        openCartDrawer();
+    }
 
     AppUtils.notify(
         `${product.name} added to cart`,
         "success"
     );
-
-    // flip the "Add Cart" button into a quantity counter
-    refreshCartControls(product.id);
-}
-
-// build the markup for a card's cart control: an "Add Cart"
-// button when the item isn't in the cart, otherwise a − qty + counter
-function buildCartControlHTML(productId) {
-    const cart = AppUtils.getCart();
-
-    const item =
-        cart.find(
-            (entry) =>
-                String(entry.id)
-                === String(productId)
-        );
-
-    const qty = item ? Number(item.qty) || 0 : 0;
-
-    // resolve stock from the cart item or the product catalog
-    const product =
-        item
-        || getProductById(productId, window.allProducts || []);
-
-    const stock = product ? Number(product.stock) : NaN;
-    const hasStockInfo = !isNaN(stock);
-
-    if (qty > 0) {
-        // can't increase past available stock
-        const atMax = hasStockInfo && qty >= stock;
-
-        return `
-            <div class="qty-counter">
-                <button type="button" class="qty-decrease" data-id="${productId}" aria-label="Decrease quantity">&minus;</button>
-                <span class="qty-value">${qty}</span>
-                <button type="button" class="qty-increase" data-id="${productId}" aria-label="Increase quantity"${atMax ? " disabled" : ""}>+</button>
-            </div>
-        `;
-    }
-
-    // no stock -> disable the Add Cart button
-    if (hasStockInfo && stock <= 0) {
-        return `<button type="button" class="add-cart-btn" data-id="${productId}" disabled>Out Of Stock</button>`;
-    }
-
-    return `<button type="button" class="add-cart-btn" data-id="${productId}">Add Cart</button>`;
-}
-
-// re-render every cart control on the page that matches this product
-function refreshCartControls(productId) {
-    const controls =
-        document.querySelectorAll(
-            `.cart-control[data-id="${productId}"]`
-        );
-
-    controls.forEach((control) => {
-        control.innerHTML =
-            buildCartControlHTML(productId);
-    });
-}
-
-// adjust the quantity of an item already in the cart
-function changeCartQty(productId, delta) {
-    const cart = AppUtils.getCart();
-
-    const index =
-        cart.findIndex(
-            (entry) =>
-                String(entry.id)
-                === String(productId)
-        );
-
-    // not in cart yet: a "+" with no item just adds it fresh
-    if (index === -1) {
-        if (delta > 0) {
-            const product =
-                getProductById(
-                    productId,
-                    window.allProducts || []
-                );
-
-            if (product) {
-                addToCart(product);
-            }
-        }
-        return;
-    }
-
-    let qty =
-        (Number(cart[index].qty) || 0) + delta;
-
-    // respect stock when increasing, if the item carries stock info
-    const stock = Number(cart[index].stock);
-
-    if (
-        delta > 0
-        &&
-        stock
-        &&
-        qty > stock
-    ) {
-        AppUtils.notify(
-            `Only ${stock} in stock`,
-            "error"
-        );
-        return;
-    }
-
-    if (qty <= 0) {
-        cart.splice(index, 1);
-    } else {
-        cart[index].qty = qty;
-    }
-
-    saveHomeCart(cart);
-    refreshCartControls(productId);
 }
 
 // add to wishlist
@@ -200,13 +80,6 @@ async function toggleWishlist(
         return;
     }
 
-    // wishlist is account-bound: guests must sign in first
-    if (!AppUtils.requireLogin("Please sign in to use your wishlist")) {
-        return;
-    }
-
-    let wishlist = AppUtils.getWishlist();
-
     const exists =
         wishlist.some(
             (item) =>
@@ -214,7 +87,7 @@ async function toggleWishlist(
                 === String(product.id)
         );
 
-    const user = AppUtils.getUser();
+    const token = AppUtils.getToken();
 
     if (
         exists
@@ -231,7 +104,7 @@ async function toggleWishlist(
             "info"
         );
         
-        if (user) {
+        if (token) {
             try {
                 await AppUtils.apiRequest("/wishlist/remove", {
                     method: "POST",
@@ -251,7 +124,7 @@ async function toggleWishlist(
             "success"
         );
         
-        if (user) {
+        if (token) {
             try {
                 await AppUtils.apiRequest("/wishlist/add", {
                     method: "POST",
@@ -262,9 +135,7 @@ async function toggleWishlist(
             }
         }
     }
-
-    // saveWishlist persists locally and syncs the whole list to the backend
-    saveHomeWishlist(wishlist);
+    saveHomeWishlist();
 
     // Update DOM icons dynamically
     const buttons = document.querySelectorAll(`.wishlist-btn[data-id="${product.id}"], .wishlist-btn-shop[data-id="${product.id}"]`);
@@ -303,34 +174,10 @@ document.addEventListener(
                 ".add-cart-btn"
             );
 
-        const qtyIncreaseBtn =
-            event.target.closest(
-                ".qty-increase"
-            );
-
-        const qtyDecreaseBtn =
-            event.target.closest(
-                ".qty-decrease"
-            );
-
         const wishlistBtn =
             event.target.closest(
                 ".wishlist-btn"
             );
-
-        // quantity increase
-        if (qtyIncreaseBtn) {
-            event.preventDefault();
-            changeCartQty(qtyIncreaseBtn.dataset.id, 1);
-            return;
-        }
-
-        // quantity decrease
-        if (qtyDecreaseBtn) {
-            event.preventDefault();
-            changeCartQty(qtyDecreaseBtn.dataset.id, -1);
-            return;
-        }
 
         const viewBtn =
             event.target.closest(
@@ -456,24 +303,6 @@ if (compareBtn) {
     "success"
 );
 }
-
-        // card click -> product detail page
-        // (ignore clicks on the action buttons / links inside the card)
-        const productCard =
-            event.target.closest(
-                ".pro[data-id]"
-            );
-
-        if (
-            productCard
-            &&
-            !event.target.closest(
-                "button, a"
-            )
-        ) {
-            window.location.href =
-                `product.html?id=${productCard.dataset.id}`;
-        }
     }
 );
 
@@ -483,13 +312,4 @@ window.addToCart =
 
 window.toggleWishlist =
     toggleWishlist;
-
-window.buildCartControlHTML =
-    buildCartControlHTML;
-
-window.refreshCartControls =
-    refreshCartControls;
-
-window.changeCartQty =
-    changeCartQty;
 })()

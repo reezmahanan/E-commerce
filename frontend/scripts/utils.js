@@ -79,19 +79,9 @@ const getJSON = (
                 key
             );
 
-        // guard against missing keys and stale literal
-        // "undefined"/"null" strings written by older code
-        if (
-            !value
-            ||
-            value === "undefined"
-            ||
-            value === "null"
-        ) {
-            return fallback;
-        }
-
-        return JSON.parse(value);
+        return value
+            ? JSON.parse(value)
+            : fallback;
 
     } catch (error) {
 
@@ -149,9 +139,18 @@ const removeStorage = (
 };
 
 // auth helpers
-
 const getToken = () => {
-    return localStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
+
+    return localStorage.getItem(
+        CONFIG.STORAGE_KEYS.TOKEN
+    );
+};
+
+const getRefreshToken = () => {
+
+    return localStorage.getItem(
+        CONFIG.STORAGE_KEYS.REFRESH_TOKEN
+    );
 };
 
 const getUser = () => {
@@ -175,50 +174,19 @@ const clearAuthData = () => {
     removeStorage(
         CONFIG.STORAGE_KEYS.USER
     );
-
-    // cart and wishlist belong to the account, never the browser,
-    // so clear them on logout to avoid leaking into the next session
-    removeStorage(
-        CONFIG.STORAGE_KEYS.CART
-    );
-
-    removeStorage(
-        CONFIG.STORAGE_KEYS.WISHLIST
-    );
-};
-
-// redirect guests to sign in before account-bound actions (add to
-// cart / wishlist). Returns true only when a user is logged in.
-const requireLogin = (
-    message = "Please sign in to continue"
-) => {
-
-    if (getUser()) {
-        return true;
-    }
-
-    notify(
-        message,
-        "error"
-    );
-
-    setTimeout(
-        () => {
-            window.location.href =
-                "signin.html";
-        },
-        800
-    );
-
-    return false;
 };
 
 const requireAuth = () => {
+
+    const token =
+        getToken();
 
     const user =
         getUser();
 
     if (
+        !token
+        ||
         !user
     ) {
 
@@ -249,6 +217,18 @@ const refreshAccessToken =
 
         try {
 
+            const refreshToken =
+                getRefreshToken();
+
+            if (
+                !refreshToken
+            ) {
+
+                clearAuthData();
+
+                return null;
+            }
+
             const response =
                 await fetch(
                     `${CONFIG.API_BASE}/auth/refresh-token`,
@@ -262,8 +242,12 @@ const refreshAccessToken =
                             "Content-Type":
                                 "application/json"
                         },
-                        credentials: "include",
-                        body: JSON.stringify({})
+
+                        body:
+                            JSON.stringify({
+
+                                refreshToken
+                            })
                     }
                 );
 
@@ -274,7 +258,7 @@ const refreshAccessToken =
             if (
                 !response.ok
                 ||
-                !data.success
+                !data.accessToken
             ) {
 
                 clearAuthData();
@@ -282,14 +266,34 @@ const refreshAccessToken =
                 return null;
             }
 
-            // save user
-            if (data.user) {
-                setJSON(CONFIG.STORAGE_KEYS.USER, data.user);
+            // save tokens
+            localStorage.setItem(
+                CONFIG.STORAGE_KEYS.TOKEN,
+                data.accessToken
+            );
+
+            if (
+                data.refreshToken
+            ) {
+
+                localStorage.setItem(
+                    CONFIG.STORAGE_KEYS.REFRESH_TOKEN,
+                    data.refreshToken
+                );
             }
 
-            return data.success ? true : null;
+            // save user
+            if (
+                data.user
+            ) {
 
+                setJSON(
+                    CONFIG.STORAGE_KEYS.USER,
+                    data.user
+                );
+            }
 
+            return data.accessToken;
 
         } catch (error) {
 
@@ -336,10 +340,20 @@ const apiRequest =
 
         try {
 
+            const token =
+                getToken();
+
             const headers = {
 
                 "Content-Type":
                     "application/json",
+
+                ...(token
+                    ? {
+                        Authorization:
+                            `Bearer ${token}`
+                    }
+                    : {}),
 
                 ...(options.headers || {})
             };
@@ -348,10 +362,13 @@ const apiRequest =
                 await fetch(
                     `${CONFIG.API_BASE}${url}`,
                     {
+
                         ...options,
-                        credentials: options.credentials || "include",
+
                         headers,
-                        signal: controller.signal
+
+                        signal:
+                            controller.signal
                     }
                 );
 
@@ -680,139 +697,443 @@ const throttle = (
     };
 };
 
-// debounced backend sync for account-bound collections.
-// Each endpoint keeps its own timer so rapid edits collapse into a
-// single "replace whole collection" request. Only logged-in users sync.
-const queueCollectionSync = (() => {
+// cart helpers
+const CART_UPDATED_EVENT =
+    "cartUpdated";
 
-    const timers = {};
+const normalizeCartItem = (
+    item
+) => {
 
-    return (
-        endpoint,
-        items
-    ) => {
+    if (
+        !item
+        ||
+        typeof item !== "object"
+        ||
+        item.id === undefined
+        ||
+        item.id === null
+    ) {
 
-        if (!getUser()) {
-            return;
-        }
+        return null;
+    }
 
-        clearTimeout(
-            timers[endpoint]
+    const price =
+        safeNumber(
+            item.price,
+            0
         );
 
-        timers[endpoint] =
-            setTimeout(
-                () => {
+    const qty =
+        Math.max(
+            1,
+            safeInteger(
+                item.qty,
+                1
+            )
+        );
 
-                    apiRequest(
-                        endpoint,
-                        {
-                            method: "POST",
-                            body: JSON.stringify({
-                                items: safeArray(items)
-                            })
-                        }
-                    ).catch((error) => {
-                        console.error(
-                            `Collection sync failed for ${endpoint}:`,
-                            error
-                        );
-                    });
-
-                },
-                600
-            );
+    return {
+        ...item,
+        id: item.id,
+        name:
+            item.name || "Product",
+        price,
+        img:
+            item.img ||
+            item.image ||
+            "",
+        image:
+            item.image ||
+            item.img ||
+            "",
+        color:
+            item.color || null,
+        size:
+            item.size || null,
+        qty
     };
-})();
+};
 
-// load the logged-in account's cart and wishlist from the backend
-// into local storage. Called right after login so the next account
-// sees its own items, not whatever was cached in this browser.
-const loadUserCollections = async () => {
+const getCart = () => {
 
-    if (!getUser()) {
-        return;
-    }
+    let storedCart = [];
 
     try {
 
-        const [cartResponse, wishlistResponse] =
-            await Promise.all([
-                apiRequest("/cart"),
-                apiRequest("/wishlist")
-            ]);
-
-        if (
-            cartResponse
-            &&
-            cartResponse.success
-            &&
-            Array.isArray(cartResponse.cart)
-        ) {
-            // setJSON (not saveCart) to avoid echoing a sync request back
-            setJSON(
-                CONFIG.STORAGE_KEYS.CART,
-                cartResponse.cart
+        const value =
+            localStorage.getItem(
+                CONFIG.STORAGE_KEYS.CART
             );
-        }
 
-        if (
-            wishlistResponse
-            &&
-            wishlistResponse.success
-            &&
-            Array.isArray(wishlistResponse.wishlist)
-        ) {
-            setJSON(
-                CONFIG.STORAGE_KEYS.WISHLIST,
-                wishlistResponse.wishlist
-            );
-        }
-
-        if (typeof window.updateCartCount === "function") {
-            window.updateCartCount();
-        }
-
-        if (typeof window.updateWishlistCount === "function") {
-            window.updateWishlistCount();
-        }
+        storedCart =
+            value
+                ? JSON.parse(value)
+                : [];
 
     } catch (error) {
-        console.error(
-            "Failed to load user collections:",
+
+        console.warn(
+            `getCart error for key "${CONFIG.STORAGE_KEYS.CART}":`,
             error
         );
+
+        removeStorage(
+            CONFIG.STORAGE_KEYS.CART
+        );
+
+        return [];
     }
-};
 
-// cart helpers
-const getCart = () => {
+    if (
+        !Array.isArray(
+            storedCart
+        )
+    ) {
 
-    return getJSON(
-        CONFIG.STORAGE_KEYS.CART,
-        []
-    );
+        removeStorage(
+            CONFIG.STORAGE_KEYS.CART
+        );
+
+        return [];
+    }
+
+    const cart =
+        storedCart
+            .map(
+                normalizeCartItem
+            )
+            .filter(
+                Boolean
+            );
+
+    if (
+        cart.length !==
+        storedCart.length
+    ) {
+
+        setJSON(
+            CONFIG.STORAGE_KEYS.CART,
+            cart
+        );
+    }
+
+    return cart;
 };
 
 const saveCart = (
     cart
 ) => {
 
-    const safe = safeArray(cart);
+    const normalizedCart =
+        safeArray(cart)
+            .map(
+                normalizeCartItem
+            )
+            .filter(
+                Boolean
+            );
 
-    setJSON(
-        CONFIG.STORAGE_KEYS.CART,
-        safe
-    );
+    const saved =
+        setJSON(
+            CONFIG.STORAGE_KEYS.CART,
+            normalizedCart
+        );
 
-    if (typeof window.updateCartCount === "function") {
-        window.updateCartCount();
+    if (
+        saved
+    ) {
+
+        window.dispatchEvent(
+            new CustomEvent(
+                CART_UPDATED_EVENT,
+                {
+                    detail: {
+                        cart:
+                            normalizedCart
+                    }
+                }
+            )
+        );
     }
 
-    queueCollectionSync(
-        "/cart/sync",
-        safe
+    return normalizedCart;
+};
+
+const getCartItemKey = (
+    item
+) => {
+
+    return [
+        String(
+            item?.id
+        ),
+        item?.color || "",
+        item?.size || ""
+    ].join("|");
+};
+
+const addCartItem = (
+    product
+) => {
+
+    const item =
+        normalizeCartItem({
+            ...product,
+            qty:
+                product?.qty || 1
+        });
+
+    if (
+        !item
+    ) {
+
+        return getCart();
+    }
+
+    const cart =
+        getCart();
+
+    const existing =
+        cart.find(
+            (cartItem) =>
+                getCartItemKey(
+                    cartItem
+                ) ===
+                getCartItemKey(
+                    item
+                )
+        );
+
+    if (
+        existing
+    ) {
+
+        existing.qty +=
+            item.qty;
+
+    } else {
+
+        cart.push(
+            item
+        );
+    }
+
+    return saveCart(
+        cart
     );
+};
+
+const updateCartItemQty = (
+    index,
+    qty
+) => {
+
+    const cart =
+        getCart();
+
+    if (
+        !cart[index]
+    ) {
+
+        return cart;
+    }
+
+    cart[index].qty =
+        Math.max(
+            1,
+            safeInteger(
+                qty,
+                1
+            )
+        );
+
+    return saveCart(
+        cart
+    );
+};
+
+const removeCartItem = (
+    index
+) => {
+
+    const cart =
+        getCart();
+
+    if (
+        cart[index]
+    ) {
+
+        cart.splice(
+            index,
+            1
+        );
+    }
+
+    return saveCart(
+        cart
+    );
+};
+
+const clearCart = () => {
+
+    return saveCart(
+        []
+    );
+};
+
+const getCartCount = (
+    cart = getCart()
+) => {
+
+    return safeArray(
+        cart
+    ).reduce(
+        (
+            sum,
+            item
+        ) =>
+            sum +
+            Math.max(
+                1,
+                safeInteger(
+                    item.qty,
+                    1
+                )
+            ),
+        0
+    );
+};
+
+const validateCoupon = (
+    code
+) => {
+
+    const normalizedCode =
+        String(
+            code || ""
+        )
+            .trim()
+            .toUpperCase();
+
+    const coupons = {
+        SAVE10: 10,
+        SAVE20: 20
+    };
+
+    if (
+        !normalizedCode
+    ) {
+
+        return {
+            valid: false,
+            code: "",
+            percent: 0,
+            message:
+                "Enter a coupon code."
+        };
+    }
+
+    if (
+        !coupons[normalizedCode]
+    ) {
+
+        return {
+            valid: false,
+            code:
+                normalizedCode,
+            percent: 0,
+            message:
+                "Invalid coupon code."
+        };
+    }
+
+    return {
+        valid: true,
+        code:
+            normalizedCode,
+        percent:
+            coupons[normalizedCode],
+        message:
+            `${normalizedCode} applied successfully.`
+    };
+};
+
+const calculateCartTotals = (
+    cart = getCart(),
+    couponCode = ""
+) => {
+
+    const subtotal =
+        safeArray(
+            cart
+        ).reduce(
+            (
+                sum,
+                item
+            ) =>
+                sum +
+                (
+                    safeNumber(
+                        item.price,
+                        0
+                    ) *
+                    Math.max(
+                        1,
+                        safeInteger(
+                            item.qty,
+                            1
+                        )
+                    )
+                ),
+            0
+        );
+
+    const coupon =
+        validateCoupon(
+            couponCode
+        );
+
+    const discount =
+        coupon.valid
+            ? subtotal *
+                (
+                    coupon.percent / 100
+                )
+            : 0;
+
+    const discountedSubtotal =
+        Math.max(
+            0,
+            subtotal - discount
+        );
+
+    const tax =
+        discountedSubtotal * 0.18;
+
+    const shipping =
+        discountedSubtotal > 0
+        &&
+        discountedSubtotal < 999
+            ? 49
+            : 0;
+
+    const total =
+        discountedSubtotal +
+        tax +
+        shipping;
+
+    return {
+        subtotal,
+        coupon:
+            coupon.valid
+                ? coupon
+                : null,
+        discount,
+        tax,
+        shipping,
+        total
+    };
 };
 
 const getWishlist = () => {
@@ -827,26 +1148,11 @@ const saveWishlist = (
     wishlist
 ) => {
 
-    const safe = safeArray(wishlist);
-
     setJSON(
         CONFIG.STORAGE_KEYS.WISHLIST,
-        safe
+        safeArray(wishlist)
     );
-
-    if (typeof window.updateWishlistCount === "function") {
-        window.updateWishlistCount();
-    }
-
-    queueCollectionSync(
-        "/wishlist/sync",
-        safe
-    );
-};
-
-const getToken = () => {
-    return getUser() ? "session_active" : null;
-};
+}; // Fixed: Added missing closing bracket here
 
 // app utils assignment
 window.AppUtils = {
@@ -856,9 +1162,9 @@ window.AppUtils = {
     getJSON,
     setJSON,
     removeStorage,
-
-    getUser,
     getToken,
+    getRefreshToken,
+    getUser,
     clearAuthData,
     requireAuth,
     refreshAccessToken,
@@ -874,19 +1180,24 @@ window.AppUtils = {
     safeMap,
     debounce,
     throttle,
+    CART_UPDATED_EVENT,
+    normalizeCartItem,
     getCart,
     saveCart,
+    getCartItemKey,
+    addCartItem,
+    updateCartItemQty,
+    removeCartItem,
+    clearCart,
+    getCartCount,
+    validateCoupon,
+    calculateCartTotals,
     getWishlist,
-    saveWishlist,
-    getToken,
-    requireLogin,
-    loadUserCollections
+    saveWishlist
 };
 
 // backward compatibility assignments
 window.API_BASE = CONFIG.API_BASE;
-window.requireLogin = requireLogin;
-window.loadUserCollections = loadUserCollections;
 window.notify = notify;
 window.getJSON = getJSON;
 window.setJSON = setJSON;

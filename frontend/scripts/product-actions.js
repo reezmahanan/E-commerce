@@ -146,11 +146,6 @@ function buildCartProduct() {
 
 // add to cart
 function addProductToCart() {
-    // cart is account-bound: guests must sign in first
-    if (!AppUtils.requireLogin("Please sign in to add items to your cart")) {
-        return;
-    }
-
     const product =
         buildCartProduct();
 
@@ -165,11 +160,8 @@ function addProductToCart() {
         return;
     }
 
-    const cart =
-        AppUtils.getCart();
-
     const existing =
-        cart.find(
+        AppUtils.getCart().find(
             (item) => {
                 return (
                     String(item.id)
@@ -187,32 +179,23 @@ function addProductToCart() {
             }
         );
 
+    const nextQty =
+        (
+            existing
+                ? existing.qty
+                : 0
+        ) + product.qty;
+
     if (
-        existing
+        !validateStock(
+            nextQty
+        )
     ) {
-        const updatedQty =
-            existing.qty +
-            product.qty;
-
-        if (
-            !validateStock(
-                updatedQty
-            )
-        ) {
-            return;
-        }
-
-        existing.qty =
-            updatedQty;
-
-    } else {
-        cart.push(
-            product
-        );
+        return;
     }
 
-    AppUtils.saveCart(
-        cart
+    AppUtils.addCartItem(
+        product
     );
 
     if (
@@ -230,8 +213,12 @@ function addProductToCart() {
         renderCartDrawer();
     }
 
-    if (window.Recommendations && typeof window.Recommendations.postInteraction === 'function') {
-        window.Recommendations.postInteraction(product.id, "cart_add");
+    if (
+        typeof openCartDrawer ===
+        "function"
+    ) {
+
+        openCartDrawer();
     }
 
     AppUtils.notify(
@@ -253,15 +240,10 @@ function buyNow() {
 }
 
 // wishlist
-function toggleProductWishlist() {
+async function toggleProductWishlist() {
     if (
         !currentProduct
     ) {
-        return;
-    }
-
-    // wishlist is account-bound: guests must sign in first
-    if (!AppUtils.requireLogin("Please sign in to use your wishlist")) {
         return;
     }
 
@@ -278,7 +260,7 @@ function toggleProductWishlist() {
                 )
         );
 
-    const user = AppUtils.getUser();
+    const token = AppUtils.getToken();
 
     if (
         exists
@@ -299,7 +281,7 @@ function toggleProductWishlist() {
             "info"
         );
         
-        if (user) {
+        if (token) {
             try {
                 await AppUtils.apiRequest("/wishlist/remove", {
                     method: "POST",
@@ -333,7 +315,7 @@ function toggleProductWishlist() {
             "success"
         );
         
-        if (user) {
+        if (token) {
             try {
                 await AppUtils.apiRequest("/wishlist/add", {
                     method: "POST",
@@ -343,13 +325,8 @@ function toggleProductWishlist() {
                 console.error("Failed to add to wishlist backend:", e);
             }
         }
-
-        if (window.Recommendations && typeof window.Recommendations.postInteraction === 'function') {
-            window.Recommendations.postInteraction(currentProduct.id, "wishlist_add");
-        }
     }
 
-    // saveWishlist persists locally and syncs the whole list to the backend
     AppUtils.saveWishlist(wishlist);
     
     // Update DOM icon

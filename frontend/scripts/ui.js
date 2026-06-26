@@ -177,21 +177,8 @@ function updateCartCount() {
         AppUtils.getCart();
 
     const total =
-        cart.reduce(
-            (
-                sum,
-                item
-            ) => {
-                return (
-                    sum +
-                    (
-                        parseInt(
-                            item.qty
-                        ) || 0
-                    )
-                );
-            },
-            0
+        AppUtils.getCartCount(
+            cart
         );
 
     // Update mobile cart badge
@@ -319,6 +306,11 @@ document.addEventListener(
         console.log("🎊 componentsLoaded event fired!");
         initializeUI();
     }
+);
+
+window.addEventListener(
+    AppUtils.CART_UPDATED_EVENT,
+    updateCartCount
 );
 
 // expose globally
