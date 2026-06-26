@@ -10,6 +10,16 @@ const { Client, Account, ID, Databases } = require('node-appwrite');
 // In-memory cache for pending signups (Email -> { name, password, userId, expiresAt })
 const pendingSignups = new Map();
 
+// Clean up expired pending signups every 5 minutes to prevent memory leaks
+setInterval(() => {
+    const now = Date.now();
+    for (const [email, data] of pendingSignups.entries()) {
+        if (now > data.expiresAt) {
+            pendingSignups.delete(email);
+        }
+    }
+}, 5 * 60 * 1000);
+
 // Initialize Appwrite Client (No API Key needed for Account API)
 const appwriteClient = new Client()
     .setEndpoint(process.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1')
