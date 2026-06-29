@@ -155,7 +155,7 @@
         
         div.innerHTML = `
             <span class = "bogo-badge">BUY 1<br>GET 1<br>FREE</span>
-            <img src="${product.image || 'assets/images/default.jpg'}" alt="${AppUtils.escapeHTML(product.name)}" onerror="this.src='assets/images/default.jpg';">
+            <img src="${AppUtils.escapeHTML(product.image) || 'assets/images/default.jpg'}" alt="${AppUtils.escapeHTML(product.name)}" onerror="this.src='assets/images/default.jpg';">
             <div class="des">
                 <span>${AppUtils.escapeHTML(product.brand || 'Adidas')}</span>
                 <h5>${AppUtils.escapeHTML(product.name)}</h5>
@@ -164,7 +164,7 @@
                 </div>
                 <h4>₹${Number(product.price).toFixed(2)}</h4>
             </div>
-            <button class="add-to-cart-btn" data-id="${product.id}">
+            <button class="add-to-cart-btn" data-id="${AppUtils.escapeHTML(product.id.toString())}">
                 <i class="fal fa-shopping-cart cart"></i>
             </button>
         `;
