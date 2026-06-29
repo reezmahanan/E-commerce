@@ -382,6 +382,7 @@ PRODUCT VARIANTS
     color: #666;
 }
 
+
 .product-buttons{
     display: flex;
     flex-wrap: wrap;
@@ -612,3 +613,4 @@ body.dark-theme .review-container p {
     margin-top: 8px;
     font-size: 14px;
 }
+

@@ -993,3 +993,30 @@ body.dark-theme .cart-drawer-subtotal {
         width: 100%;
     }
 }
+/* ========================================================
+   🛡️ ULTIMATE FIX: हटाएं लाल बैज, लगाएं ग्रीन बैज
+======================================================== */
+#cart-badge {
+    background: #088178 !important;
+    /* हरा/टील रंग */
+    color: #ffffff !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 2px 6px !important;
+    font-size: 12px !important;
+    min-width: 16px !important;
+    height: 16px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+    top: -6px !important;
+    right: -8px !important;
+    position: absolute !important;
+}
+
+/* जरूरी: सुनिश्चित करें कि बैज के ऊपर कोई अन्य लाल रंग न आए */
+#cart-badge::before,
+#cart-badge::after {
+    display: none !important;
+    content: none !important;
+}

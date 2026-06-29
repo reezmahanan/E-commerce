@@ -61,13 +61,13 @@
 }
 
 #about-head img {
-    width: 48%;
-    height: auto;
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+   
+    width: 500px;
+    height: 420px;
     object-fit: cover;
-    transition: transform 0.3s ease;
+    display: block;
 }
+
 
 #about-head img:hover {
     transform: scale(1.02);

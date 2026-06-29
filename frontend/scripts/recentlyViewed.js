@@ -18,13 +18,18 @@ const elements = {
 };
 
 // EMPTY STATE HELPER
-const renderEmptyState = (
-    container,
-    message
-) => {
-    if(container){
-        container.innerHTML =
-            `<p>${message}</p>`;
+const renderEmptyState = (container, message) => {
+    if (container) {
+        container.innerHTML = `
+            <div class="empty-state-card recent-empty">
+                <div class="empty-icon">👁</div>
+                <h3>No Recently Viewed Products</h3>
+                <p>${message}</p>
+                <a href="shop.html" class="empty-state-btn">
+                    Start Shopping
+                </a>
+            </div>
+        `;
     }
 };
 

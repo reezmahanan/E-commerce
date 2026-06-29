@@ -13,27 +13,8 @@ const routes = require("./routes/index")
 
 // load environment
 dotenv.config();
-
-// validate critical env
-const requiredEnv = [
-  "JWT_SECRET",
-
-  "DB_HOST",
-
-  "DB_USER",
-
-  "DB_PASSWORD",
-
-  "DB_NAME",
-];
-
-requiredEnv.forEach((key) => {
-  if (!process.env[key]) {
-    console.error(`Missing environment variable: ${key}`);
-
-    process.exit(1);
-  }
-});
+const {validateEnv} = require('./config/envValidator');
+validateEnv();
 
 // database
 require("./config/db");
@@ -43,8 +24,6 @@ const app = express();
 const http = require("http");
 const server = http.createServer(app);
 const { initSocket } = require("./utils/socketManager");
-initSocket(server);
-
 // constants
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -125,6 +104,9 @@ const allowedOrigins = [
 
     "https://www.bhuvansh.xyz"
 ];
+
+// initialize websocket server with CORS
+initSocket(server, allowedOrigins);
 
 // cors
 app.use(
