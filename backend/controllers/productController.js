@@ -250,7 +250,7 @@ const createProduct = async (req, res) => {
     ) {
         return res.status(400).json({
             success: false,
-            message: "Invalid product price"
+            message: "Price must be greater than zero"
         });
     }
 

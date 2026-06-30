@@ -9,8 +9,11 @@ const validateCreateProduct = (req, res, next) => {
   if (!sanitizeString(category)) {
     return res.status(400).json({ success: false, message: "Product category is required" });
   }
-  if (safeNumber(price) < 0) {
-    return res.status(400).json({ success: false, message: "Price must be valid" });
+  if (safeNumber(price) <= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Price must be greater than zero"
+    });
   }
   if (safeNumber(stock) < 0) {
     return res.status(400).json({ success: false, message: "Stock must be valid" });
@@ -27,8 +30,8 @@ const validateUpdateProduct = (req, res, next) => {
   if (category !== undefined && !sanitizeString(category)) {
     return res.status(400).json({ success: false, message: "Category cannot be empty" });
   }
-  if (price !== undefined && safeNumber(price) < 0) {
-    return res.status(400).json({ success: false, message: "Price cannot be negative" });
+  if (price !== undefined && safeNumber(price) <= 0) {
+    return res.status(400).json({ success: false, message: "Price must be greater than zero" });
   }
   if (stock !== undefined && safeNumber(stock) < 0) {
     return res.status(400).json({ success: false, message: "Stock cannot be negative" });
