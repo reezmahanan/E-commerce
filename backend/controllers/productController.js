@@ -165,8 +165,7 @@ const getProducts = async (req, res) => {
         return res.status(500)
             .json({
                 success: false,
-                message:
-                    error.message || "Failed to fetch products"
+                message: "Failed to fetch products"
             });
     }
 };
