@@ -10,6 +10,12 @@ const {
     getProductSuggestions
 } = require("../controllers/productController");
 
+const {
+    getProductReviews,
+    createProductReview,
+    deleteProductReview
+} = require("../controllers/reviewController");
+
 const authMiddleware = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/rbacMiddleware");
 const { validateCreateProduct, validateUpdateProduct } = require("../middleware/validators/productValidator");
@@ -35,12 +41,18 @@ router.get("/status/check", (req, res) => {
 
 router.get("/search-suggestions", getProductSuggestions);
 router.get("/", getProducts);
+router.get("/:id/reviews", getProductReviews);
+router.post("/:id/review", authMiddleware, createProductReview);
+router.delete(
+    "/:id/reviews/:reviewId",
+    authMiddleware,
+    authorizeRoles("admin"),
+    deleteProductReview
+);
 router.get("/:id", getSingleProduct);
 
 router.post("/", authMiddleware, authorizeRoles("admin"), validateCreateProduct, createProduct);
-
 router.put("/:id", authMiddleware, authorizeRoles("admin"), validateUpdateProduct, updateProduct);
-
 router.delete("/:id", authMiddleware, authorizeRoles("admin"), DeleteeProduct);
 
 // Fallback

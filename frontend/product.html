@@ -673,49 +673,86 @@
 
         </h2>
 
+        <p
+            id="reviews-summary"
+            class="reviews-summary"
+            aria-live="polite"
+        >
+            Loading reviews...
+        </p>
+
         <form id="review-form">
 
+            <fieldset class="review-rating-field">
+                <legend>
+                    Your rating
+                </legend>
+
+                <div
+                    class="review-star-input"
+                    aria-label="Choose a rating from 1 to 5 stars"
+                >
+                    <button
+                        type="button"
+                        data-rating="1"
+                        aria-label="Rate 1 star"
+                    >
+                        <i class="far fa-star" aria-hidden="true"></i>
+                    </button>
+
+                    <button
+                        type="button"
+                        data-rating="2"
+                        aria-label="Rate 2 stars"
+                    >
+                        <i class="far fa-star" aria-hidden="true"></i>
+                    </button>
+
+                    <button
+                        type="button"
+                        data-rating="3"
+                        aria-label="Rate 3 stars"
+                    >
+                        <i class="far fa-star" aria-hidden="true"></i>
+                    </button>
+
+                    <button
+                        type="button"
+                        data-rating="4"
+                        aria-label="Rate 4 stars"
+                    >
+                        <i class="far fa-star" aria-hidden="true"></i>
+                    </button>
+
+                    <button
+                        type="button"
+                        data-rating="5"
+                        aria-label="Rate 5 stars"
+                    >
+                        <i class="far fa-star" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </fieldset>
+
             <input
-                type="text"
-                id="review-name"
-                placeholder="Your Name"
-                required
-            >
-
-            <select
+                type="hidden"
                 id="review-rating"
+                value="0"
                 required
             >
 
-                <option value="">
-                    Select Rating
-                </option>
-
-                <option value="5">
-                    5 Stars
-                </option>
-
-                <option value="4">
-                    4 Stars
-                </option>
-
-                <option value="3">
-                    3 Stars
-                </option>
-
-                <option value="2">
-                    2 Stars
-                </option>
-
-                <option value="1">
-                    1 Star
-                </option>
-
-            </select>
+            <label
+                for="review-message"
+                class="review-label"
+            >
+                Your review
+            </label>
 
             <textarea
                 id="review-message"
                 placeholder="Write your review..."
+                minlength="3"
+                maxlength="1000"
                 required
             ></textarea>
 

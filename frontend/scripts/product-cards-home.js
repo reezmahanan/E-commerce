@@ -35,7 +35,7 @@ function createProductCard(product, wishlistIds = null) {
     : AppUtils.getWishlist().some((item) => String(item.id) === String(product.id));
 
   return `
-        <div class="pro fade-in">
+        <div class="pro fade-in" data-id="${product.id}">
             ${
               product.featured
                 ? `

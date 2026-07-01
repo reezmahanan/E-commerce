@@ -231,6 +231,24 @@ function renderStars(
     ).join("");
 }
 
+function getReviewCount(product) {
+    return Number(
+        product?.num_reviews ??
+        product?.numReviews ??
+        product?.reviewCount ??
+        0
+    );
+}
+
+function getRatingLabel(product) {
+    const count = getReviewCount(product);
+    const rating = Number(product.rating || 0);
+
+    return count
+        ? `${rating.toFixed(1)} (${count} review${count === 1 ? "" : "s"})`
+        : "No reviews yet";
+}
+
 // PRODUCT CARD
 function createProductCard(
     product
@@ -264,6 +282,9 @@ function createProductCard(
                     ${renderStars(
                         product.rating
                     )}
+                    <span class="rating-count">
+                        ${AppUtils.escapeHTML(getRatingLabel(product))}
+                    </span>
                 </div>
                 <h4>
                     ${AppUtils.formatPrice(

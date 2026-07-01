@@ -176,8 +176,14 @@ function saveAuthSession(
         return;
     }
 
-    // Tokens are securely stored in HttpOnly cookies by the backend.
+    if (response.accessToken) {
+        localStorage.setItem(CONFIG.STORAGE_KEYS.TOKEN, response.accessToken);
+    }
     
+    if (response.refreshToken) {
+        localStorage.setItem(CONFIG.STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
+    }
+
     AppUtils.setJSON(
         CONFIG.STORAGE_KEYS.USER,
         response.user || {}

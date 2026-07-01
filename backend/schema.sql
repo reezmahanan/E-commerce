@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS products (
     stock INT
         DEFAULT 0,
 
-    image VARCHAR(500),
+    image TEXT,
 
     category VARCHAR(100),
 
@@ -211,6 +211,42 @@ ON wishlist_items(user_id);
 
 CREATE INDEX idx_wishlist_items_product
 ON wishlist_items(product_id);
+
+-- reviews table
+CREATE TABLE IF NOT EXISTS reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    product_id INT
+        NOT NULL,
+
+    user_id INT
+        NOT NULL,
+
+    rating TINYINT
+        NOT NULL,
+
+    comment TEXT
+        NOT NULL,
+
+    created_at TIMESTAMP
+        DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(id)
+        ON DELETE CASCADE,
+
+    CHECK (rating >= 1 AND rating <= 5)
+);
+
+CREATE INDEX idx_reviews_product
+ON reviews(product_id);
+
+CREATE INDEX idx_reviews_user
+ON reviews(user_id);
 
 -- user interactions table
 CREATE TABLE IF NOT EXISTS user_interactions (

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { authMiddleware, authorizeRoles } = require("../middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
+const { authorizeRoles } = require("../middleware/rbacMiddleware");
 const { getConversations, getConversationDetails, updateStatus, assignAdmin } = require("../controllers/chat.controller");
 
 // Require auth for all chat routes

@@ -81,6 +81,22 @@ product section
     color: rgb(243, 181, 25);
 }
 
+.pro .star{
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding-top: 6px;
+}
+
+.pro .rating-count{
+    color: #606063;
+    display: inline-block;
+    font-size: 12px;
+    line-height: 1.4;
+    margin-left: 4px;
+}
+
 .pro .des h4 {
     padding-top: 7px;
     font-size: 15px;
@@ -306,6 +322,10 @@ body.dark-theme .pro .des span {
 
 body.dark-theme .pro .des i {
     color: rgb(243, 181, 25);
+}
+
+body.dark-theme .pro .rating-count {
+    color: #aaaaaa;
 }
 
 /* Syling for men's and women's section  */

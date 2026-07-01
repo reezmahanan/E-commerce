@@ -163,6 +163,11 @@
     margin-bottom: 12px;
 }
 
+.reviews-summary{
+    color: #555;
+    margin-bottom: 18px;
+}
+
 @media (max-width: 1024px){
     #product-details{
         flex-direction: column;
@@ -184,6 +189,20 @@
     border-radius: 10px;
     margin-bottom: 30px;
     box-shadow: 0 5px 25px rgba(0,0,0,0.08);
+}
+
+#review-form fieldset{
+    border: 0;
+    margin: 0 0 18px;
+    padding: 0;
+}
+
+#review-form legend,
+.review-label{
+    display: block;
+    color: #222;
+    font-weight: 600;
+    margin-bottom: 10px;
 }
 
 #review-form input,
@@ -211,9 +230,62 @@
     cursor: pointer;
 }
 
+.review-star-input{
+    display: flex;
+    gap: 6px;
+}
+
+.review-star-input button{
+    align-items: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: #c8c8c8;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 24px;
+    height: 42px;
+    justify-content: center;
+    padding: 0;
+    width: 42px;
+}
+
+.review-star-input button:hover,
+.review-star-input button:focus-visible,
+.review-star-input button.is-active{
+    color: #f5b301;
+}
+
+.review-star-input button:focus-visible,
+.review-delete-btn:focus-visible{
+    border-color: #088178;
+    outline: 2px solid rgba(8,129,120,0.25);
+    outline-offset: 2px;
+}
+
 .review-stars{
     color: #f5b301;
     margin-bottom: 12px;
+}
+
+.review-header{
+    align-items: flex-start;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.review-message{
+    overflow-wrap: anywhere;
+}
+
+.review-delete-btn{
+    background: #b42318;
+    border: 0;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    padding: 8px 12px;
 }
 
 .review-date{
@@ -502,6 +574,7 @@ body.dark-theme .review-box p {
     color: #d1d1d1;
 }
 
+body.dark-theme .reviews-summary,
 body.dark-theme .review-date {
     color: #aaaaaa;
 }
@@ -523,6 +596,21 @@ body.dark-theme #review-form textarea {
 body.dark-theme #review-form input::placeholder,
 body.dark-theme #review-form textarea::placeholder {
     color: #888;
+}
+
+body.dark-theme #review-form legend,
+body.dark-theme .review-label {
+    color: #ffffff;
+}
+
+body.dark-theme .review-star-input button {
+    color: #666;
+}
+
+body.dark-theme .review-star-input button:hover,
+body.dark-theme .review-star-input button:focus-visible,
+body.dark-theme .review-star-input button.is-active {
+    color: #f5b301;
 }
 
 /* Recommended products */
@@ -613,4 +701,3 @@ body.dark-theme .review-container p {
     margin-top: 8px;
     font-size: 14px;
 }
-
