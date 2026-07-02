@@ -1,9 +1,15 @@
 /**
- * User Model with Validation and Sanitization
+ * User Model with Comprehensive Security Features
  * @module models/User
  */
 
-const VALID_ROLES = ['user', 'admin', 'moderator'];
+const bcrypt = require("bcryptjs");
+const logger = require("../utils/logger");
+
+const VALID_ROLES = ['user', 'admin', 'superadmin', 'moderator'];
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const PASSWORD_HISTORY_LIMIT = 3;
 
 class User {
     constructor(user) {
@@ -20,8 +26,12 @@ class User {
             throw new Error('Invalid email format');
         }
 
+        // Validate password with enhanced security
         if (user.password && !this.isValidPassword(user.password)) {
-            throw new Error('Password must be at least 8 characters long');
+            throw new Error(
+                'Password must be at least 8 characters and contain ' +
+                'uppercase, lowercase, number, and special character (@$!%*?&)'
+            );
         }
 
         // Validate role
@@ -38,6 +48,15 @@ class User {
         this.role = role;
         this.isActive = user.isActive !== undefined ? user.isActive : true;
         this.isVerified = user.isVerified !== undefined ? user.isVerified : false;
+        this.isEmailVerified = user.isEmailVerified !== undefined ? user.isEmailVerified : false;
+        
+        // Security fields
+        this.failedLoginAttempts = user.failedLoginAttempts || 0;
+        this.lockoutUntil = user.lockoutUntil || null;
+        this.lastLogin = user.lastLogin || null;
+        this.deletedAt = user.deletedAt || null;
+        this.deleteReason = user.deleteReason || null;
+        
         this.createdAt = user.createdAt || new Date();
         this.updatedAt = user.updatedAt || new Date();
     }
@@ -55,12 +74,17 @@ class User {
     }
 
     /**
-     * Validate password strength
+     * Validate password strength - Enhanced security
+     * Requires: min 8 chars, uppercase, lowercase, number, special char
      * @param {string} password - Password to validate
      * @returns {boolean} True if valid
      */
     isValidPassword(password) {
-        return password && password.length >= 8;
+        if (!password || password.length < 8) return false;
+        
+        // At least one uppercase, one lowercase, one number, one special character
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        return passwordRegex.test(password);
     }
 
     /**
@@ -70,6 +94,25 @@ class User {
      */
     isValidRole(role) {
         return VALID_ROLES.includes(role);
+    }
+
+    /**
+     * Check if account is locked
+     * @returns {boolean} True if account is locked
+     */
+    isAccountLocked() {
+        if (!this.lockoutUntil) return false;
+        return new Date(this.lockoutUntil) > new Date();
+    }
+
+    /**
+     * Get remaining lockout time in minutes
+     * @returns {number} Minutes remaining (0 if not locked)
+     */
+    getLockoutRemainingMinutes() {
+        if (!this.lockoutUntil) return 0;
+        const remaining = new Date(this.lockoutUntil) - new Date();
+        return Math.max(0, Math.ceil(remaining / 60000));
     }
 
     // ==================== SANITIZATION METHODS ====================
@@ -94,11 +137,124 @@ class User {
         return name.trim().replace(/\s+/g, ' ');
     }
 
+    // ==================== PASSWORD METHODS ====================
+
+    /**
+     * Hash password using bcrypt
+     * @param {string} password - Plain text password
+     * @returns {Promise<string>} Hashed password
+     */
+    static async hashPassword(password) {
+        const salt = await bcrypt.genSalt(10);
+        return await bcrypt.hash(password, salt);
+    }
+
+    /**
+     * Compare plain password with hashed password
+     * @param {string} plainPassword - Plain text password
+     * @param {string} hashedPassword - Hashed password
+     * @returns {Promise<boolean>} True if match
+     */
+    static async comparePassword(plainPassword, hashedPassword) {
+        return await bcrypt.compare(plainPassword, hashedPassword);
+    }
+
     // ==================== SECURITY METHODS ====================
 
     /**
+     * Increment failed login attempts
+     * @returns {User} Updated user instance
+     */
+    incrementFailedAttempts() {
+        this.failedLoginAttempts += 1;
+        
+        // Lock account if max attempts exceeded
+        if (this.failedLoginAttempts >= MAX_FAILED_ATTEMPTS) {
+            this.lockoutUntil = new Date(Date.now() + LOCKOUT_DURATION);
+            logger.warn("Account locked due to multiple failed attempts", {
+                userId: this.id,
+                email: this.email,
+                attempts: this.failedLoginAttempts,
+                lockoutUntil: this.lockoutUntil
+            });
+        }
+        
+        this.updatedAt = new Date();
+        return this;
+    }
+
+    /**
+     * Reset failed login attempts (on successful login)
+     * @returns {User} Updated user instance
+     */
+    resetFailedAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lockoutUntil = null;
+        this.updatedAt = new Date();
+        return this;
+    }
+
+    /**
+     * Update last login timestamp
+     * @param {string} ip - IP address
+     * @param {string} userAgent - User agent
+     * @returns {User} Updated user instance
+     */
+    updateLastLogin(ip, userAgent) {
+        this.lastLogin = new Date();
+        this.updatedAt = new Date();
+        
+        logger.info("User logged in", {
+            userId: this.id,
+            email: this.email,
+            ip,
+            userAgent
+        });
+        
+        return this;
+    }
+
+    // ==================== TOKEN METHODS ====================
+
+    /**
+     * Generate refresh token for user
+     * @param {string} refreshToken - Refresh token
+     * @param {string} ip - IP address
+     * @param {string} userAgent - User agent
+     * @returns {Object} Token data
+     */
+    generateRefreshToken(refreshToken, ip, userAgent) {
+        return {
+            userId: this.id,
+            token: refreshToken,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            ipAddress: ip,
+            userAgent: userAgent,
+            isRevoked: false
+        };
+    }
+
+    // ==================== PASSWORD HISTORY ====================
+
+    /**
+     * Check if password was used before (prevent reuse)
+     * @param {string} newPassword - New password to check
+     * @param {Array} passwordHistory - Array of previous password hashes
+     * @returns {Promise<boolean>} True if password was used before
+     */
+    static async isPasswordReused(newPassword, passwordHistory) {
+        for (const history of passwordHistory) {
+            const isMatch = await bcrypt.compare(newPassword, history.password_hash);
+            if (isMatch) return true;
+        }
+        return false;
+    }
+
+    // ==================== CONVERSION METHODS ====================
+
+    /**
      * Convert to JSON - Exclude sensitive data
-     * @returns {Object} User object without password
+     * @returns {Object} User object without sensitive data
      */
     toJSON() {
         return {
@@ -108,8 +264,23 @@ class User {
             role: this.role,
             isActive: this.isActive,
             isVerified: this.isVerified,
+            isEmailVerified: this.isEmailVerified,
+            lastLogin: this.lastLogin,
             createdAt: this.createdAt,
             updatedAt: this.updatedAt
+        };
+    }
+
+    /**
+     * Convert to JSON with security info
+     * @returns {Object} User object with security info
+     */
+    toSecurityJSON() {
+        return {
+            ...this.toJSON(),
+            failedLoginAttempts: this.failedLoginAttempts,
+            isLocked: this.isAccountLocked(),
+            lockoutRemainingMinutes: this.getLockoutRemainingMinutes()
         };
     }
 
@@ -121,7 +292,7 @@ class User {
      * @returns {User} Updated user instance
      */
     update(updates) {
-        const allowedFields = ['name', 'email', 'password', 'role', 'isActive', 'isVerified'];
+        const allowedFields = ['name', 'email', 'password', 'role', 'isActive', 'isVerified', 'isEmailVerified'];
 
         Object.keys(updates).forEach(key => {
             if (!allowedFields.includes(key)) {
@@ -146,7 +317,10 @@ class User {
 
         if (updates.password) {
             if (!this.isValidPassword(updates.password)) {
-                throw new Error('Password must be at least 8 characters long');
+                throw new Error(
+                    'Password must be at least 8 characters and contain ' +
+                    'uppercase, lowercase, number, and special character (@$!%*?&)'
+                );
             }
         }
 
@@ -163,8 +337,47 @@ class User {
         if (updates.role) this.role = updates.role;
         if (updates.isActive !== undefined) this.isActive = updates.isActive;
         if (updates.isVerified !== undefined) this.isVerified = updates.isVerified;
+        if (updates.isEmailVerified !== undefined) this.isEmailVerified = updates.isEmailVerified;
 
         this.updatedAt = new Date();
+        return this;
+    }
+
+    /**
+     * Soft delete user
+     * @param {string} reason - Reason for deletion
+     * @returns {User} Updated user instance
+     */
+    softDelete(reason) {
+        this.isActive = false;
+        this.deletedAt = new Date();
+        this.deleteReason = reason || 'No reason provided';
+        this.updatedAt = new Date();
+        
+        logger.info("User soft deleted", {
+            userId: this.id,
+            email: this.email,
+            reason: this.deleteReason
+        });
+        
+        return this;
+    }
+
+    /**
+     * Restore soft deleted user
+     * @returns {User} Updated user instance
+     */
+    restore() {
+        this.isActive = true;
+        this.deletedAt = null;
+        this.deleteReason = null;
+        this.updatedAt = new Date();
+        
+        logger.info("User restored", {
+            userId: this.id,
+            email: this.email
+        });
+        
         return this;
     }
 
@@ -179,19 +392,43 @@ class User {
     }
 
     /**
-     * Check if user has admin role
+     * Check if user is admin
      * @returns {boolean} True if admin
      */
     isAdmin() {
-        return this.role === 'admin';
+        return this.role === 'admin' || this.role === 'superadmin';
     }
 
     /**
-     * Check if user has moderator role
+     * Check if user has admin or moderator role
+     * @returns {boolean} True if admin or moderator
+     */
+    isStaff() {
+        return ['admin', 'superadmin', 'moderator'].includes(this.role);
+    }
+
+    /**
+     * Check if user is superadmin
+     * @returns {boolean} True if superadmin
+     */
+    isSuperAdmin() {
+        return this.role === 'superadmin';
+    }
+
+    /**
+     * Check if user is moderator
      * @returns {boolean} True if moderator
      */
     isModerator() {
         return this.role === 'moderator';
+    }
+
+    /**
+     * Check if user is deleted
+     * @returns {boolean} True if deleted
+     */
+    isDeleted() {
+        return this.deletedAt !== null;
     }
 
     // ==================== STATIC METHODS ====================
@@ -211,6 +448,54 @@ class User {
      */
     static isValidRoleStatic(role) {
         return VALID_ROLES.includes(role);
+    }
+
+    /**
+     * Get password complexity requirements
+     * @returns {Object} Password requirements
+     */
+    static getPasswordRequirements() {
+        return {
+            minLength: 8,
+            requiresUppercase: true,
+            requiresLowercase: true,
+            requiresNumber: true,
+            requiresSpecialChar: true,
+            specialChars: '@$!%*?&',
+            maxFailedAttempts: MAX_FAILED_ATTEMPTS,
+            lockoutDurationMinutes: LOCKOUT_DURATION / 60000,
+            passwordHistoryLimit: PASSWORD_HISTORY_LIMIT
+        };
+    }
+
+    /**
+     * Validate password against requirements (static version)
+     * @param {string} password - Password to validate
+     * @returns {Object} { valid: boolean, errors: string[] }
+     */
+    static validatePasswordStrength(password) {
+        const errors = [];
+        
+        if (!password || password.length < 8) {
+            errors.push('Password must be at least 8 characters long');
+        }
+        if (!/[A-Z]/.test(password)) {
+            errors.push('Password must contain at least one uppercase letter');
+        }
+        if (!/[a-z]/.test(password)) {
+            errors.push('Password must contain at least one lowercase letter');
+        }
+        if (!/\d/.test(password)) {
+            errors.push('Password must contain at least one number');
+        }
+        if (!/[@$!%*?&]/.test(password)) {
+            errors.push('Password must contain at least one special character (@$!%*?&)');
+        }
+        
+        return {
+            valid: errors.length === 0,
+            errors
+        };
     }
 }
 
