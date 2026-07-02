@@ -36,7 +36,7 @@ const getConversationList = async (filters, page = 1, limit = 20) => {
         query += ` AND c.status = ?`;
         params.push(filters.status);
     }
-    
+
     if (filters.assigned_to) {
         if (filters.assigned_to === 'unassigned') {
             query += ` AND c.assigned_admin_id IS NULL`;
@@ -85,12 +85,12 @@ const saveMessage = async (conversationId, senderId, senderType, message) => {
         `INSERT INTO chat_messages (conversation_id, sender_id, sender_type, message) VALUES (?, ?, ?, ?)`,
         [conversationId, senderId, senderType, message]
     );
-    
+
     // Update conversation updated_at implicitly
     await db.query(`UPDATE chat_conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [conversationId]);
-    
+
     const [newMsg] = await db.query(
-        `SELECT m.*, u.name as sender_name FROM chat_messages m JOIN users u ON m.sender_id = u.id WHERE m.id = ?`, 
+        `SELECT m.*, u.name as sender_name FROM chat_messages m JOIN users u ON m.sender_id = u.id WHERE m.id = ?`,
         [result.insertId]
     );
     return newMsg[0];
@@ -99,30 +99,40 @@ const saveMessage = async (conversationId, senderId, senderType, message) => {
 const updateConversationStatus = async (conversationId, status) => {
     let query = `UPDATE chat_conversations SET status = ?`;
     const params = [status];
-    
-    if (status === 'closed') {
+
+    if (status === "closed") {
         query += `, closed_at = CURRENT_TIMESTAMP`;
     } else {
         query += `, closed_at = NULL`;
     }
-    
+
     query += ` WHERE id = ?`;
     params.push(conversationId);
-    
-    await db.query(query, params);
+
+    const [result] = await db.query(query, params);
+
+    if (result.affectedRows === 0) {
+        throw new Error("Conversation not found");
+    }
 };
 
 const assignConversation = async (conversationId, adminId) => {
-    await db.query(
-        `UPDATE chat_conversations SET assigned_admin_id = ?, status = 'pending' WHERE id = ?`,
+    const [result] = await db.query(
+        `UPDATE chat_conversations
+         SET assigned_admin_id = ?, status = 'pending'
+         WHERE id = ?`,
         [adminId, conversationId]
     );
+
+    if (result.affectedRows === 0) {
+        throw new Error("Conversation not found");
+    }
 };
 
 const verifyConversationAccess = async (conversationId, userId, role) => {
     const [conv] = await db.query(`SELECT * FROM chat_conversations WHERE id = ?`, [conversationId]);
     if (!conv.length) return false;
-    
+
     if (role === 'admin') return true;
     return conv[0].customer_id === userId;
 };
