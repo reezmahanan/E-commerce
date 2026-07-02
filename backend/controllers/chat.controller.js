@@ -46,13 +46,24 @@ const updateStatus = async (req, res) => {
         }
 
         await chatService.updateConversationStatus(id, status);
-        
+
         // Emit socket event if needed, handled in socket logic usually
         // but we return REST success
         res.status(200).json({ success: true, message: `Conversation ${status}` });
     } catch (error) {
         console.error("UPDATE CONV STATUS ERROR:", error);
-        res.status(500).json({ success: false, message: "Server error" });
+
+        if (error.message === "Conversation not found") {
+            return res.status(404).json({
+                success: false,
+                message: "Conversation not found"
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
     }
 };
 
@@ -65,7 +76,18 @@ const assignAdmin = async (req, res) => {
         res.status(200).json({ success: true, message: "Conversation assigned successfully" });
     } catch (error) {
         console.error("ASSIGN CONV ERROR:", error);
-        res.status(500).json({ success: false, message: "Server error" });
+
+        if (error.message === "Conversation not found") {
+            return res.status(404).json({
+                success: false,
+                message: "Conversation not found"
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
     }
 };
 
