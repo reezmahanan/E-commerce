@@ -822,67 +822,87 @@ document.addEventListener(
     }
 );
 
-// password visibility toggle
+// password visibility toggle with auto-hide security
 document.querySelectorAll(
     ".password-toggle"
 ).forEach((toggle) => {
 
-    toggle.addEventListener(
-        "click",
-        () => {
+    let autoHideTimer = null;
+    let countdownTimer = null;
+    let secondsLeft = 3;
 
-            const field =
-                toggle.closest(
-                    ".password-field"
-                );
+    const field = toggle.closest(".password-field");
+    const countdown = field?.querySelector(".countdown-indicator");
 
-            const input =
-                field?.querySelector(
-                    "input"
-                );
-
-            if (
-                !input
-            ) {
-                return;
-            }
-
-            const isHidden =
-                input.type === "password";
-
-            input.type =
-                isHidden
-                    ? "text"
-                    : "password";
-
-            toggle.setAttribute(
-                "aria-pressed",
-                String(isHidden)
-            );
-
-            toggle.setAttribute(
-                "aria-label",
-                isHidden
-                    ? "Hide password"
-                    : "Show password"
-            );
-
-            const icon =
-                toggle.querySelector("i");
-
-            if (icon) {
-                icon.classList.toggle(
-                    "fa-eye",
-                    !isHidden
-                );
-
-                icon.classList.toggle(
-                    "fa-eye-slash",
-                    isHidden
-                );
-            }
+    function resetToggle(input, icon) {
+        input.type = "password";
+        toggle.setAttribute("aria-pressed", "false");
+        toggle.setAttribute("aria-label", "Show password");
+        if (icon) {
+            icon.classList.add("fa-eye");
+            icon.classList.remove("fa-eye-slash");
         }
-    );
+        if (countdown) {
+            countdown.style.display = "none";
+            countdown.textContent = "";
+        }
+        clearTimeout(autoHideTimer);
+        clearInterval(countdownTimer);
+        autoHideTimer = null;
+        countdownTimer = null;
+        secondsLeft = 3;
+    }
+
+    function startCountdown(input, icon) {
+        secondsLeft = 3;
+        if (countdown) {
+            countdown.style.display = "inline";
+            countdown.textContent = "Hiding in " + secondsLeft + "s";
+        }
+
+        countdownTimer = setInterval(() => {
+            secondsLeft--;
+            if (countdown) {
+                countdown.textContent = "Hiding in " + secondsLeft + "s";
+            }
+            if (secondsLeft <= 0) {
+                clearInterval(countdownTimer);
+            }
+        }, 1000);
+
+        autoHideTimer = setTimeout(() => {
+            resetToggle(input, icon);
+        }, 3000);
+    }
+
+    toggle.addEventListener("click", () => {
+
+        const input = field?.querySelector("input");
+        if (!input) return;
+
+        const isHidden = input.type === "password";
+        const icon = toggle.querySelector("i");
+
+        // If currently visible — hide immediately and cancel timer
+        if (!isHidden) {
+            resetToggle(input, icon);
+            return;
+        }
+
+        // Show password and start auto-hide countdown
+        input.type = "text";
+        toggle.setAttribute("aria-pressed", "true");
+        toggle.setAttribute("aria-label", "Hide password");
+        if (icon) {
+            icon.classList.remove("fa-eye");
+            icon.classList.add("fa-eye-slash");
+        }
+
+        // Clear any existing timers before starting new ones
+        clearTimeout(autoHideTimer);
+        clearInterval(countdownTimer);
+        startCountdown(input, icon);
+    });
 });
 
 // Password Strength Meter

@@ -270,11 +270,14 @@
     }
 }
 
-#password-strength-tips {
-    font-size: 0.8rem;
-    color: #888;
-    margin-top: 4px;
-    min-height: 20px;
+/* Password toggle countdown indicator */
+.countdown-indicator {
+    font-size: 0.75rem;
+    color: #088178;
+    margin-left: 8px;
+    font-weight: 500;
+    vertical-align: middle;
+    transition: opacity 0.3s ease;
 }
 
 #password-strength-bar {
