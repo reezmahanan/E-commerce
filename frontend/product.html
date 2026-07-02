@@ -337,68 +337,58 @@
 
             <!-- Size Chart -->
 
-            <div class="size-chart-box">
+            <!-- Size Guide Link -->
+            <div class="size-guide-link-wrapper">
+                <button
+                    type="button"
+                    id="size-guide-btn"
+                    class="size-guide-btn"
+                    aria-haspopup="dialog"
+                    aria-controls="size-guide-modal"
+                >
+                    📏 Size Guide
+                </button>
+            </div>
 
-                <h4>
-
-                    Size Chart
-
-                </h4>
-
-                <table class="size-chart-table">
-
-                    <tr>
-
-                        <th>Size</th>
-
-                        <th>Chest</th>
-
-                        <th>Length</th>
-
-                    </tr>
-
-                    <tr>
-
-                        <td>M</td>
-
-                        <td>38</td>
-
-                        <td>27</td>
-
-                    </tr>
-
-                    <tr>
-
-                        <td>L</td>
-
-                        <td>40</td>
-
-                        <td>28</td>
-
-                    </tr>
-
-                    <tr>
-
-                        <td>XL</td>
-
-                        <td>42</td>
-
-                        <td>29</td>
-
-                    </tr>
-
-                    <tr>
-
-                        <td>XXL</td>
-
-                        <td>44</td>
-
-                        <td>30</td>
-
-                    </tr>
-
-                </table>
-
+            <!-- Size Guide Modal -->
+            <div
+                id="size-guide-modal"
+                class="size-guide-overlay"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="size-guide-title"
+                aria-hidden="true"
+            >
+                <div class="size-guide-modal">
+                    <div class="size-guide-header">
+                        <h3 id="size-guide-title">📏 Size Guide</h3>
+                        <button type="button" class="size-guide-close" id="size-guide-close" aria-label="Close size guide">&times;</button>
+                    </div>
+                    <p class="size-guide-subtitle">All measurements are in centimeters (cm) and inches (in)</p>
+                    <div class="size-guide-table-wrapper">
+                        <table class="size-guide-table">
+                            <thead>
+                                <tr>
+                                    <th>Size</th>
+                                    <th>Chest (cm)</th>
+                                    <th>Chest (in)</th>
+                                    <th>Waist (cm)</th>
+                                    <th>Waist (in)</th>
+                                    <th>Length (cm)</th>
+                                    <th>Length (in)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td class="size-label">S</td><td>86–91</td><td>34–36</td><td>71–76</td><td>28–30</td><td>68</td><td>26.5</td></tr>
+                                <tr><td class="size-label">M</td><td>91–97</td><td>36–38</td><td>76–81</td><td>30–32</td><td>70</td><td>27.5</td></tr>
+                                <tr><td class="size-label">L</td><td>97–102</td><td>38–40</td><td>81–86</td><td>32–34</td><td>72</td><td>28.5</td></tr>
+                                <tr><td class="size-label">XL</td><td>107–112</td><td>42–44</td><td>91–97</td><td>36–38</td><td>74</td><td>29</td></tr>
+                                <tr><td class="size-label">XXL</td><td>117–122</td><td>46–48</td><td>102–107</td><td>40–42</td><td>76</td><td>30</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="size-guide-tip">💡 <strong>Tip:</strong> Measure yourself and compare to the chart above. When between sizes, size up for a relaxed fit.</p>
+                </div>
             </div>
 
             <!-- Color Variants -->
@@ -854,6 +844,41 @@
     <script defer src="scripts/ui.js"></script>
 
     <script defer src="scripts/recommendations.js"></script>
+
+    <script>
+    (function () {
+        var modal = document.getElementById('size-guide-modal');
+        var openBtn = document.getElementById('size-guide-btn');
+        var closeBtn = document.getElementById('size-guide-close');
+
+        function openModal() {
+            modal.classList.add('active');
+            modal.setAttribute('aria-hidden', 'false');
+            closeBtn.focus();
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            modal.setAttribute('aria-hidden', 'true');
+            openBtn.focus();
+            document.body.style.overflow = '';
+        }
+
+        openBtn.addEventListener('click', openModal);
+        closeBtn.addEventListener('click', closeModal);
+
+        modal.addEventListener('click', function (e) {
+            if (e.target === modal) closeModal();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                closeModal();
+            }
+        });
+        })();
+    </script>
 
 </body>
 </html>
