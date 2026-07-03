@@ -5,12 +5,94 @@ const {
     safeInteger,
     sanitizeString,
 } = require("../utils/helpers");
-
+const logger = require("../utils/logger");
 const { validatePromo, calculateDiscount } = require("./promo.service");
 
-// create order service
+// Validation helper functions
+const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+};
+
+const isValidPhone = (phone) => {
+    const phoneRegex = /^[0-9]{10}$/;
+    return phoneRegex.test(phone);
+};
+
+const validateOrderData = (orderData) => {
+    const errors = [];
+
+    // Email validation
+    if (!orderData.customer_email) {
+        errors.push("Customer email is required");
+    } else if (!isValidEmail(orderData.customer_email)) {
+        errors.push("Invalid email format");
+    }
+
+    // Phone validation
+    if (!orderData.customer_phone) {
+        errors.push("Phone number is required");
+    } else if (!isValidPhone(orderData.customer_phone)) {
+        errors.push("Invalid phone number format (must be 10 digits)");
+    }
+
+    // Address validation
+    if (!orderData.full_address) {
+        errors.push("Shipping address is required");
+    } else if (orderData.full_address.length < 10) {
+        errors.push("Shipping address must be at least 10 characters");
+    }
+
+    // City validation
+    if (!orderData.city) {
+        errors.push("City is required");
+    } else if (orderData.city.length < 2) {
+        errors.push("City must be at least 2 characters");
+    }
+
+    // State validation
+    if (!orderData.state) {
+        errors.push("State is required");
+    } else if (orderData.state.length < 2) {
+        errors.push("State must be at least 2 characters");
+    }
+
+    // Zip validation
+    if (!orderData.zip) {
+        errors.push("ZIP code is required");
+    } else if (!/^[0-9]{5,6}$/.test(orderData.zip)) {
+        errors.push("Invalid ZIP code format (must be 5-6 digits)");
+    }
+
+    // Payment method validation
+    const validPaymentMethods = ['credit_card', 'debit_card', 'paypal', 'cash_on_delivery', 'upi'];
+    if (!orderData.payment_method) {
+        errors.push("Payment method is required");
+    } else if (!validPaymentMethods.includes(orderData.payment_method)) {
+        errors.push(`Invalid payment method. Allowed: ${validPaymentMethods.join(', ')}`);
+    }
+
+    // Items validation
+    if (!orderData.items || !safeArray(orderData.items).length) {
+        errors.push("Order must contain at least one item");
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
+};
+
+// Create order service with enhanced validations
 const createOrderService = async (connection, orderData) => {
     try {
+        // Validate order data first
+        const validation = validateOrderData(orderData);
+        if (!validation.isValid) {
+            logger.error(`Order validation failed: ${validation.errors.join(', ')}`);
+            throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+        }
+
         const {
             user_id,
             customer_name,
@@ -30,6 +112,7 @@ const createOrderService = async (connection, orderData) => {
 
         // validate empty cart
         if (!safeArray(items).length) {
+            logger.error("Cart is empty");
             throw new Error("Cart is empty");
         }
 
@@ -95,7 +178,7 @@ const createOrderService = async (connection, orderData) => {
         if (promo_code) {
             const promoValidation = await validatePromo(promo_code, calculatedTotal);
             if (!promoValidation.valid) {
-                console.error("Promo validation failed:",promoValidation.message);
+                logger.error("Promo validation failed:", promoValidation.message);
                 throw new Error("Invalid promo code.");
             }
             discountAmount = calculateDiscount(
@@ -123,9 +206,11 @@ const createOrderService = async (connection, orderData) => {
                 subtotal,
                 promo_code,
                 discount_amount,
-                final_amount
+                final_amount,
+                created_at,
+                updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         `;
 
         const [orderResult] = await connection.query(orderQuery, [
@@ -208,32 +293,407 @@ const createOrderService = async (connection, orderData) => {
             }
         }
 
-        // await connection.commit();
+        logger.info(`Order created successfully: ${orderId} by user ${user_id || 'guest'}`);
+
+        // Return order summary
+        const orderSummary = await getOrderSummaryById(connection, orderId);
 
         return {
             success: true,
             orderId: orderResult.insertId,
             total: calculatedTotal,
+            finalAmount: finalAmount,
+            discountAmount: discountAmount,
+            promoCode: appliedPromoCode,
             items: validatedItems,
+            summary: orderSummary
         };
     } catch (error) {
-        // await connection.rollback();
+        logger.error(`Error creating order: ${error.message}`);
         throw error;
     }
 };
 
-// get orders service
+// Get order summary by ID
+const getOrderSummaryById = async (connection, orderId) => {
+    try {
+        const query = `
+            SELECT 
+                o.id,
+                o.customer_name,
+                o.customer_email,
+                o.customer_phone,
+                o.city,
+                o.state,
+                o.zip,
+                o.full_address,
+                o.payment_method,
+                o.total,
+                o.status,
+                o.subtotal,
+                o.discount_amount,
+                o.final_amount,
+                o.created_at,
+                o.updated_at,
+                GROUP_CONCAT(
+                    CONCAT(oi.name, ' (', oi.qty, ' x ₹', oi.price, ')')
+                    SEPARATOR ', '
+                ) as items_summary
+            FROM orders o
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            WHERE o.id = ?
+            GROUP BY o.id
+        `;
+        
+        const [results] = await connection.query(query, [orderId]);
+        return safeArray(results)[0] || null;
+    } catch (error) {
+        logger.error(`Error getting order summary: ${error.message}`);
+        throw error;
+    }
+};
+
+// Update order status
+const updateOrderStatusService = async (orderId, status, userId) => {
+    try {
+        const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+        
+        if (!validStatuses.includes(status)) {
+            throw new Error(`Invalid status. Allowed: ${validStatuses.join(', ')}`);
+        }
+
+        const orderQuery = `SELECT id, status FROM orders WHERE id = ?`;
+        const [orderResults] = await db.query(orderQuery, [orderId]);
+        const order = safeArray(orderResults)[0];
+
+        if (!order) {
+            throw new Error('Order not found');
+        }
+
+        if (order.status === 'delivered' && status !== 'cancelled') {
+            throw new Error('Cannot update status of delivered order');
+        }
+
+        if (order.status === 'cancelled') {
+            throw new Error('Cannot update status of cancelled order');
+        }
+
+        const updateQuery = `
+            UPDATE orders 
+            SET status = ?, updated_at = NOW()
+            WHERE id = ?
+        `;
+        
+        await db.query(updateQuery, [status, orderId]);
+
+        // Log status change
+        const logQuery = `
+            INSERT INTO order_status_logs (order_id, old_status, new_status, updated_by, created_at)
+            VALUES (?, ?, ?, ?, NOW())
+        `;
+        await db.query(logQuery, [orderId, order.status, status, userId]);
+
+        logger.info(`Order ${orderId} status updated from ${order.status} to ${status} by user ${userId}`);
+
+        return {
+            success: true,
+            orderId: orderId,
+            oldStatus: order.status,
+            newStatus: status,
+            updatedAt: new Date()
+        };
+    } catch (error) {
+        logger.error(`Error updating order status: ${error.message}`);
+        throw error;
+    }
+};
+
+// Cancel order with reason
+const cancelOrderService = async (orderId, reason, userId) => {
+    try {
+        const orderQuery = `SELECT id, status FROM orders WHERE id = ?`;
+        const [orderResults] = await db.query(orderQuery, [orderId]);
+        const order = safeArray(orderResults)[0];
+
+        if (!order) {
+            throw new Error('Order not found');
+        }
+
+        if (order.status === 'delivered') {
+            throw new Error('Cannot cancel delivered order');
+        }
+
+        if (order.status === 'cancelled') {
+            throw new Error('Order is already cancelled');
+        }
+
+        // Update order status and add cancellation reason
+        const updateQuery = `
+            UPDATE orders 
+            SET status = 'cancelled', 
+                cancellation_reason = ?,
+                cancelled_at = NOW(),
+                updated_at = NOW()
+            WHERE id = ?
+        `;
+        
+        await db.query(updateQuery, [reason, orderId]);
+
+        // Log cancellation
+        const logQuery = `
+            INSERT INTO order_status_logs (order_id, old_status, new_status, reason, updated_by, created_at)
+            VALUES (?, ?, 'cancelled', ?, ?, NOW())
+        `;
+        await db.query(logQuery, [orderId, order.status, reason, userId]);
+
+        logger.info(`Order ${orderId} cancelled by user ${userId}. Reason: ${reason}`);
+
+        return {
+            success: true,
+            orderId: orderId,
+            status: 'cancelled',
+            reason: reason,
+            cancelledAt: new Date()
+        };
+    } catch (error) {
+        logger.error(`Error cancelling order: ${error.message}`);
+        throw error;
+    }
+};
+
+// Get order history with pagination
+const getOrderHistoryService = async (userId, page = 1, status = null, limit = 10) => {
+    try {
+        let query = `SELECT * FROM orders WHERE user_id = ?`;
+        const params = [userId];
+
+        if (status) {
+            const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+            if (!validStatuses.includes(status)) {
+                throw new Error(`Invalid status filter. Allowed: ${validStatuses.join(', ')}`);
+            }
+            query += ` AND status = ?`;
+            params.push(status);
+        }
+
+        const offset = (page - 1) * limit;
+        
+        // Get total count
+        const countQuery = `SELECT COUNT(*) as total FROM (${query}) as subquery`;
+        const [countResults] = await db.query(countQuery, params);
+        const totalOrders = countResults[0].total;
+
+        // Get paginated results
+        query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const [orders] = await db.query(query, params);
+        const safeOrders = safeArray(orders);
+
+        const totalPages = Math.ceil(totalOrders / limit);
+
+        logger.info(`Fetched ${safeOrders.length} orders for user ${userId}, page ${page}`);
+
+        return {
+            orders: safeOrders,
+            pagination: {
+                currentPage: page,
+                pageSize: limit,
+                totalOrders: totalOrders,
+                totalPages: totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        };
+    } catch (error) {
+        logger.error(`Error fetching order history: ${error.message}`);
+        throw error;
+    }
+};
+
+// Get admin order history with advanced filters
+const getAdminOrderHistoryService = async (filters = {}, page = 1, limit = 10) => {
+    try {
+        let query = `SELECT * FROM orders WHERE 1=1`;
+        const params = [];
+
+        if (filters.status) {
+            query += ` AND status = ?`;
+            params.push(filters.status);
+        }
+
+        if (filters.customer_email) {
+            query += ` AND customer_email LIKE ?`;
+            params.push(`%${filters.customer_email}%`);
+        }
+
+        if (filters.date_from) {
+            query += ` AND created_at >= ?`;
+            params.push(filters.date_from);
+        }
+
+        if (filters.date_to) {
+            query += ` AND created_at <= ?`;
+            params.push(filters.date_to);
+        }
+
+        const offset = (page - 1) * limit;
+        
+        // Get total count
+        const countQuery = `SELECT COUNT(*) as total FROM (${query}) as subquery`;
+        const [countResults] = await db.query(countQuery, params);
+        const totalOrders = countResults[0].total;
+
+        // Get paginated results
+        query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const [orders] = await db.query(query, params);
+        const safeOrders = safeArray(orders);
+
+        const totalPages = Math.ceil(totalOrders / limit);
+
+        logger.info(`Fetched ${safeOrders.length} orders with filters`);
+
+        return {
+            orders: safeOrders,
+            pagination: {
+                currentPage: page,
+                pageSize: limit,
+                totalOrders: totalOrders,
+                totalPages: totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        };
+    } catch (error) {
+        logger.error(`Error fetching admin orders: ${error.message}`);
+        throw error;
+    }
+};
+
+// Get single order by ID with items
+const getOrderByIdService = async (orderId) => {
+    try {
+        const orderQuery = `
+            SELECT o.*, 
+                   GROUP_CONCAT(
+                       JSON_OBJECT(
+                           'id', oi.id,
+                           'product_id', oi.product_id,
+                           'name', oi.name,
+                           'price', oi.price,
+                           'qty', oi.qty,
+                           'color', oi.color,
+                           'size', oi.size
+                       )
+                   ) as items
+            FROM orders o
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            WHERE o.id = ?
+            GROUP BY o.id
+        `;
+        
+        const [results] = await db.query(orderQuery, [orderId]);
+        const order = safeArray(results)[0];
+
+        if (!order) {
+            throw new Error('Order not found');
+        }
+
+        // Parse items JSON if exists
+        if (order.items) {
+            order.items = order.items.split(',').map(item => JSON.parse(item));
+        }
+
+        return order;
+    } catch (error) {
+        logger.error(`Error fetching order: ${error.message}`);
+        throw error;
+    }
+};
+
+// Get all orders (existing)
 const getOrdersService = async () => {
-    const query = `
-        SELECT *
-        FROM orders
-        ORDER BY created_at DESC
-    `;
-    const [results] = await db.query(query);
-    return safeArray(results);
+    try {
+        const query = `
+            SELECT *
+            FROM orders
+            ORDER BY created_at DESC
+        `;
+        const [results] = await db.query(query);
+        return safeArray(results);
+    } catch (error) {
+        logger.error(`Error fetching all orders: ${error.message}`);
+        throw error;
+    }
+};
+
+// Generate order summary (HTML/PDF ready)
+const generateOrderSummaryService = async (orderId) => {
+    try {
+        const order = await getOrderByIdService(orderId);
+        
+        const summary = {
+            orderId: order.id,
+            customerName: order.customer_name,
+            customerEmail: order.customer_email,
+            customerPhone: order.customer_phone,
+            shippingAddress: {
+                fullAddress: order.full_address,
+                city: order.city,
+                state: order.state,
+                zip: order.zip
+            },
+            paymentMethod: order.payment_method,
+            status: order.status,
+            orderDate: order.created_at,
+            items: order.items || [],
+            subtotal: order.subtotal || order.total,
+            discountAmount: order.discount_amount || 0,
+            total: order.final_amount || order.total,
+            timeline: await getOrderTimeline(orderId)
+        };
+
+        logger.info(`Generated summary for order ${orderId}`);
+        return summary;
+    } catch (error) {
+        logger.error(`Error generating order summary: ${error.message}`);
+        throw error;
+    }
+};
+
+// Get order timeline (status history)
+const getOrderTimeline = async (orderId) => {
+    try {
+        const query = `
+            SELECT * FROM order_status_logs 
+            WHERE order_id = ? 
+            ORDER BY created_at DESC
+        `;
+        const [results] = await db.query(query, [orderId]);
+        return safeArray(results);
+    } catch (error) {
+        logger.error(`Error getting order timeline: ${error.message}`);
+        return [];
+    }
+};
+
+// Validate order data (exported for external use)
+const validateOrderDataService = (orderData) => {
+    return validateOrderData(orderData);
 };
 
 module.exports = {
     createOrderService,
     getOrdersService,
+    getOrderByIdService,
+    updateOrderStatusService,
+    cancelOrderService,
+    getOrderHistoryService,
+    getAdminOrderHistoryService,
+    generateOrderSummaryService,
+    validateOrderDataService,
+    getOrderSummaryById,
+    getOrderTimeline
 };

@@ -220,9 +220,9 @@ div[class*="feedback"] {
     border-radius: 20px !important;     
     
     /* VIBRANT PURPLE GLOW: Clean outer depth mixed with a radiant purple bloom aura */
-    box-shadow: 0 15px 35px rgba(109, 68, 184, 0.08), 
-                0 0 25px rgba(168, 85, 247, 0.45), 
-                0 0 50px rgba(168, 85, 247, 0.2) !important;
+    box-shadow: 0 15px 35px rgba(8, 129, 120, 0.08),
+            0 0 25px rgba(8, 129, 120, 0.45),
+            0 0 50px rgba(8, 129, 120, 0.2) !important;
     
     padding: 50px 60px !important; 
     box-sizing: border-box !important;
@@ -506,9 +506,8 @@ body.dark-theme div[class*="feedback"] {
     border-color: #ffffff !important; /* Crisp white border ring */
     
     /* NEON WHITE GLOW: Deep structural shadows mixed with a multi-layered high-intensity white aura */
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 
-                0 0 30px rgba(255, 255, 255, 0.6), 
-                0 0 60px rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4),
+            0 0 25px rgba(8, 129, 120, 0.2) !important;
 }
 
 
