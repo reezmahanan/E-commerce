@@ -15,6 +15,7 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
+const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 
 // load environment
 dotenv.config();
@@ -97,7 +98,8 @@ app.use(timeout("30s"));
 app.use((req, res, next) => {
     if (req.path.startsWith("/api/admin") || 
         req.path === "/api/upload" || 
-        req.path === "/api/export") {
+        req.path === "/api/export" ||
+        req.path.startsWith("/api/mcp")) { // ✅ MCP timeout extended
         req.setTimeout(60000);
     }
     next();
@@ -141,6 +143,15 @@ app.use(
     }),
 );
 
+// ✅ Security headers for MCP endpoints
+app.use('/api/mcp/*', (req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    next();
+});
+
 // request logger
 if (process.env.NODE_ENV !== "production") {
     app.use((req, res, next) => {
@@ -176,6 +187,19 @@ const adminLimiter = rateLimit({
     },
 });
 
+// ✅ MCP specific rate limiter - stricter
+const mcpLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10, // 10 requests per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+        success: false,
+        errorCode: "MCP_RATE_LIMIT_EXCEEDED",
+        message: "Too many MCP requests. Please try again after 1 minute.",
+    },
+});
+
 // apply rate limiting
 app.use("/api", apiLimiter);
 
@@ -188,6 +212,9 @@ app.use("/api/auth/refresh-token", authLimiter);
 
 // admin routes rate limiting
 app.use("/api/admin", adminLimiter);
+
+// ✅ MCP routes rate limiting
+app.use("/api/mcp", mcpLimiter);
 
 // health check
 app.get("/health", (req, res) => {
@@ -207,18 +234,28 @@ app.get("/", (req, res) => {
     return res.status(200).json({
         success: true,
         message: "E-Commerce Backend Running",
-        version: "1.0.0",
+        version: "2.0.0",
         endpoints: {
             health: "/health",
             api: "/api",
             auth: "/api/auth",
             admin: "/api/admin",
+            mcp: "/api/mcp", // ✅ MCP endpoint added
         },
+        security: {
+            rateLimiting: "Enabled",
+            helmet: "Enabled",
+            cors: "Configured",
+            mcpSecurity: "Enabled",
+        }
     });
 });
 
 // api routes
 app.use("/api", routes);
+
+// ✅ MCP routes - must be after auth routes but before 404
+app.use("/api/mcp", mcpRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -273,6 +310,15 @@ app.use((err, req, res, next) => {
             success: false,
             errorCode: "RATE_LIMIT_EXCEEDED",
             message: "Too many requests. Please try again later.",
+        });
+    }
+
+    // ✅ Handle MCP specific errors
+    if (err.code === "MCP_SECURITY_ERROR") {
+        return res.status(403).json({
+            success: false,
+            errorCode: "MCP_SECURITY_ERROR",
+            message: err.message || "MCP security validation failed",
         });
     }
 
@@ -338,6 +384,9 @@ server.listen(PORT, "0.0.0.0", () => {
     console.log(`Frontend URL: ${FRONTEND_URL}`);
     console.log(`Logs directory: ${logDir}`);
     console.log(`Health check: http://localhost:${PORT}/health`);
+    console.log(`🔒 MCP Security: Enabled`);
+    console.log(`🔒 Rate Limiting: Enabled`);
+    console.log(`🔒 Helmet: Enabled`);
 });
 
 module.exports = app;
