@@ -678,6 +678,23 @@ function evaluatePasswordStrength(password) {
     if (/[^a-zA-Z0-9]/.test(password)) score++;
     else tips.push('Include at least one special character');
 
+    if (
+        user
+    ) {
+        authLink.innerHTML =
+            `<i class="fas fa-user"></i>`;
+            
+        authLink.href = "profile.html";
+        authLink.classList.add(
+            "profile-active"
+        );
+authLink.addEventListener("click", (event) => {
+    if (dropdown) {
+        event.preventDefault();
+        dropdown.classList.toggle("active");
+    }
+    // if no dropdown exists, href="profile.html" handles navigation
+});
     let level = 'Weak';
     let color = 'strength-weak';
     let percent = 25;
