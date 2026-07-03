@@ -753,23 +753,18 @@ function initializeAuthUI() {
     ) {
         authLink.innerHTML =
             `<i class="fas fa-user"></i>`;
-
-        authLink.href =
-            "#";
-
+            
+        authLink.href = "profile.html";
         authLink.classList.add(
             "profile-active"
         );
-
-        authLink.addEventListener(
-            "click",
-            (event) => {
-                event.preventDefault();
-                dropdown?.classList.toggle(
-                    "active"
-                );
-            }
-        );
+authLink.addEventListener("click", (event) => {
+    if (dropdown) {
+        event.preventDefault();
+        dropdown.classList.toggle("active");
+    }
+    // if no dropdown exists, href="profile.html" handles navigation
+});
 
         logoutBtn?.addEventListener(
             "click",
