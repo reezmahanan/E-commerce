@@ -29,6 +29,20 @@ const RATE_LIMIT_MAX = 10; // 10 requests per minute
 // In-memory rate limiter
 const rateLimiter = new Map();
 
+// Periodic garbage collection to prevent memory leaks (OOM/DoS)
+const cleanupInterval = setInterval(() => {
+    const windowStart = Date.now() - RATE_LIMIT_WINDOW;
+    for (const [ip, requests] of rateLimiter.entries()) {
+        const recentRequests = requests.filter(time => time > windowStart);
+        if (recentRequests.length === 0) {
+            rateLimiter.delete(ip);
+        } else {
+            rateLimiter.set(ip, recentRequests);
+        }
+    }
+}, RATE_LIMIT_WINDOW);
+cleanupInterval.unref();
+
 // ============================================
 // VALIDATION FUNCTIONS
 // ============================================
