@@ -211,11 +211,10 @@
 
             <div class="sort-box">
 
-                <label for="sort-select">
-                    Sort
-                </label>
-
-                <select id="sort-select" name="sort">
+                <label for="product-sort">
+    Sort:
+</label>
+<select id="product-sort" name="sort">
                     <option value="newest">Newest</option>
                     <option value="price-low-high">Price Low → High</option>
                     <option value="price-high-low">Price High → Low</option>
@@ -417,16 +416,28 @@
     ></script>
 
     <!-- Shop Scripts -->
+<script
+    defer
+    src="scripts/shop-filter-utils.js"
+></script>
 
-    <script
-        defer
-        src="scripts/shop-filter-utils.js"
-    ></script>
+<script
+    defer
+    src="scripts/shop-controls.js"
+></script>
+<script
+    defer
+    src="scripts/product-cards-home.js"
+></script>
 
-    <script
-        defer
-        src="scripts/shop.js"
-    ></script>
+<script
+    defer
+    src="scripts/product-actions-home.js"
+></script>
+<script
+    defer
+    src="scripts/shop.js"
+></script>
 
     <script defer src="scripts/ui.js"></script>
 
