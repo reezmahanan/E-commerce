@@ -24,6 +24,11 @@ const copywriterRoutes = require('./routes/copywriterRoutes');
 // Add copywriter routes
 app.use('/api/copywriter', copywriterRoutes);
 
+// Add with other route imports
+const fraudRoutes = require('./routes/fraudRoutes');
+
+// Add fraud routes
+app.use('/api/fraud', fraudRoutes);
 const aiRoutes = require('./routes/aiRoutes');
 
 // Add AI routes
