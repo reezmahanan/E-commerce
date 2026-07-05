@@ -14,7 +14,11 @@ const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
 // Add with other route imports
 const aiFeedRoutes = require('./routes/aiFeedRoutes');
+// Import agent routes
+const agentRoutes = require('./src/routes/agentRoutes');
 
+// Add routes
+app.use('/api/agents', agentRoutes);
 // Add AI feed routes
 app.use('/api/ai-feed', aiFeedRoutes);
 const routes = require("./routes/index");
