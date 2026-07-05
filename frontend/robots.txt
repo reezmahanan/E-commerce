@@ -10,3 +10,61 @@ Disallow: /order.html
 Disallow: /wishlist.html
 
 Sitemap: https://www.bhuvansh.xyz/sitemap.xml
+
+# AI Shopping Agent Friendly Configuration
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /checkout/
+Disallow: /cart/
+Disallow: /wishlist/
+Disallow: /profile/
+
+# Allow AI shopping agents to crawl product pages
+User-agent: ClaudeBot
+Allow: /
+Allow: /products/
+Allow: /product/
+Allow: /shop/
+Allow: /mens/
+Allow: /womens/
+Allow: /electronics/
+Allow: /categories/
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /cart/
+Disallow: /api/
+Crawl-delay: 1
+
+User-agent: ChatGPT-User
+Allow: /
+Allow: /products/
+Allow: /product/
+Allow: /shop/
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /cart/
+Crawl-delay: 1
+
+User-agent: PerplexityBot
+Allow: /
+Allow: /products/
+Allow: /product/
+Allow: /shop/
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /cart/
+Crawl-delay: 1
+
+User-agent: Googlebot
+Allow: /
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /api/
+Crawl-delay: 0.5
+
+# Sitemap location
+Sitemap: https://yourdomain.com/sitemap.xml

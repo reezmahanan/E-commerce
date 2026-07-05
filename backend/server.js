@@ -12,7 +12,11 @@ const dotenv = require("dotenv");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
+// Add with other route imports
+const aiFeedRoutes = require('./routes/aiFeedRoutes');
 
+// Add AI feed routes
+app.use('/api/ai-feed', aiFeedRoutes);
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
@@ -36,6 +40,7 @@ const fraudRoutes = require('./routes/fraudRoutes');
 
 // Add fraud routes
 app.use('/api/fraud', fraudRoutes);
+
 const aiRoutes = require('./routes/aiRoutes');
 
 // Add AI routes
