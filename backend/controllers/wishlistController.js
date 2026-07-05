@@ -196,7 +196,7 @@ const wishlistController = {
 
             return res.status(201).json({
                 success: true,
-                message: "Added to wishlist",
+                message: "Added to wishlist ❤️",
                 productId: validation.id
             });
 

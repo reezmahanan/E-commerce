@@ -120,7 +120,7 @@ async function toggleWishlist(
         );
 
         AppUtils.notify(
-            "Added to wishlist",
+            "Added to wishlist ❤️",
             "success"
         );
         

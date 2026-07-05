@@ -276,10 +276,17 @@ async function toggleProductWishlist() {
                     )
             );
 
+<<<<<<< HEAD
+       AppUtils.notify(
+           "Added to wishlist ❤️",
+            "success"
+                    );
+=======
         AppUtils.notify(
-            "Removed from wishlist",
-            "info"
-        );
+          "Added to wishlist ❤️",
+            "success"
+                        );
+>>>>>>> 709f3c7 (fix: improve wishlist toast and frontend scripts)
         
         if (token) {
             try {
@@ -311,7 +318,7 @@ async function toggleProductWishlist() {
         });
 
         AppUtils.notify(
-            "Added to wishlist",
+            "Added to wishlist ❤️",
             "success"
         );
         

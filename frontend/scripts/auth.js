@@ -695,6 +695,7 @@ authLink.addEventListener("click", (event) => {
     }
     // if no dropdown exists, href="profile.html" handles navigation
 });
+    }
     let level = 'Weak';
     let color = 'strength-weak';
     let percent = 25;

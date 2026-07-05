@@ -1,20 +1,20 @@
-import {
-    getJSON,
-    $,
-    defaultImage
-} from "./utils.js";
+
 
 // LOAD RECENTLY VIEWED PRODUCTS
 const recentlyViewed =
-    getJSON("recentlyViewed") || [];
+    AppUtils.getJSON("recentlyViewed") || [];
 
 // ELEMENTS
 const elements = {
     recentContainer:
-        $("#recently-viewed-container"),
+<<<<<<< HEAD
+        AppUtils.$("#recently-viewed-count")
+=======
+       AppUtils.$("#recently-viewed-count"),
+>>>>>>> 709f3c7 (fix: improve wishlist toast and frontend scripts)
 
     recentCount:
-        $("#recently-viewed-count")
+        AppUtils.$("#recently-viewed-count")
 };
 
 // EMPTY STATE HELPER
@@ -56,7 +56,7 @@ if (elements.recentContainer) {
             );
             div.innerHTML = `
                 <img
-                    src="${defaultImage(product.image)}"
+                    src="${AppUtils.defaultImage(product.image)}"
                     alt="${AppUtils.escapeHTML(product.name || "Product")}"
                 >
                 <h4>
