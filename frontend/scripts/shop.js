@@ -56,52 +56,7 @@ let activeSuggestionIndex = -1;
 let searchHistory = [];
 
 // SHOP PAGE ELEMENTS
-const elements = {
-    searchForm:
-        document.getElementById("shop-search-form"),
-
-    searchInput:
-        document.getElementById("search-input"),
-
-    suggestions:
-        document.getElementById("search-suggestions"),
-
-    categoryList:
-        document.getElementById("category-filter-list"),
-
-    minPriceRange:
-        document.getElementById("min-price-range"),
-
-    maxPriceRange:
-        document.getElementById("max-price-range"),
-
-    priceOutput:
-        document.getElementById("price-range-output"),
-
-    sortSelect:
-        document.getElementById("sort-select"),
-
-    productContainer:
-        document.getElementById("product-container"),
-
-    resultsSummary:
-        document.getElementById("results-summary"),
-
-    filterSidebar:
-        document.getElementById("filter-sidebar"),
-
-    filterBackdrop:
-        document.getElementById("filter-backdrop"),
-
-    mobileFilterToggle:
-        document.getElementById("mobile-filter-toggle"),
-
-    closeFilterSidebar:
-        document.getElementById("close-filter-sidebar"),
-
-    clearFilters:
-        document.getElementById("clear-filters")
-};
+const elements = {};
 
 const getFilterUtils = () =>
     window.ShopFilterUtils;
@@ -1192,6 +1147,22 @@ function renderPagination() {
 document.addEventListener(
     "DOMContentLoaded",
     () => {
+        elements.searchForm = document.getElementById("shop-search-form");
+        elements.searchInput = document.getElementById("search-input");
+        elements.suggestions = document.getElementById("search-suggestions");
+        elements.categoryList = document.getElementById("category-filter-list");
+        elements.minPriceRange = document.getElementById("min-price-range");
+        elements.maxPriceRange = document.getElementById("max-price-range");
+        elements.priceOutput = document.getElementById("price-range-output");
+        elements.sortSelect = document.getElementById("product-sort");
+        elements.productContainer = document.getElementById("product-container");
+        elements.resultsSummary = document.getElementById("results-summary");
+        elements.filterSidebar = document.getElementById("filter-sidebar");
+        elements.filterBackdrop = document.getElementById("filter-backdrop");
+        elements.mobileFilterToggle = document.getElementById("mobile-filter-toggle");
+        elements.closeFilterSidebar = document.getElementById("close-filter-sidebar");
+        elements.clearFilters = document.getElementById("clear-filters");
+
         setupSearch();
         setupFilterControls();
         setupFilterDrawer();

@@ -18,16 +18,24 @@ const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 
 // Add with other route imports
+
 const aiFinancialRoutes = require('./routes/aiFinancialRoutes');
 
 // Add AI financial routes
 app.use('/api/ai/financial', aiFinancialRoutes);
 
 // Add with other route imports
+
 const copywriterRoutes = require('./routes/copywriterRoutes');
 
 // Add copywriter routes
 app.use('/api/copywriter', copywriterRoutes);
+
+const aiRoutes = require('./routes/aiRoutes');
+
+// Add AI routes
+app.use('/api/ai', aiRoutes);
+
 // load environment
 dotenv.config();
 const { validateEnv } = require('./config/envValidator');
