@@ -1,7 +1,7 @@
 // backend/routes/authRoutes.js
 const express = require("express");
 const router = express.Router();
-const { isValidEmail } = require("../utils/validators");
+const { isValidEmail , validatePassword } = require("../utils/validators");
 
 // ======================== CONTROLLERS ========================
 const {
@@ -121,10 +121,11 @@ router.post(
             });
         }
 
-        if (password.length < 6) {
+        const passwordCheck = validatePassword(password);
+        if (!passwordCheck.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "Password must be at least 6 characters long"
+                message: passwordCheck.message
             });
         }
 
@@ -261,13 +262,13 @@ router.post(
         }
 
         // Password should be strong enough
-        if (newPassword.length < 6) {
+        const passwordCheck = validatePassword(newPassword);
+        if (!passwordCheck.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "Password must be at least 6 characters long"
+                message: passwordCheck.message
             });
         }
-
         next();
     },
     resetPassword
@@ -389,10 +390,11 @@ router.post(
                 });
             }
 
-            if (newPassword.length < 6) {
+            const passwordCheck = validatePassword(newPassword);
+            if (!passwordCheck.isValid) {
                 return res.status(400).json({
                     success: false,
-                    message: "New password must be at least 6 characters long"
+                    message: passwordCheck.message
                 });
             }
 
