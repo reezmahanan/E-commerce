@@ -23,7 +23,11 @@ const copywriterRoutes = require('./routes/copywriterRoutes');
 
 // Add copywriter routes
 app.use('/api/copywriter', copywriterRoutes);
+// Add with other imports
+const { detectAgenticFraud } = require('./middleware/agenticFraudMiddleware');
 
+// Add after auth middleware
+app.use(detectAgenticFraud);
 const aiRoutes = require('./routes/aiRoutes');
 
 // Add AI routes
