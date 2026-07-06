@@ -7,6 +7,7 @@ const morgan = require("morgan");
 const timeout = require("connect-timeout");
 const fs = require("fs");
 const path = require("path");
+const setupProcessEventHandlers = require('./src/utils/processEventHandlers');
 
 const dotenv = require("dotenv");
 const rateLimit = require("express-rate-limit");
@@ -383,33 +384,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-// unhandled rejection
-process.on("unhandledRejection", (reason) => {
-    console.error("UNHANDLED REJECTION:", reason);
-    errorLogStream.write(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        type: "UNHANDLED_REJECTION",
-        reason: reason?.message || reason,
-        stack: reason?.stack,
-    }) + "\n");
-    setTimeout(() => {
-        process.exit(1);
-    }, 1000);
-});
-
-// uncaught exception
-process.on("uncaughtException", (error) => {
-    console.error("UNCAUGHT EXCEPTION:", error);
-    errorLogStream.write(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        type: "UNCAUGHT_EXCEPTION",
-        error: error.message,
-        stack: error.stack,
-    }) + "\n");
-    setTimeout(() => {
-        process.exit(1);
-    }, 1000);
-});
+setupProcessEventHandlers(errorLogStream);
 
 // graceful shutdown
 function shutdown() {
