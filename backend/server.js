@@ -23,7 +23,11 @@ const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Import routes
 const approvalRoutes = require('./src/routes/approvalRoutes');
 const rollbackRoutes = require('./src/routes/rollbackRoutes');
+// Import security routes
+const securityRoutes = require('./src/routes/securityRoutes');
 
+// Add routes
+app.use('/api/security', securityRoutes);
 // Add routes
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/rollback', rollbackRoutes);
