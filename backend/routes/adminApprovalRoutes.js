@@ -55,12 +55,19 @@ router.post('/approvals/:id/decide', authMiddleware, async (req, res) => {
             });
         }
 
-        await db.query(
+        const [result] = await db.query(
             `UPDATE admin_approval_requests 
              SET status = ?, admin_id = ?, admin_notes = ?
              WHERE id = ?`,
             [action === 'approve' ? 'approved' : 'rejected', req.user.id, notes, id]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Approval request not found'
+            });
+        }
 
         // If approved, proceed with order
         if (action === 'approve') {
@@ -68,13 +75,13 @@ router.post('/approvals/:id/decide', authMiddleware, async (req, res) => {
             // ... order processing logic
         }
 
-        res.json({
+        return res.json({
             success: true,
             message: `Request ${action}d successfully`
         });
     } catch (error) {
         console.error('Error updating approval:', error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             error: 'Failed to update approval'
         });

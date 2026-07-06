@@ -89,11 +89,10 @@ Tone: ${tone || 'Professional'}`
         // Parse the response
         let copyData;
         try {
-            copyData = JSON.parse(response.content[0].text);
+            copyData = JSON.parse(text);
         } catch (parseError) {
-            // If JSON parsing fails, try to extract from text
-            const text = response.content[0].text;
-            copyData = extractCopyFromText(text);
+            console.warn("Failed to parse AI response as JSON, falling back to text extraction");
+            copyData = extractCopyFromText(text, keywords);
         }
 
         // Log the generation
@@ -123,10 +122,10 @@ async function generateMultipleVersions({ keywords, category, count = 3 }) {
     try {
         const versions = [];
         const tones = ['Professional', 'Warm & Friendly', 'Luxury & Premium', 'Minimalist', 'Energetic'];
-        
+
         // Select appropriate tones
         const selectedTones = tones.slice(0, Math.min(count, tones.length));
-        
+
         for (const tone of selectedTones) {
             const result = await generateProductCopy({
                 keywords,
@@ -158,7 +157,7 @@ async function generateMultipleVersions({ keywords, category, count = 3 }) {
 async function generateMultilingualCopy({ keywords, category, languages = ['en', 'hi', 'es'] }) {
     try {
         const translations = {};
-        
+
         for (const lang of languages) {
             const result = await generateProductCopy({
                 keywords,
@@ -183,20 +182,16 @@ async function generateMultilingualCopy({ keywords, category, languages = ['en',
 /**
  * Extract copy from text if JSON parsing fails
  */
-function extractCopyFromText(text) {
-    // Try to find name
-    const nameMatch = text.match(/["']?name["']?\s*[:=]\s*["']([^"']*)["']/i);
-    const descriptionMatch = text.match(/["']?description["']?\s*[:=]\s*["']([^"']*)["']/i);
-    
+const extractCopyFromText = (text, keywords = []) => {
     return {
-        name: nameMatch ? nameMatch[1] : 'Product Name',
-        description: descriptionMatch ? descriptionMatch[1] : text.substring(0, 200),
-        shortDescription: descriptionMatch ? descriptionMatch[1].substring(0, 100) : '',
-        bulletPoints: [],
-        seoKeywords: keywords
+        headline: extractSection(text, "Headline") || "",
+        description: extractSection(text, "Description") || "",
+        shortDescription: extractSection(text, "Short Description") || "",
+        seoTitle: extractSection(text, "SEO Title") || "",
+        seoDescription: extractSection(text, "SEO Description") || "",
+        seoKeywords: Array.isArray(keywords) ? keywords : []
     };
-}
-
+};
 // ============================================
 // LOGGING
 // ============================================
@@ -251,7 +246,7 @@ async function updateCopyUsage(copyId, productId) {
 async function getCopywriterAnalytics(timeRange = '30d') {
     try {
         let dateCondition;
-        switch(timeRange) {
+        switch (timeRange) {
             case '7d': dateCondition = "INTERVAL 7 DAY"; break;
             case '30d': dateCondition = "INTERVAL 30 DAY"; break;
             case '90d': dateCondition = "INTERVAL 90 DAY"; break;

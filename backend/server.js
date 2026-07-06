@@ -12,10 +12,35 @@ const dotenv = require("dotenv");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
+// Add with other route imports
+const aiFeedRoutes = require('./routes/aiFeedRoutes');
+// Import agent routes
+const agentRoutes = require('./src/routes/agentRoutes');
 
+// Add routes
+app.use('/api/agents', agentRoutes);
+// Add AI feed routes
+app.use('/api/ai-feed', aiFeedRoutes);
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Import routes
+const approvalRoutes = require('./src/routes/approvalRoutes');
+const rollbackRoutes = require('./src/routes/rollbackRoutes');
+// Import security routes
+const securityRoutes = require('./src/routes/securityRoutes');
+
+// Add routes
+app.use('/api/security', securityRoutes);
+// Add routes
+app.use('/api/approvals', approvalRoutes);
+app.use('/api/rollback', rollbackRoutes);
+// Add with other route imports
+
+const aiFinancialRoutes = require('./routes/aiFinancialRoutes');
+
+// Add AI financial routes
+app.use('/api/ai/financial', aiFinancialRoutes);
 
 // Add with other route imports
 
@@ -26,9 +51,16 @@ app.use('/api/copywriter', copywriterRoutes);
 // Add with other imports
 const { detectBot, addBotDetectionHeaders } = require('./middleware/botProtectionMiddleware');
 
+
 // Add after other middleware
 app.use(addBotDetectionHeaders);
 app.use(detectBot);
+// Add with other route imports
+const fraudRoutes = require('./routes/fraudRoutes');
+
+// Add fraud routes
+app.use('/api/fraud', fraudRoutes);
+
 const aiRoutes = require('./routes/aiRoutes');
 
 // Add AI routes

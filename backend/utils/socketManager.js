@@ -1,23 +1,26 @@
-// backend/utils/socketManager.js
-
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const chatService = require("../services/chat.service");
 const logger = require("./logger");
 const { sanitizeString } = require("./helpers");
+const NodeCache = require('node-cache');
 
 let io;
-const userSockets = new Map(); // userId -> socketId
-const socketUsers = new Map(); // socketId -> userId
-const typingUsers = new Map(); // roomId -> { userId, timeout }
-const messageRateLimit = new Map(); // socketId -> { count, timestamp }
-const activeRooms = new Map(); // roomId -> Set of socketIds
-const userStatus = new Map(); // userId -> { status, lastSeen }
+const userSockets = new Map();
+const socketUsers = new Map();
+const typingUsers = new Map();
+const messageRateLimit = new Map();
+const activeRooms = new Map();
+const userStatus = new Map();
+const messageQueue = new Map();
+const offlineMessages = new NodeCache({ stdTTL: 86400, checkperiod: 600 });
 
-const RATE_LIMIT = 10; // messages per minute
-const RATE_WINDOW = 60000; // 1 minute
-const TYPING_TIMEOUT = 5000; // 5 seconds
-const HEARTBEAT_INTERVAL = 30000; // 30 seconds
+const RATE_LIMIT = parseInt(process.env.SOCKET_RATE_LIMIT) || 10;
+const RATE_WINDOW = parseInt(process.env.SOCKET_RATE_WINDOW) || 60000;
+const TYPING_TIMEOUT = parseInt(process.env.TYPING_TIMEOUT) || 5000;
+const HEARTBEAT_INTERVAL = parseInt(process.env.HEARTBEAT_INTERVAL) || 30000;
+const MAX_CONNECTIONS_PER_USER = parseInt(process.env.MAX_SOCKET_CONNECTIONS) || 3;
+const MESSAGE_QUEUE_LIMIT = parseInt(process.env.MESSAGE_QUEUE_LIMIT) || 100;
 
 const initSocket = (server, allowedOrigins) => {
     io = new Server(server, {
@@ -28,50 +31,66 @@ const initSocket = (server, allowedOrigins) => {
         },
         pingTimeout: 60000,
         pingInterval: 25000,
+        transports: ['websocket', 'polling'],
+        allowEIO3: true,
+        maxHttpBufferSize: 1e6,
+        perMessageDeflate: {
+            threshold: 1024
+        }
     });
 
-    // ==================== MIDDLEWARE ====================
-    io.use((socket, next) => {
-        const token = socket.handshake.auth.token;
-        if (!token) {
-            logger.warn("Socket connection attempt without token");
-            return next(new Error("Authentication error"));
-        }
+    io.use(async (socket, next) => {
         try {
+            const token = socket.handshake.auth.token;
+            if (!token) {
+                logger.warn("Socket connection attempt without token");
+                return next(new Error("Authentication required"));
+            }
+
             const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
             socket.user = decoded;
             socket.userId = decoded.id;
+            socket.userRole = decoded.role || 'customer';
+
+            const userConnections = Array.from(userSockets.entries())
+                .filter(([userId]) => userId === socket.userId);
+            
+            if (userConnections.length >= MAX_CONNECTIONS_PER_USER) {
+                logger.warn(`User ${socket.userId} exceeded max connections`);
+                return next(new Error("Too many connections"));
+            }
+
             next();
         } catch (err) {
             logger.error(`Socket auth error: ${err.message}`);
-            next(new Error("Authentication error"));
+            return next(new Error("Authentication failed"));
         }
     });
 
-    // ==================== CONNECTION HANDLER ====================
     io.on("connection", (socket) => {
         const userId = socket.userId;
-        const userRole = socket.user.role;
+        const userRole = socket.userRole;
         
         logger.info(`User connected: ${userId} (${userRole}) - Socket: ${socket.id}`);
 
-        // Store user connection
         userSockets.set(userId, socket.id);
         socketUsers.set(socket.id, userId);
-        userStatus.set(userId, { status: 'online', lastSeen: new Date() });
+        userStatus.set(userId, { status: 'online', lastSeen: new Date(), socketId: socket.id });
 
-        // Broadcast online status
         io.emit('user_status_change', { userId, status: 'online' });
         io.emit('users_online', userSockets.size);
 
-        // Setup event handlers
-        setupEventHandlers(socket);
+        deliverQueuedMessages(socket, userId);
 
-        // Setup heartbeat
+        setupEventHandlers(socket);
         setupHeartbeat(socket);
 
-        // ==================== DISCONNECT HANDLER ====================
         socket.on("disconnect", () => {
+            handleDisconnect(socket);
+        });
+
+        socket.on("error", (error) => {
+            logger.error(`Socket error for ${userId}:`, error.message);
             handleDisconnect(socket);
         });
     });
@@ -79,17 +98,14 @@ const initSocket = (server, allowedOrigins) => {
     return io;
 };
 
-// ==================== EVENT HANDLERS ====================
 function setupEventHandlers(socket) {
     const userId = socket.userId;
-    const userRole = socket.user.role;
+    const userRole = socket.userRole;
 
-    // Join conversation
     socket.on("join_conversation", async (data, callback) => {
         try {
             let conversationId = data?.conversationId;
             
-            // If customer joins without ID, find or create their default convo
             if (userRole === 'customer' && !conversationId) {
                 const conv = await chatService.findOrCreateConversation(userId);
                 conversationId = conv.id;
@@ -100,40 +116,29 @@ function setupEventHandlers(socket) {
                 return;
             }
 
-            // Verify access
             const hasAccess = await chatService.verifyConversationAccess(conversationId, userId, userRole);
             if (!hasAccess) {
-                if (callback) callback({ success: false, message: "Unauthorized access to conversation" });
+                if (callback) callback({ success: false, message: "Unauthorized" });
                 return;
             }
 
-            // Leave previous rooms
-            for (const [room, sockets] of activeRooms) {
-                if (sockets.has(socket.id)) {
-                    sockets.delete(socket.id);
-                    if (sockets.size === 0) {
-                        activeRooms.delete(room);
-                    }
-                }
-            }
+            cleanupPreviousRooms(socket);
 
-            // Join new room
-            socket.join(`conversation:${conversationId}`);
-            if (!activeRooms.has(`conversation:${conversationId}`)) {
-                activeRooms.set(`conversation:${conversationId}`, new Set());
+            const roomId = `conversation:${conversationId}`;
+            socket.join(roomId);
+            if (!activeRooms.has(roomId)) {
+                activeRooms.set(roomId, new Set());
             }
-            activeRooms.get(`conversation:${conversationId}`).add(socket.id);
-
-            socket.currentRoom = `conversation:${conversationId}`;
+            activeRooms.get(roomId).add(socket.id);
+            socket.currentRoom = roomId;
             
-            logger.info(`User ${userId} joined conversation:${conversationId}`);
+            logger.info(`User ${userId} joined ${roomId}`);
             
-            // Send room participants
-            const participants = Array.from(activeRooms.get(`conversation:${conversationId}`))
+            const participants = Array.from(activeRooms.get(roomId))
                 .map(sId => socketUsers.get(sId))
                 .filter(id => id);
             
-            io.to(`conversation:${conversationId}`).emit('room_participants', participants);
+            io.to(roomId).emit('room_participants', participants);
             
             if (callback) callback({ success: true, conversationId });
         } catch (err) {
@@ -142,10 +147,8 @@ function setupEventHandlers(socket) {
         }
     });
 
-    // Send message with rate limiting
     socket.on("send_message", async (data, callback) => {
         try {
-            // Rate limiting check
             if (!checkRateLimit(socket.id)) {
                 socket.emit('error', { 
                     message: 'Rate limit exceeded. Please wait before sending more messages.' 
@@ -160,10 +163,8 @@ function setupEventHandlers(socket) {
                 return;
             }
 
-            // Sanitize message
             const sanitizedMessage = sanitizeString(message.trim());
 
-            // Check access
             const hasAccess = await chatService.verifyConversationAccess(conversationId, userId, userRole);
             if (!hasAccess) {
                 if (callback) callback({ success: false, message: "Unauthorized" });
@@ -173,17 +174,21 @@ function setupEventHandlers(socket) {
             const senderType = userRole === 'admin' ? 'admin' : 'customer';
             const savedMessage = await chatService.saveMessage(conversationId, userId, senderType, sanitizedMessage);
 
-            // Broadcast to everyone in the room including sender
-            io.to(`conversation:${conversationId}`).emit("message_received", savedMessage);
+            const roomId = `conversation:${conversationId}`;
+            const roomSockets = io.sockets.adapter.rooms.get(roomId);
             
-            // Notify admins about new message (for dashboard updates)
+            if (roomSockets && roomSockets.size > 0) {
+                io.to(roomId).emit("message_received", savedMessage);
+            } else {
+                queueMessage(conversationId, savedMessage);
+            }
+
             io.to('admin_room').emit("conversation_updated", { 
                 conversationId, 
                 last_message: sanitizedMessage,
                 timestamp: new Date().toISOString()
             });
 
-            // Clear typing indicator
             clearTypingForUser(userId);
 
             if (callback) callback({ success: true, message: savedMessage });
@@ -193,23 +198,19 @@ function setupEventHandlers(socket) {
         }
     });
 
-    // Typing indicator
     socket.on("typing", (data) => {
         handleTyping(socket, data);
     });
 
-    // Stop typing
     socket.on("stop_typing", (data) => {
         handleStopTyping(socket, data);
     });
 
-    // Message read receipt
     socket.on("message_read", async (data) => {
         try {
             const { messageId, conversationId } = data;
             if (!messageId || !conversationId) return;
 
-            // Mark message as read
             await chatService.markMessageAsRead(messageId, userId);
             
             io.to(`conversation:${conversationId}`).emit('message_read', {
@@ -222,15 +223,13 @@ function setupEventHandlers(socket) {
         }
     });
 
-    // Edit message
     socket.on("edit_message", async (data) => {
         try {
             const { messageId, newMessage, conversationId } = data;
             if (!messageId || !newMessage || !conversationId) return;
 
-            // Check if user owns the message
             const message = await chatService.getMessage(messageId);
-            if (message.sender_id !== userId) {
+            if (!message || message.sender_id !== userId) {
                 socket.emit('error', { message: 'Not authorized to edit this message' });
                 return;
             }
@@ -249,15 +248,13 @@ function setupEventHandlers(socket) {
         }
     });
 
-    // Delete message
     socket.on("delete_message", async (data) => {
         try {
             const { messageId, conversationId } = data;
             if (!messageId || !conversationId) return;
 
-            // Check if user owns the message
             const message = await chatService.getMessage(messageId);
-            if (message.sender_id !== userId && userRole !== 'admin') {
+            if (!message || (message.sender_id !== userId && userRole !== 'admin')) {
                 socket.emit('error', { message: 'Not authorized to delete this message' });
                 return;
             }
@@ -274,7 +271,6 @@ function setupEventHandlers(socket) {
         }
     });
 
-    // Join admin room
     socket.on("join_admin_room", () => {
         if (userRole === 'admin') {
             socket.join('admin_room');
@@ -283,24 +279,31 @@ function setupEventHandlers(socket) {
         }
     });
 
-    // Get active users
     socket.on("get_active_users", () => {
         const activeUsers = Array.from(userSockets.keys());
         socket.emit('active_users', activeUsers);
     });
 
-    // Get online count
     socket.on("get_online_count", () => {
         socket.emit('online_count', userSockets.size);
     });
 
-    // Pong for heartbeat
     socket.on("pong", () => {
         socket.lastPong = Date.now();
     });
 }
 
-// ==================== TYPING HANDLERS ====================
+function cleanupPreviousRooms(socket) {
+    for (const [room, sockets] of activeRooms) {
+        if (sockets.has(socket.id)) {
+            sockets.delete(socket.id);
+            if (sockets.size === 0) {
+                activeRooms.delete(room);
+            }
+        }
+    }
+}
+
 function handleTyping(socket, data) {
     const userId = socket.userId;
     if (!userId) return;
@@ -308,7 +311,6 @@ function handleTyping(socket, data) {
     const roomId = data.roomId || socket.currentRoom;
     if (!roomId) return;
 
-    // Clear existing timeout
     if (typingUsers.has(roomId)) {
         const existing = typingUsers.get(roomId);
         if (existing.userId === userId) {
@@ -316,7 +318,6 @@ function handleTyping(socket, data) {
         }
     }
 
-    // Set new typing indicator
     const timeout = setTimeout(() => {
         handleStopTyping(socket, { roomId });
     }, TYPING_TIMEOUT);
@@ -350,29 +351,24 @@ function clearTypingForUser(userId) {
     }
 }
 
-// ==================== RATE LIMITING ====================
 function checkRateLimit(socketId) {
     const now = Date.now();
     const userRate = messageRateLimit.get(socketId) || { count: 0, timestamp: now };
 
-    // Reset if window has passed
     if (now - userRate.timestamp > RATE_WINDOW) {
         userRate.count = 0;
         userRate.timestamp = now;
     }
 
-    // Check rate limit
     if (userRate.count >= RATE_LIMIT) {
         return false;
     }
 
-    // Increment count
     userRate.count++;
     messageRateLimit.set(socketId, userRate);
     return true;
 }
 
-// ==================== HEARTBEAT ====================
 function setupHeartbeat(socket) {
     socket.lastPong = Date.now();
 
@@ -382,6 +378,7 @@ function setupHeartbeat(socket) {
             logger.warn(`Heartbeat timeout for socket ${socket.id}`);
             socket.emit('heartbeat_timeout');
             clearInterval(heartbeatInterval);
+            socket.disconnect(true);
         }
     }, HEARTBEAT_INTERVAL);
 
@@ -390,58 +387,104 @@ function setupHeartbeat(socket) {
     });
 }
 
-// ==================== DISCONNECT HANDLER ====================
+function queueMessage(conversationId, message) {
+    if (!messageQueue.has(conversationId)) {
+        messageQueue.set(conversationId, []);
+    }
+    const queue = messageQueue.get(conversationId);
+    if (queue.length < MESSAGE_QUEUE_LIMIT) {
+        queue.push(message);
+    } else {
+        logger.warn(`Message queue full for conversation ${conversationId}`);
+    }
+}
+
+function deliverQueuedMessages(socket, userId) {
+    const conversationId = socket.currentRoom?.replace('conversation:', '');
+    if (!conversationId) return;
+
+    const queue = messageQueue.get(conversationId);
+    if (queue && queue.length > 0) {
+        queue.forEach(msg => {
+            socket.emit("message_received", msg);
+        });
+        messageQueue.delete(conversationId);
+        logger.info(`Delivered ${queue.length} queued messages to user ${userId}`);
+    }
+}
+
 function handleDisconnect(socket) {
     const userId = socket.userId;
     if (userId) {
-        // Remove from active rooms
-        for (const [roomId, sockets] of activeRooms) {
-            sockets.delete(socket.id);
-            if (sockets.size === 0) {
-                activeRooms.delete(roomId);
-            }
-        }
+        cleanupPreviousRooms(socket);
 
-        // Remove user mappings
         userSockets.delete(userId);
         socketUsers.delete(socket.id);
         userStatus.set(userId, { status: 'offline', lastSeen: new Date() });
 
-        // Clear typing indicators
         clearTypingForUser(userId);
 
-        // Broadcast offline status
         io.emit('user_status_change', { userId, status: 'offline' });
         io.emit('users_online', userSockets.size);
 
         logger.info(`User disconnected: ${userId}`);
     }
+
+    const rateKey = socket.id;
+    if (messageRateLimit.has(rateKey)) {
+        messageRateLimit.delete(rateKey);
+    }
 }
 
-// ==================== UTILITY FUNCTIONS ====================
-const getIo = () => {
+function getIo() {
     if (!io) throw new Error("Socket.io not initialized");
     return io;
-};
+}
 
-const sendToUser = (userId, event, data) => {
+function sendToUser(userId, event, data) {
     const socketId = userSockets.get(userId);
     if (socketId) {
         io.to(socketId).emit(event, data);
+        return true;
     }
-};
+    return false;
+}
 
-const broadcastToRoom = (roomId, event, data) => {
+function broadcastToRoom(roomId, event, data) {
     io.to(roomId).emit(event, data);
-};
+}
 
-const getActiveUsers = () => {
+function getActiveUsers() {
     return Array.from(userSockets.keys());
-};
+}
 
-const getUserStatus = (userId) => {
+function getUserStatus(userId) {
     return userStatus.get(userId) || { status: 'offline', lastSeen: null };
-};
+}
+
+function getOnlineCount() {
+    return userSockets.size;
+}
+
+function getRoomParticipants(roomId) {
+    const sockets = activeRooms.get(roomId);
+    if (!sockets) return [];
+    return Array.from(sockets)
+        .map(sId => socketUsers.get(sId))
+        .filter(id => id);
+}
+
+function cleanup() {
+    userSockets.clear();
+    socketUsers.clear();
+    typingUsers.clear();
+    messageRateLimit.clear();
+    activeRooms.clear();
+    userStatus.clear();
+    messageQueue.clear();
+    offlineMessages.flushAll();
+    logger.info('Socket manager cleanup completed');
+}
 
 module.exports = { 
     initSocket, 
@@ -449,5 +492,8 @@ module.exports = {
     sendToUser,
     broadcastToRoom,
     getActiveUsers,
-    getUserStatus
+    getUserStatus,
+    getOnlineCount,
+    getRoomParticipants,
+    cleanup
 };
