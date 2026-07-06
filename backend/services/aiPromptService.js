@@ -25,20 +25,20 @@ const rateLimiter = new Map();
 function checkRateLimit(userId) {
     const now = Date.now();
     const key = `ai_${userId}`;
-    
+
     if (!rateLimiter.has(key)) {
         rateLimiter.set(key, [now]);
         return true;
     }
-    
+
     const requests = rateLimiter.get(key).filter(
         time => now - time < config.rateLimitWindow
     );
-    
+
     if (requests.length >= config.maxRequestsPerUser) {
         return false;
     }
-    
+
     requests.push(now);
     rateLimiter.set(key, requests);
     return true;
@@ -48,16 +48,16 @@ function validateQuery(query) {
     if (!query || typeof query !== 'string') {
         throw new Error('Query must be a non-empty string');
     }
-    
+
     const trimmed = query.trim();
     if (trimmed.length === 0) {
         throw new Error('Query cannot be empty');
     }
-    
+
     if (trimmed.length > config.maxQueryLength) {
         throw new Error(`Query exceeds maximum length of ${config.maxQueryLength} characters`);
     }
-    
+
     return trimmed;
 }
 
@@ -65,32 +65,32 @@ function validateContext(context) {
     if (context && typeof context !== 'object') {
         throw new Error('Context must be an object');
     }
-    
+
     const contextStr = JSON.stringify(context || {});
     if (contextStr.length > 10000) {
         throw new Error('Context too large (max 10KB)');
     }
-    
+
     return context || {};
 }
 
 async function withRetry(fn, retries = config.maxRetries) {
     let lastError;
-    
+
     for (let i = 0; i < retries; i++) {
         try {
             return await fn();
         } catch (error) {
             lastError = error;
-            
+
             if (error.message && error.message.includes('Query')) {
                 throw error;
             }
-            
+
             if (error.status === 429) {
                 throw error;
             }
-            
+
             if (i < retries - 1) {
                 const delay = config.retryDelay * Math.pow(2, i);
                 console.warn(`Retry ${i + 1}/${retries} after ${delay}ms`);
@@ -98,7 +98,7 @@ async function withRetry(fn, retries = config.maxRetries) {
             }
         }
     }
-    
+
     throw lastError;
 }
 
@@ -131,7 +131,7 @@ Response Guidelines:
 function buildDynamicContext(req) {
     const user = req.user || {};
     const session = req.session || {};
-    
+
     return {
         type: "text",
         text: `Current User Context:
@@ -148,11 +148,11 @@ function buildDynamicContext(req) {
 async function getAIRecommendation(userQuery, contextData = {}) {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(7);
-    
+
     try {
         const query = validateQuery(userQuery);
         const context = validateContext(contextData);
-        
+
         const userId = contextData.userId || 'anonymous';
         if (!checkRateLimit(userId)) {
             return {
@@ -161,7 +161,7 @@ async function getAIRecommendation(userQuery, contextData = {}) {
                 requestId
             };
         }
-        
+
         const systemPrompt = [
             STATIC_SYSTEM_PROMPT,
             {
@@ -172,12 +172,12 @@ User ID: ${userId}
 ${Object.entries(context).map(([key, value]) => `${key}: ${value}`).join('\n')}`
             }
         ];
-        
+
         const result = await withRetry(async () => {
             const timeout = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('Request timeout')), config.timeout);
             });
-            
+
             const apiCall = anthropic.messages.create({
                 model: config.model,
                 system: systemPrompt,
@@ -193,19 +193,19 @@ ${Object.entries(context).map(([key, value]) => `${key}: ${value}`).join('\n')}`
                     'anthropic-version': '2023-06-01'
                 }
             });
-            
+
             return await Promise.race([apiCall, timeout]);
         });
-        
+
         const savings = calculateCostSavings(result);
-        
+
         await logAICostSavings({
             userId,
             endpoint: 'getAIRecommendation',
             ...savings,
             requestId
         });
-        
+
         return {
             success: true,
             data: result.content[0].text,
@@ -214,21 +214,21 @@ ${Object.entries(context).map(([key, value]) => `${key}: ${value}`).join('\n')}`
             requestId,
             duration: Date.now() - startTime
         };
-        
+
     } catch (error) {
         console.error('AI Recommendation Error:', {
             requestId,
             userId: contextData.userId || 'anonymous',
             error: error.message
         });
-        
+
         return {
             success: false,
-            error: error.message === 'Request timeout' 
+            error: error.message === 'Request timeout'
                 ? 'AI service is taking too long. Please try again.'
                 : error.message.includes('Rate limit')
-                ? 'Too many requests. Please try again later.'
-                : 'Failed to get AI recommendation. Please try again.',
+                    ? 'Too many requests. Please try again later.'
+                    : 'Failed to get AI recommendation. Please try again.',
             requestId,
             fallback: true
         };
@@ -238,7 +238,7 @@ ${Object.entries(context).map(([key, value]) => `${key}: ${value}`).join('\n')}`
 async function getAIProductRecommendation(userId, productId, userQuery) {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(7);
-    
+
     try {
         if (!userId) {
             throw new Error('User ID is required');
@@ -247,7 +247,7 @@ async function getAIProductRecommendation(userId, productId, userQuery) {
             throw new Error('Product ID is required');
         }
         const query = validateQuery(userQuery);
-        
+
         if (!checkRateLimit(userId)) {
             return {
                 success: false,
@@ -255,12 +255,12 @@ async function getAIProductRecommendation(userId, productId, userQuery) {
                 requestId
             };
         }
-        
+
         const [user] = await db.query(
             'SELECT * FROM users WHERE id = ?',
             [userId]
         );
-        
+
         const contextData = {
             userId: userId,
             userEmail: user[0]?.email || 'unknown',
@@ -268,7 +268,7 @@ async function getAIProductRecommendation(userId, productId, userQuery) {
             query: query,
             timestamp: new Date().toISOString()
         };
-        
+
         const systemPrompt = {
             type: "text",
             text: `You are a product recommendation expert for AnthropicBots.
@@ -285,12 +285,12 @@ Recommendation Guidelines:
 5. Highlight key features`,
             cache_control: { type: "ephemeral" }
         };
-        
+
         const result = await withRetry(async () => {
             const timeout = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('Request timeout')), config.timeout);
             });
-            
+
             const apiCall = anthropic.messages.create({
                 model: config.model,
                 system: [
@@ -313,19 +313,19 @@ ${JSON.stringify(contextData, null, 2)}`
                     'anthropic-version': '2023-06-01'
                 }
             });
-            
+
             return await Promise.race([apiCall, timeout]);
         });
-        
+
         const savings = calculateCostSavings(result);
-        
+
         await logAICostSavings({
             userId,
             endpoint: 'getAIProductRecommendation',
             ...savings,
             requestId
         });
-        
+
         return {
             success: true,
             data: result.content[0].text,
@@ -334,14 +334,14 @@ ${JSON.stringify(contextData, null, 2)}`
             requestId,
             duration: Date.now() - startTime
         };
-        
+
     } catch (error) {
         console.error('Product Recommendation Error:', {
             requestId,
             userId,
             error: error.message
         });
-        
+
         return {
             success: false,
             error: error.message === 'Request timeout'
@@ -356,7 +356,7 @@ ${JSON.stringify(contextData, null, 2)}`
 async function getAIProductDescription(productData, keywords) {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substring(7);
-    
+
     try {
         if (!productData || typeof productData !== 'object') {
             throw new Error('Product data is required');
@@ -367,7 +367,7 @@ async function getAIProductDescription(productData, keywords) {
         if (keywords.length > 10) {
             throw new Error('Maximum 10 keywords allowed');
         }
-        
+
         const systemPrompt = {
             type: "text",
             text: `You are a professional e-commerce copywriter.
@@ -387,12 +387,12 @@ Style Guide:
 - Address customer pain points`,
             cache_control: { type: "ephemeral" }
         };
-        
+
         const result = await withRetry(async () => {
             const timeout = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('Request timeout')), config.timeout);
             });
-            
+
             const apiCall = anthropic.messages.create({
                 model: "claude-3-haiku-20240307",
                 system: [
@@ -417,12 +417,12 @@ Keywords: ${keywords.join(', ')}`
                     'anthropic-version': '2023-06-01'
                 }
             });
-            
+
             return await Promise.race([apiCall, timeout]);
         });
-        
+
         const savings = calculateCostSavings(result);
-        
+
         return {
             success: true,
             data: result.content[0].text,
@@ -431,13 +431,13 @@ Keywords: ${keywords.join(', ')}`
             requestId,
             duration: Date.now() - startTime
         };
-        
+
     } catch (error) {
         console.error('Product Description Error:', {
             requestId,
             error: error.message
         });
-        
+
         return {
             success: false,
             error: error.message === 'Request timeout'
@@ -454,15 +454,15 @@ async function healthCheck() {
         const timeout = new Promise((_, reject) => {
             setTimeout(() => reject(new Error('Health check timeout')), 5000);
         });
-        
+
         const apiCall = anthropic.messages.create({
             model: "claude-3-haiku-20240307",
             messages: [{ role: 'user', content: 'ping' }],
             max_tokens: 10
         });
-        
+
         await Promise.race([apiCall, timeout]);
-        
+
         return {
             status: 'healthy',
             timestamp: new Date().toISOString(),
@@ -482,16 +482,16 @@ function calculateCostSavings(response) {
     const totalTokens = response.usage.input_tokens || 0;
     const cachedTokens = response.usage.cache_creation_input_tokens || 0;
     const outputTokens = response.usage.output_tokens || 0;
-    
-    const originalCost = (totalTokens * COST_PER_INPUT_TOKEN) + 
-                        (outputTokens * COST_PER_OUTPUT_TOKEN);
-    
+
+    const originalCost = (totalTokens * COST_PER_INPUT_TOKEN) +
+        (outputTokens * COST_PER_OUTPUT_TOKEN);
+
     const nonCachedTokens = totalTokens - cachedTokens;
-    const actualCost = (nonCachedTokens * COST_PER_INPUT_TOKEN) + 
-                       (outputTokens * COST_PER_OUTPUT_TOKEN);
-    
+    const actualCost = (nonCachedTokens * COST_PER_INPUT_TOKEN) +
+        (outputTokens * COST_PER_OUTPUT_TOKEN);
+
     const savingsAmount = originalCost - actualCost;
-    const savingsPercentage = originalCost > 0 ? 
+    const savingsPercentage = originalCost > 0 ?
         ((savingsAmount / originalCost) * 100) : 0;
 
     const result = {
@@ -505,9 +505,16 @@ function calculateCostSavings(response) {
         savingsPercentage: parseFloat(savingsPercentage.toFixed(2))
     };
 
+    const cachedTokenPercentage =
+        result.totalTokens > 0
+            ? (result.cachedTokens / result.totalTokens) * 100
+            : 0;
+
     console.log(`Cost Savings: ${result.savingsPercentage}%`);
     console.log(`Original: $${result.originalCost} -> Actual: $${result.actualCost}`);
-    console.log(`Cached Tokens: ${result.cachedTokens}/${result.totalTokens} (${((result.cachedTokens/result.totalTokens)*100).toFixed(1)}%)`);
+    console.log(
+        `📊 Cached Tokens: ${result.cachedTokens}/${result.totalTokens} (${cachedTokenPercentage.toFixed(1)}%)`
+    );
 
     return result;
 }
@@ -531,7 +538,7 @@ async function logAICostSavings({ userId, endpoint, originalCost, actualCost, sa
                 requestId
             ]
         );
-        
+
         console.log(`Cost savings logged for user ${userId}: ${savingsPercentage}% savings`);
     } catch (error) {
         console.error('Error logging cost savings:', error);
@@ -541,7 +548,7 @@ async function logAICostSavings({ userId, endpoint, originalCost, actualCost, sa
 async function getCostSavingsAnalytics(timeRange = '30d') {
     try {
         let dateCondition;
-        switch(timeRange) {
+        switch (timeRange) {
             case '7d': dateCondition = "INTERVAL 7 DAY"; break;
             case '30d': dateCondition = "INTERVAL 30 DAY"; break;
             case '90d': dateCondition = "INTERVAL 90 DAY"; break;

@@ -1,156 +1,198 @@
-// backend/services/syntheticIdentityDetector.js
 const db = require('../config/db').promise;
 const crypto = require('crypto');
-
-// ============================================
-// CONFIGURATION
-// ============================================
+const NodeCache = require('node-cache');
 
 const FRAUD_DETECTION_CONFIG = {
-    // Velocity thresholds
-    maxAccountsPerIP: 5,           // Max accounts from same IP
-    maxAccountsPerDevice: 3,       // Max accounts from same device
-    maxAccountsPerHour: 10,        // Max accounts per hour
-    maxAccountsPerDay: 20,         // Max accounts per day
-    
-    // Identity patterns
-    minAge: 18,                    // Minimum age
-    maxAge: 100,                   // Maximum age
+    maxAccountsPerIP: parseInt(process.env.MAX_ACCOUNTS_PER_IP) || 5,
+    maxAccountsPerDevice: parseInt(process.env.MAX_ACCOUNTS_PER_DEVICE) || 3,
+    maxAccountsPerHour: parseInt(process.env.MAX_ACCOUNTS_PER_HOUR) || 10,
+    maxAccountsPerDay: parseInt(process.env.MAX_ACCOUNTS_PER_DAY) || 20,
+    minAge: parseInt(process.env.MIN_AGE) || 18,
+    maxAge: parseInt(process.env.MAX_AGE) || 100,
+    trustScoreThreshold: parseInt(process.env.TRUST_SCORE_THRESHOLD) || 50,
+    highRiskThreshold: parseInt(process.env.HIGH_RISK_THRESHOLD) || 30,
+    criticalRiskThreshold: parseInt(process.env.CRITICAL_RISK_THRESHOLD) || 15,
+    reputationCacheTTL: parseInt(process.env.REPUTATION_CACHE_TTL) || 3600,
     suspiciousNamePatterns: [
         /test/i,
-        /user\d+/,                // user123 pattern
+        /user\d+/,
         /temp/i,
         /demo/i,
         /fake/i,
-        /dummy/i
+        /dummy/i,
+        /bot/i,
+        /spam/i
     ],
-    
-    // Email patterns
     suspiciousEmailDomains: [
         'tempmail.com',
         'guerrillamail.com',
         'mailinator.com',
         '10minutemail.com',
-        'throwaway.com'
+        'throwaway.com',
+        'temp-mail.org',
+        'yopmail.com',
+        'guerrillamail.org'
     ],
     disposableEmailPatterns: [
-        /\+.*@/,                  // Gmail plus addressing
-        /\.{2,}/,                 // Multiple dots
-        /^[a-z0-9]{1,5}@/         // Very short local part
+        /\+.*@/,
+        /\.{2,}/,
+        /^[a-z0-9]{1,5}@/
     ],
-    
-    // Behavioral scoring
-    trustScoreThreshold: 50,       // Below 50 = suspicious
-    highRiskThreshold: 30,         // Below 30 = high risk
-    criticalRiskThreshold: 15      // Below 15 = critical
+    headlessPatterns: [
+        /Headless/i,
+        /Puppeteer/i,
+        /Playwright/i,
+        /Selenium/i,
+        /PhantomJS/i,
+        /Cypress/i
+    ],
+    proxyPatterns: [
+        /^10\./,
+        /^172\.16\./,
+        /^192\.168\./,
+        /^127\./
+    ]
 };
-
-// ============================================
-// IDENTITY FRAUD DETECTION CLASS
-// ============================================
 
 class SyntheticIdentityDetector {
     constructor() {
         this.fraudScores = new Map();
         this.deviceFingerprints = new Map();
-        this.ipReputation = new Map();
+        this.ipReputation = new NodeCache({
+            stdTTL: FRAUD_DETECTION_CONFIG.reputationCacheTTL,
+            checkperiod: 300
+        });
         this.velocityTracker = new Map();
         this.initialized = false;
+        this.detectionHistory = new Map();
     }
 
     async initialize() {
         try {
             await this.loadReputationData();
             this.initialized = true;
-            console.log('✅ Synthetic Identity Detector initialized');
+            console.log('Synthetic Identity Detector initialized');
         } catch (error) {
-            console.error('❌ Detector initialization error:', error);
+            console.error('Detector initialization error:', error);
+            this.initialized = false;
         }
     }
 
-    // ============================================
-    // MAIN DETECTION
-    // ============================================
+    validateUserData(userData) {
+        if (!userData || typeof userData !== 'object') {
+            throw new Error('User data is required');
+        }
+        if (!userData.email && !userData.name) {
+            throw new Error('At least email or name is required');
+        }
+        if (userData.email && typeof userData.email !== 'string') {
+            throw new Error('Email must be a string');
+        }
+        if (userData.name && typeof userData.name !== 'string') {
+            throw new Error('Name must be a string');
+        }
+        if (userData.age !== undefined && (typeof userData.age !== 'number' || userData.age < 0)) {
+            throw new Error('Age must be a positive number');
+        }
+        return true;
+    }
+
+    validateContext(context) {
+        if (!context || typeof context !== 'object') {
+            return { ip: 'unknown', deviceId: 'unknown' };
+        }
+        return {
+            ip: context.ip || 'unknown',
+            deviceId: context.deviceId || 'unknown',
+            userAgent: context.userAgent || 'unknown',
+            acceptLanguage: context.acceptLanguage || 'unknown',
+            screenResolution: context.screenResolution || 'unknown',
+            timezone: context.timezone || 'unknown',
+            signupTime: context.signupTime || new Date().toISOString(),
+            formCompletionTime: context.formCompletionTime || 0,
+            isAutomated: context.isAutomated || false
+        };
+    }
 
     async detectSyntheticIdentity(userData, context = {}) {
-        const detectionResult = {
-            isSynthetic: false,
-            riskScore: 0,
-            riskLevel: 'low',
-            flags: [],
-            recommendations: [],
-            confidence: 0,
-            timestamp: new Date().toISOString()
-        };
+        const startTime = Date.now();
+        const detectionId = crypto.randomUUID();
 
         try {
-            // 1. Check velocity (rate of account creation)
-            const velocityCheck = await this.checkVelocity(context);
-            detectionResult.flags.push(...velocityCheck.flags);
-            detectionResult.riskScore += velocityCheck.riskScore;
+            this.validateUserData(userData);
+            const validatedContext = this.validateContext(context);
 
-            // 2. Analyze identity patterns
-            const identityCheck = this.analyzeIdentityPatterns(userData);
-            detectionResult.flags.push(...identityCheck.flags);
-            detectionResult.riskScore += identityCheck.riskScore;
+            const detectionResult = {
+                id: detectionId,
+                isSynthetic: false,
+                riskScore: 0,
+                riskLevel: 'low',
+                flags: [],
+                recommendations: [],
+                confidence: 0,
+                timestamp: new Date().toISOString(),
+                duration: 0
+            };
 
-            // 3. Check email patterns
-            const emailCheck = this.analyzeEmailPatterns(userData.email);
-            detectionResult.flags.push(...emailCheck.flags);
-            detectionResult.riskScore += emailCheck.riskScore;
+            const checks = await Promise.all([
+                this.checkVelocity(validatedContext),
+                this.analyzeIdentityPatterns(userData),
+                this.analyzeEmailPatterns(userData.email),
+                this.analyzeDeviceFingerprint(validatedContext),
+                this.checkIPReputation(validatedContext.ip),
+                this.analyzeBehavioralPatterns(validatedContext),
+                this.analyzeNamePatterns(userData.name)
+            ]);
 
-            // 4. Device fingerprint analysis
-            const deviceCheck = await this.analyzeDeviceFingerprint(context);
-            detectionResult.flags.push(...deviceCheck.flags);
-            detectionResult.riskScore += deviceCheck.riskScore;
+            let totalRiskScore = 0;
+            checks.forEach((result, index) => {
+                const checkTypes = [
+                    'velocity', 'identity', 'email', 'device',
+                    'ip', 'behavioral', 'name'
+                ];
+                detectionResult.flags.push(...result.flags);
+                totalRiskScore += result.riskScore || 0;
 
-            // 5. IP reputation check
-            const ipCheck = await this.checkIPReputation(context.ip);
-            detectionResult.flags.push(...ipCheck.flags);
-            detectionResult.riskScore += ipCheck.riskScore;
+                if (result.error) {
+                    console.warn(`Check ${checkTypes[index]} failed:`, result.error);
+                }
+            });
 
-            // 6. Behavioral biometrics
-            const behaviorCheck = this.analyzeBehavioralPatterns(context);
-            detectionResult.flags.push(...behaviorCheck.flags);
-            detectionResult.riskScore += behaviorCheck.riskScore;
-
-            // 7. Name analysis
-            const nameCheck = this.analyzeNamePatterns(userData.name);
-            detectionResult.flags.push(...nameCheck.flags);
-            detectionResult.riskScore += nameCheck.riskScore;
-
-            // Calculate final risk score (0-100)
-            detectionResult.riskScore = Math.min(100, detectionResult.riskScore);
+            detectionResult.riskScore = Math.min(100, totalRiskScore);
             detectionResult.riskLevel = this.calculateRiskLevel(detectionResult.riskScore);
-            detectionResult.isSynthetic = detectionResult.riskLevel === 'critical' || 
+            detectionResult.isSynthetic = detectionResult.riskLevel === 'critical' ||
                                         detectionResult.riskLevel === 'high';
             detectionResult.confidence = this.calculateConfidence(detectionResult.flags);
-
-            // Generate recommendations
             detectionResult.recommendations = this.generateRecommendations(detectionResult);
+            detectionResult.duration = Date.now() - startTime;
 
-            // Log detection
-            await this.logDetection(userData, detectionResult, context);
+            await this.logDetection(userData, detectionResult, validatedContext);
+            await this.updateVelocity(validatedContext);
 
-            // Update velocity tracking
-            await this.updateVelocity(context);
+            this.detectionHistory.set(detectionId, detectionResult);
+            if (this.detectionHistory.size > 1000) {
+                const oldestKey = this.detectionHistory.keys().next().value;
+                this.detectionHistory.delete(oldestKey);
+            }
 
             return detectionResult;
 
         } catch (error) {
             console.error('Detection error:', error);
             return {
-                ...detectionResult,
-                error: error.message,
+                id: detectionId,
                 isSynthetic: false,
-                riskLevel: 'unknown'
+                riskScore: 0,
+                riskLevel: 'unknown',
+                flags: [{ type: 'error', severity: 'high', details: error.message }],
+                recommendations: ['Manual review required'],
+                confidence: 0,
+                timestamp: new Date().toISOString(),
+                duration: Date.now() - startTime,
+                error: error.message
             };
         }
     }
-
-    // ============================================
-    // VELOCITY CHECKS
-    // ============================================
 
     async checkVelocity(context) {
         const flags = [];
@@ -159,7 +201,6 @@ class SyntheticIdentityDetector {
         const deviceId = context.deviceId || 'unknown';
 
         try {
-            // Check accounts from same IP
             const [ipAccounts] = await db.query(
                 `SELECT COUNT(*) as count FROM users 
                  WHERE registration_ip = ? 
@@ -176,7 +217,6 @@ class SyntheticIdentityDetector {
                 riskScore += 25;
             }
 
-            // Check accounts from same device
             if (deviceId !== 'unknown') {
                 const [deviceAccounts] = await db.query(
                     `SELECT COUNT(*) as count FROM users 
@@ -195,7 +235,6 @@ class SyntheticIdentityDetector {
                 }
             }
 
-            // Check hourly rate
             const [hourlyAccounts] = await db.query(
                 `SELECT COUNT(*) as count FROM users 
                  WHERE created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)`
@@ -212,20 +251,16 @@ class SyntheticIdentityDetector {
 
         } catch (error) {
             console.error('Velocity check error:', error);
+            return { flags, riskScore, error: error.message };
         }
 
         return { flags, riskScore };
     }
 
-    // ============================================
-    // IDENTITY PATTERN ANALYSIS
-    // ============================================
-
     analyzeIdentityPatterns(userData) {
         const flags = [];
         let riskScore = 0;
 
-        // Check name patterns
         if (userData.name) {
             for (const pattern of FRAUD_DETECTION_CONFIG.suspiciousNamePatterns) {
                 if (pattern.test(userData.name)) {
@@ -240,8 +275,7 @@ class SyntheticIdentityDetector {
             }
         }
 
-        // Check age validity
-        if (userData.age) {
+        if (userData.age !== undefined) {
             if (userData.age < FRAUD_DETECTION_CONFIG.minAge) {
                 flags.push({
                     type: 'underage',
@@ -260,7 +294,6 @@ class SyntheticIdentityDetector {
             }
         }
 
-        // Check missing identity data
         const requiredFields = ['name', 'email'];
         const missingFields = requiredFields.filter(f => !userData[f]);
         if (missingFields.length > 0) {
@@ -274,10 +307,6 @@ class SyntheticIdentityDetector {
 
         return { flags, riskScore };
     }
-
-    // ============================================
-    // EMAIL PATTERN ANALYSIS
-    // ============================================
 
     analyzeEmailPatterns(email) {
         const flags = [];
@@ -293,7 +322,6 @@ class SyntheticIdentityDetector {
             return { flags, riskScore };
         }
 
-        // Check disposable email domains
         const domain = email.split('@')[1];
         if (domain && FRAUD_DETECTION_CONFIG.suspiciousEmailDomains.includes(domain)) {
             flags.push({
@@ -304,7 +332,6 @@ class SyntheticIdentityDetector {
             riskScore += 25;
         }
 
-        // Check for suspicious patterns
         for (const pattern of FRAUD_DETECTION_CONFIG.disposableEmailPatterns) {
             if (pattern.test(email)) {
                 flags.push({
@@ -317,7 +344,6 @@ class SyntheticIdentityDetector {
             }
         }
 
-        // Check for temporary email patterns
         if (email.match(/\d{5,}@/)) {
             flags.push({
                 type: 'temporary_email',
@@ -330,17 +356,12 @@ class SyntheticIdentityDetector {
         return { flags, riskScore };
     }
 
-    // ============================================
-    // DEVICE FINGERPRINT ANALYSIS
-    // ============================================
-
     async analyzeDeviceFingerprint(context) {
         const flags = [];
         let riskScore = 0;
         const fingerprint = this.generateDeviceFingerprint(context);
 
         try {
-            // Check if fingerprint is already associated with multiple accounts
             const [existing] = await db.query(
                 `SELECT COUNT(*) as count FROM users 
                  WHERE device_fingerprint = ?`,
@@ -356,7 +377,6 @@ class SyntheticIdentityDetector {
                 riskScore += 30;
             }
 
-            // Check for missing or inconsistent device data
             if (!context.userAgent || !context.acceptLanguage) {
                 flags.push({
                     type: 'incomplete_device_data',
@@ -366,7 +386,6 @@ class SyntheticIdentityDetector {
                 riskScore += 5;
             }
 
-            // Check for headless browser patterns
             if (context.userAgent && this.isHeadlessBrowser(context.userAgent)) {
                 flags.push({
                     type: 'headless_browser',
@@ -378,9 +397,9 @@ class SyntheticIdentityDetector {
 
         } catch (error) {
             console.error('Device analysis error:', error);
+            return { flags, riskScore, error: error.message };
         }
 
-        // Store fingerprint for future checks
         this.deviceFingerprints.set(fingerprint, {
             firstSeen: new Date(),
             count: (this.deviceFingerprints.get(fingerprint)?.count || 0) + 1
@@ -402,20 +421,8 @@ class SyntheticIdentityDetector {
     }
 
     isHeadlessBrowser(userAgent) {
-        const headlessPatterns = [
-            /Headless/i,
-            /Puppeteer/i,
-            /Playwright/i,
-            /Selenium/i,
-            /PhantomJS/i,
-            /Cypress/i
-        ];
-        return headlessPatterns.some(pattern => pattern.test(userAgent));
+        return FRAUD_DETECTION_CONFIG.headlessPatterns.some(pattern => pattern.test(userAgent));
     }
-
-    // ============================================
-    // IP REPUTATION CHECK
-    // ============================================
 
     async checkIPReputation(ip) {
         const flags = [];
@@ -432,21 +439,19 @@ class SyntheticIdentityDetector {
         }
 
         try {
-            // Check IP reputation cache
-            const reputation = this.ipReputation.get(ip);
-            if (reputation) {
-                if (reputation.riskScore > 50) {
+            const cached = this.ipReputation.get(ip);
+            if (cached) {
+                if (cached.riskScore > 50) {
                     flags.push({
                         type: 'ip_reputation',
                         severity: 'high',
-                        details: `IP has poor reputation (score: ${reputation.riskScore})`
+                        details: `IP has poor reputation (score: ${cached.riskScore})`
                     });
-                    riskScore += reputation.riskScore / 2;
+                    riskScore += cached.riskScore / 2;
                 }
                 return { flags, riskScore };
             }
 
-            // Check database for IP history
             const [ipHistory] = await db.query(
                 `SELECT COUNT(*) as account_count, 
                         SUM(CASE WHEN fraud_flag = true THEN 1 ELSE 0 END) as fraud_count
@@ -467,7 +472,6 @@ class SyntheticIdentityDetector {
                 }
             }
 
-            // Check for VPN/Proxy patterns
             if (this.isProxyIP(ip)) {
                 flags.push({
                     type: 'proxy_ip',
@@ -477,36 +481,24 @@ class SyntheticIdentityDetector {
                 riskScore += 15;
             }
 
-            // Store reputation
             this.ipReputation.set(ip, { riskScore });
 
         } catch (error) {
             console.error('IP reputation check error:', error);
+            return { flags, riskScore, error: error.message };
         }
 
         return { flags, riskScore };
     }
 
     isProxyIP(ip) {
-        // Simple proxy detection - in production use IP reputation APIs
-        const proxyPatterns = [
-            /^10\./,        // Private IP
-            /^172\.16\./,   // Private IP
-            /^192\.168\./,  // Private IP
-            /^127\./        // Localhost
-        ];
-        return proxyPatterns.some(pattern => pattern.test(ip));
+        return FRAUD_DETECTION_CONFIG.proxyPatterns.some(pattern => pattern.test(ip));
     }
-
-    // ============================================
-    // BEHAVIORAL PATTERN ANALYSIS
-    // ============================================
 
     analyzeBehavioralPatterns(context) {
         const flags = [];
         let riskScore = 0;
 
-        // Check for automated behavior
         if (context.isAutomated) {
             flags.push({
                 type: 'automated_behavior',
@@ -516,20 +508,18 @@ class SyntheticIdentityDetector {
             riskScore += 25;
         }
 
-        // Check for unusual timing
         if (context.signupTime) {
             const hour = new Date(context.signupTime).getHours();
             if (hour >= 0 && hour <= 5) {
                 flags.push({
                     type: 'unusual_timing',
                     severity: 'low',
-                    details: 'Signup during off-hours (2 AM - 5 AM)'
+                    details: 'Signup during off-hours (12 AM - 5 AM)'
                 });
                 riskScore += 5;
             }
         }
 
-        // Check for rapid form completion
         if (context.formCompletionTime && context.formCompletionTime < 2000) {
             flags.push({
                 type: 'rapid_completion',
@@ -541,10 +531,6 @@ class SyntheticIdentityDetector {
 
         return { flags, riskScore };
     }
-
-    // ============================================
-    // NAME PATTERN ANALYSIS
-    // ============================================
 
     analyzeNamePatterns(name) {
         const flags = [];
@@ -560,7 +546,6 @@ class SyntheticIdentityDetector {
             return { flags, riskScore };
         }
 
-        // Check for unrealistic names
         if (name.length < 2) {
             flags.push({
                 type: 'unrealistic_name_length',
@@ -570,12 +555,11 @@ class SyntheticIdentityDetector {
             riskScore += 10;
         }
 
-        // Check for common synthetic name patterns
         const syntheticPatterns = [
-            /^[A-Z][a-z]{1,2}$/,  // Single letter + 1-2 letters
-            /[0-9]/,              // Numbers in name
-            /[!@#$%^&*]/,        // Special characters
-            /^[A-Z]$/             // Single letter
+            /^[A-Z][a-z]{1,2}$/,
+            /[0-9]/,
+            /[!@#$%^&*]/,
+            /^[A-Z]$/
         ];
 
         for (const pattern of syntheticPatterns) {
@@ -593,10 +577,6 @@ class SyntheticIdentityDetector {
         return { flags, riskScore };
     }
 
-    // ============================================
-    // RISK CALCULATION
-    // ============================================
-
     calculateRiskLevel(score) {
         if (score >= FRAUD_DETECTION_CONFIG.trustScoreThreshold) return 'low';
         if (score >= FRAUD_DETECTION_CONFIG.highRiskThreshold) return 'medium';
@@ -605,13 +585,12 @@ class SyntheticIdentityDetector {
     }
 
     calculateConfidence(flags) {
-        // Confidence based on number and severity of flags
         if (flags.length === 0) return 0;
-        
+
         const severityWeights = { high: 3, medium: 2, low: 1 };
         const totalWeight = flags.reduce((sum, f) => sum + (severityWeights[f.severity] || 0), 0);
         const maxWeight = flags.length * 3;
-        
+
         return Math.min(100, (totalWeight / maxWeight) * 100);
     }
 
@@ -636,7 +615,6 @@ class SyntheticIdentityDetector {
             recommendations.push('Enable 2FA requirement');
         }
 
-        // Specific recommendations based on flags
         detection.flags.forEach(flag => {
             if (flag.type === 'disposable_email') {
                 recommendations.push('Require email verification before purchase');
@@ -652,18 +630,14 @@ class SyntheticIdentityDetector {
         return recommendations;
     }
 
-    // ============================================
-    // DATABASE OPERATIONS
-    // ============================================
-
     async logDetection(userData, detection, context) {
         try {
             await db.query(
                 `INSERT INTO synthetic_identity_detections 
                  (user_email, user_name, risk_score, risk_level, flags, 
                   confidence, recommendations, ip_address, device_fingerprint, 
-                  timestamp)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+                  detection_id, timestamp)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
                 [
                     userData.email || 'unknown',
                     userData.name || 'unknown',
@@ -673,7 +647,8 @@ class SyntheticIdentityDetector {
                     detection.confidence,
                     JSON.stringify(detection.recommendations),
                     context.ip || 'unknown',
-                    this.generateDeviceFingerprint(context)
+                    this.generateDeviceFingerprint(context),
+                    detection.id || crypto.randomUUID()
                 ]
             );
         } catch (error) {
@@ -684,7 +659,7 @@ class SyntheticIdentityDetector {
     async updateVelocity(context) {
         const key = `velocity_${context.ip || 'unknown'}`;
         const now = Date.now();
-        
+
         if (!this.velocityTracker.has(key)) {
             this.velocityTracker.set(key, { count: 1, timestamp: now });
         } else {
@@ -696,40 +671,43 @@ class SyntheticIdentityDetector {
 
     async loadReputationData() {
         try {
-            // Load IP reputation data from database
             const [reputations] = await db.query(
                 `SELECT ip_address, risk_score FROM ip_reputation 
                  WHERE last_updated > DATE_SUB(NOW(), INTERVAL 7 DAY)`
             );
-            
+
             for (const rep of reputations) {
                 this.ipReputation.set(rep.ip_address, { riskScore: rep.risk_score });
             }
-            
-            console.log(`✅ Loaded ${reputations.length} IP reputations`);
+
+            console.log(`Loaded ${reputations.length} IP reputations`);
         } catch (error) {
             console.error('Error loading reputation data:', error);
         }
     }
 
-    // ============================================
-    // EXPORTS
-    // ============================================
-
     getStats() {
         return {
             fraudScores: this.fraudScores.size,
             deviceFingerprints: this.deviceFingerprints.size,
-            ipReputations: this.ipReputation.size,
+            ipReputations: this.ipReputation.keys().length,
             velocityTrackers: this.velocityTracker.size,
-            initialized: this.initialized
+            detectionHistory: this.detectionHistory.size,
+            initialized: this.initialized,
+            cacheHits: this.ipReputation.getStats?.().hits || 0,
+            cacheMisses: this.ipReputation.getStats?.().misses || 0
         };
     }
-}
 
-// ============================================
-// SINGLETON INSTANCE
-// ============================================
+    clearCache() {
+        this.ipReputation.flushAll();
+        this.fraudScores.clear();
+        this.deviceFingerprints.clear();
+        this.velocityTracker.clear();
+        console.log('Detector cache cleared');
+        return { success: true, timestamp: new Date().toISOString() };
+    }
+}
 
 const detector = new SyntheticIdentityDetector();
 detector.initialize();
