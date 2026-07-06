@@ -5,9 +5,7 @@ const cookieParser = require("cookie-parser");
 const compression = require("compression");
 const morgan = require("morgan");
 const timeout = require("connect-timeout");
-const fs = require("fs");
-const path = require("path");
-
+const { accessLogStream, errorLogStream } = require('./src/utils/logStreams');
 const dotenv = require("dotenv");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
@@ -86,21 +84,7 @@ const PORT = Number(process.env.PORT) || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5500";
 
 // create logs directory
-const logDir = path.join(__dirname, "logs");
-if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
-}
 
-// request logging with morgan
-const accessLogStream = fs.createWriteStream(
-    path.join(logDir, "access.log"),
-    { flags: "a" }
-);
-
-const errorLogStream = fs.createWriteStream(
-    path.join(logDir, "errors.log"),
-    { flags: "a" }
-);
 
 // custom morgan tokens
 morgan.token("user-id", (req) => req.user?.id || "anonymous");
