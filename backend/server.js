@@ -2,6 +2,8 @@ const express = require("express");
 const helmetMiddleware = require("./middleware/helmetMiddleware");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+
+const globalErrorHandler = require('./middleware/errorHandler');
 const compression = require("compression");
 const morgan = require("morgan");
 const timeout = require("connect-timeout");
@@ -17,7 +19,15 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const aiFeedRoutes = require('./routes/aiFeedRoutes');
 // Import agent routes
 const agentRoutes = require('./src/routes/agentRoutes');
+// Import legal routes
+const legalRoutes = require('./src/routes/legalRoutes');
+// Add with other route imports
+const aiLegalRoutes = require('./routes/aiLegalRoutes');
 
+// Add AI Legal routes
+app.use('/api/ai-legal', aiLegalRoutes);
+// Add routes
+app.use('/api/legal', legalRoutes);
 // Add routes
 app.use('/api/agents', agentRoutes);
 // Add AI feed routes
@@ -81,45 +91,14 @@ const app = express();
 const http = require("http");
 const server = http.createServer(app);
 const { initSocket } = require("./utils/socketManager");
-
+const { accessLogger, errorLogger, devLogger } = require('./src/config/morganConfig');
 // constants
 const PORT = Number(process.env.PORT) || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5500";
 
 // create logs directory
-const logDir = path.join(__dirname, "logs");
-if (!fs.existsSync(logDir)) {
-    fs.mkdirSync(logDir, { recursive: true });
-}
 
-// request logging with morgan
-const accessLogStream = fs.createWriteStream(
-    path.join(logDir, "access.log"),
-    { flags: "a" }
-);
 
-const errorLogStream = fs.createWriteStream(
-    path.join(logDir, "errors.log"),
-    { flags: "a" }
-);
-
-// custom morgan tokens
-morgan.token("user-id", (req) => req.user?.id || "anonymous");
-morgan.token("user-email", (req) => req.user?.email || "anonymous");
-
-// log all requests to access.log
-app.use(morgan("combined", { stream: accessLogStream }));
-
-// log errors to error.log
-app.use(morgan("combined", {
-    stream: errorLogStream,
-    skip: (req, res) => res.statusCode < 400
-}));
-
-// console logging in development
-if (process.env.NODE_ENV !== "production") {
-    app.use(morgan("dev"));
-}
 
 // trust proxy
 app.set("trust proxy", 1);
@@ -177,6 +156,15 @@ initSocket(server, allowedOrigins);
 
 // cors
 app.use(corsMiddleware);
+app.use(accessLogger);
+
+// log errors to error.log
+app.use(errorLogger);
+
+// console logging in development
+if (process.env.NODE_ENV !== "production") {
+    app.use(devLogger);
+}
 
 // body parsers
 app.use(
@@ -315,72 +303,8 @@ app.use((req, res) => {
     });
 });
 
-// global error handler
-app.use((err, req, res, next) => {
-    // log error
-    const errorLog = {
-        timestamp: new Date().toISOString(),
-        status: err.status || 500,
-        message: err.message,
-        stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-        path: req.path,
-        method: req.method,
-        ip: req.ip,
-        userAgent: req.headers["user-agent"],
-        userId: req.user?.id || "anonymous",
-        errorCode: err.errorCode || "INTERNAL_SERVER_ERROR",
-    };
-
-    // write to error log file
-    errorLogStream.write(JSON.stringify(errorLog) + "\n");
-
-    if (process.env.NODE_ENV !== "production") {
-        console.error("SERVER ERROR:", err);
-    } else {
-        console.error("SERVER ERROR:", err.message);
-    }
-
-    if (res.headersSent) {
-        return next(err);
-    }
-
-    // handle timeout errors
-    if (err.code === "ETIMEDOUT" || err.timeout) {
-        return res.status(408).json({
-            success: false,
-            errorCode: "REQUEST_TIMEOUT",
-            message: "Request timeout. Please try again.",
-        });
-    }
-
-    // handle rate limit errors
-    if (err.code === "RATE_LIMIT_EXCEEDED") {
-        return res.status(429).json({
-            success: false,
-            errorCode: "RATE_LIMIT_EXCEEDED",
-            message: "Too many requests. Please try again later.",
-        });
-    }
-
-    // ✅ Handle MCP specific errors
-    if (err.code === "MCP_SECURITY_ERROR") {
-        return res.status(403).json({
-            success: false,
-            errorCode: "MCP_SECURITY_ERROR",
-            message: err.message || "MCP security validation failed",
-        });
-    }
-
-    // default error response
-    return res.status(err.status || 500).json({
-        success: false,
-        errorCode: err.errorCode || "INTERNAL_SERVER_ERROR",
-        message: process.env.NODE_ENV === "production"
-            ? "Internal server error"
-            : err.message,
-        ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    });
-});
+// Register the extracted global error handler
+app.use(globalErrorHandler(errorLogStream));
 
 // unhandled rejection
 process.on("unhandledRejection", (reason) => {
