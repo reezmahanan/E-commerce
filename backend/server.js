@@ -2,6 +2,8 @@ const express = require("express");
 const helmetMiddleware = require("./middleware/helmetMiddleware");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+
+const globalErrorHandler = require('./middleware/errorHandler');
 const compression = require("compression");
 const morgan = require("morgan");
 const timeout = require("connect-timeout");
@@ -300,72 +302,8 @@ app.use((req, res) => {
     });
 });
 
-// global error handler
-app.use((err, req, res, next) => {
-    // log error
-    const errorLog = {
-        timestamp: new Date().toISOString(),
-        status: err.status || 500,
-        message: err.message,
-        stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-        path: req.path,
-        method: req.method,
-        ip: req.ip,
-        userAgent: req.headers["user-agent"],
-        userId: req.user?.id || "anonymous",
-        errorCode: err.errorCode || "INTERNAL_SERVER_ERROR",
-    };
-
-    // write to error log file
-    errorLogStream.write(JSON.stringify(errorLog) + "\n");
-
-    if (process.env.NODE_ENV !== "production") {
-        console.error("SERVER ERROR:", err);
-    } else {
-        console.error("SERVER ERROR:", err.message);
-    }
-
-    if (res.headersSent) {
-        return next(err);
-    }
-
-    // handle timeout errors
-    if (err.code === "ETIMEDOUT" || err.timeout) {
-        return res.status(408).json({
-            success: false,
-            errorCode: "REQUEST_TIMEOUT",
-            message: "Request timeout. Please try again.",
-        });
-    }
-
-    // handle rate limit errors
-    if (err.code === "RATE_LIMIT_EXCEEDED") {
-        return res.status(429).json({
-            success: false,
-            errorCode: "RATE_LIMIT_EXCEEDED",
-            message: "Too many requests. Please try again later.",
-        });
-    }
-
-    // ✅ Handle MCP specific errors
-    if (err.code === "MCP_SECURITY_ERROR") {
-        return res.status(403).json({
-            success: false,
-            errorCode: "MCP_SECURITY_ERROR",
-            message: err.message || "MCP security validation failed",
-        });
-    }
-
-    // default error response
-    return res.status(err.status || 500).json({
-        success: false,
-        errorCode: err.errorCode || "INTERNAL_SERVER_ERROR",
-        message: process.env.NODE_ENV === "production"
-            ? "Internal server error"
-            : err.message,
-        ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    });
-});
+// Register the extracted global error handler
+app.use(globalErrorHandler(errorLogStream));
 
 // unhandled rejection
 process.on("unhandledRejection", (reason) => {
