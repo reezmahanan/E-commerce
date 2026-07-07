@@ -32,6 +32,10 @@ app.use('/api/ai-feed', aiFeedRoutes);
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+
+// Add with other route imports
+const performanceRoutes = require('./routes/performanceRoutes');
+
 // Import routes
 const approvalRoutes = require('./src/routes/approvalRoutes');
 const rollbackRoutes = require('./src/routes/rollbackRoutes');
@@ -50,6 +54,9 @@ const aiFinancialRoutes = require('./routes/aiFinancialRoutes');
 // Add AI financial routes
 app.use('/api/ai/financial', aiFinancialRoutes);
 
+
+// Add performance routes
+app.use('/api/performance', performanceRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
@@ -57,6 +64,13 @@ const copywriterRoutes = require('./routes/copywriterRoutes');
 // Add copywriter routes
 app.use('/api/copywriter', copywriterRoutes);
 // Add with other imports
+
+const { detectBot, addBotDetectionHeaders } = require('./middleware/botProtectionMiddleware');
+
+// Add after other middleware
+app.use(addBotDetectionHeaders);
+app.use(detectBot);
+
 const { verifyAICrawler } = require('./middleware/aiCrawlerMiddleware');
 
 
