@@ -165,7 +165,8 @@ const allowedOrigins = [
     "http://172.18.208.1:5502",
     FRONTEND_URL,
     "https://e-commerce-git-main-bhuvanshs-projects.vercel.app",
-    "https://www.bhuvansh.xyz"
+    "https://www.bhuvansh.xyz",
+    "https://e-commerce-production-d546.up.railway.app"
 ];
 
 // initialize websocket server with CORS
