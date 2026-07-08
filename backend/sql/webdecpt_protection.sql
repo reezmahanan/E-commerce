@@ -18,9 +18,16 @@ CREATE TABLE IF NOT EXISTS webdecept_validation_logs (
     url_hash CHAR(64) GENERATED ALWAYS AS (SHA2(url, 256)) STORED,
     domain VARCHAR(255) GENERATED ALWAYS AS (REGEXP_SUBSTR(url, '^(?:https?:\/\/)?([^\/]+)')) STORED,
     
+    -- IP Address Tracking (NEW)
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    request_id VARCHAR(64),
+    session_id VARCHAR(64),
+    
     -- Validation Results
     trust_score INT DEFAULT 0 CHECK (trust_score BETWEEN 0 AND 100),
     validation_status ENUM('pending', 'valid', 'suspicious', 'malicious', 'error') DEFAULT 'pending',
+    validation_method VARCHAR(50), -- NEW: Track which method was used
     
     -- Detailed Analysis
     flags JSON, -- Security flags detected
@@ -38,6 +45,7 @@ CREATE TABLE IF NOT EXISTS webdecept_validation_logs (
     is_malware BOOLEAN DEFAULT FALSE,
     is_scam BOOLEAN DEFAULT FALSE,
     is_deceptive BOOLEAN DEFAULT FALSE,
+    is_malicious BOOLEAN DEFAULT FALSE, -- NEW: Combined flag
     redirect_chain JSON, -- Track redirects
     
     -- Performance Metrics
@@ -56,17 +64,23 @@ CREATE TABLE IF NOT EXISTS webdecept_validation_logs (
     INDEX idx_url (url(255)),
     INDEX idx_url_hash (url_hash),
     INDEX idx_domain (domain),
+    INDEX idx_ip_address (ip_address),
+    INDEX idx_request_id (request_id),
+    INDEX idx_session_id (session_id),
     INDEX idx_trust_score (trust_score),
     INDEX idx_validation_status (validation_status),
     INDEX idx_threat_level (threat_level),
     INDEX idx_created_at (created_at),
     INDEX idx_deleted (is_deleted),
+    INDEX idx_is_malicious (is_malicious), -- NEW
     
     -- Composite Indexes for Common Queries
     INDEX idx_status_trust (validation_status, trust_score),
     INDEX idx_threat_created (threat_level, created_at),
     INDEX idx_phishing_status (is_phishing, validation_status),
     INDEX idx_domain_status (domain, validation_status),
+    INDEX idx_ip_threat (ip_address, threat_level), -- NEW
+    INDEX idx_malicious_created (is_malicious, created_at), -- NEW
     
     -- Index for deactivation checks
     INDEX idx_deleted_created (is_deleted, created_at)
@@ -119,6 +133,12 @@ CREATE TABLE IF NOT EXISTS domain_reputation (
     risk_factors JSON,
     last_risk_assessment DATETIME,
     
+    -- Category Classification (NEW)
+    category VARCHAR(50) DEFAULT 'unknown',
+    sub_category VARCHAR(50),
+    industry VARCHAR(50),
+    notes TEXT, -- Manual review notes
+    
     -- Block Status
     is_blocked BOOLEAN DEFAULT FALSE,
     block_reason TEXT,
@@ -142,11 +162,13 @@ CREATE TABLE IF NOT EXISTS domain_reputation (
     INDEX idx_created_at (created_at),
     INDEX idx_deleted (is_deleted),
     INDEX idx_ssl_valid (ssl_valid),
+    INDEX idx_category (category), -- NEW
     
     -- Composite Indexes
     INDEX idx_trust_risk (trust_score, risk_level),
     INDEX idx_blocked_status (is_blocked, risk_level),
-    INDEX idx_ssl_trust (ssl_valid, trust_score)
+    INDEX idx_ssl_trust (ssl_valid, trust_score),
+    INDEX idx_category_risk (category, risk_level) -- NEW
     
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -162,6 +184,10 @@ CREATE TABLE IF NOT EXISTS suspicious_redirects (
     from_domain VARCHAR(255) GENERATED ALWAYS AS (REGEXP_SUBSTR(from_url, '^(?:https?:\/\/)?([^\/]+)')) STORED,
     to_url VARCHAR(2000),
     to_domain VARCHAR(255) GENERATED ALWAYS AS (REGEXP_SUBSTR(to_url, '^(?:https?:\/\/)?([^\/]+)')) STORED,
+    
+    -- IP Tracking (NEW)
+    ip_address VARCHAR(45),
+    user_agent TEXT,
     
     -- Redirect Details
     redirect_type ENUM('301', '302', '303', '307', '308', 'meta', 'javascript') DEFAULT '301',
@@ -197,11 +223,13 @@ CREATE TABLE IF NOT EXISTS suspicious_redirects (
     INDEX idx_risk_score (risk_score),
     INDEX idx_created_at (created_at),
     INDEX idx_deleted (is_deleted),
+    INDEX idx_ip_address (ip_address), -- NEW
     
     -- Composite Indexes
     INDEX idx_malicious_risk (is_malicious, risk_score),
     INDEX idx_domain_risk (from_domain, risk_score),
-    INDEX idx_type_suspicious (redirect_type, is_suspicious)
+    INDEX idx_type_suspicious (redirect_type, is_suspicious),
+    INDEX idx_ip_malicious (ip_address, is_malicious) -- NEW
     
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -321,18 +349,21 @@ SELECT
     id,
     url,
     domain,
+    ip_address,
     trust_score,
     threat_level,
     validation_status,
     is_phishing,
     is_malware,
     is_scam,
+    is_malicious,
     created_at
 FROM webdecept_validation_logs
 WHERE is_deleted = 0
     AND (is_phishing = TRUE 
          OR is_malware = TRUE 
          OR is_scam = TRUE 
+         OR is_malicious = TRUE
          OR threat_level IN ('high', 'critical'))
 ORDER BY created_at DESC
 LIMIT 1000;
@@ -344,6 +375,7 @@ SELECT
     trust_score,
     security_score,
     risk_level,
+    category,
     is_blocked,
     violation_count,
     total_checks,
@@ -366,6 +398,7 @@ SELECT
     redirect_type,
     is_malicious,
     risk_score,
+    ip_address,
     created_at
 FROM suspicious_redirects
 WHERE is_deleted = 0
@@ -564,6 +597,50 @@ BEGIN
     COMMIT;
 END //
 
+-- 6. Get IP Threat Statistics (NEW)
+CREATE PROCEDURE GetIPThreatStats(
+    IN p_ip_address VARCHAR(45)
+)
+BEGIN
+    SELECT 
+        COUNT(*) as total_checks,
+        SUM(CASE WHEN threat_level IN ('high', 'critical') THEN 1 ELSE 0 END) as high_threats,
+        SUM(CASE WHEN is_malicious = TRUE THEN 1 ELSE 0 END) as malicious_count,
+        AVG(trust_score) as avg_trust_score
+    FROM webdecept_validation_logs
+    WHERE ip_address = p_ip_address
+        AND is_deleted = 0
+        AND created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY);
+END //
+
+-- 7. Get Dashboard Summary (NEW)
+CREATE PROCEDURE GetDashboardSummary()
+BEGIN
+    -- Total threats today
+    SELECT 
+        COUNT(*) as total_threats,
+        SUM(CASE WHEN threat_level = 'critical' THEN 1 ELSE 0 END) as critical_threats,
+        SUM(CASE WHEN threat_level = 'high' THEN 1 ELSE 0 END) as high_threats,
+        SUM(CASE WHEN is_phishing = TRUE THEN 1 ELSE 0 END) as phishing_attempts,
+        SUM(CASE WHEN is_malware = TRUE THEN 1 ELSE 0 END) as malware_attempts
+    FROM webdecept_validation_logs
+    WHERE DATE(created_at) = CURDATE()
+        AND is_deleted = 0;
+        
+    -- Top malicious domains
+    SELECT 
+        domain,
+        COUNT(*) as count,
+        AVG(trust_score) as avg_trust
+    FROM webdecept_validation_logs
+    WHERE is_malicious = TRUE
+        AND is_deleted = 0
+        AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+    GROUP BY domain
+    ORDER BY count DESC
+    LIMIT 10;
+END //
+
 DELIMITER ;
 
 -- ============================================
@@ -618,6 +695,20 @@ BEGIN
     END IF;
 END //
 
+-- NEW: Trigger to auto-update malicious flag
+CREATE TRIGGER before_validation_log_insert
+BEFORE INSERT ON webdecept_validation_logs
+FOR EACH ROW
+BEGIN
+    -- Auto-set malicious flag
+    SET NEW.is_malicious = (NEW.is_phishing OR NEW.is_malware OR NEW.is_scam OR NEW.is_deceptive);
+    
+    -- Auto-set validation method if not provided
+    IF NEW.validation_method IS NULL THEN
+        SET NEW.validation_method = 'auto';
+    END IF;
+END //
+
 DELIMITER ;
 
 -- ============================================
@@ -645,6 +736,19 @@ BEGIN
     CALL ArchiveOldValidationLogs();
 END //
 
+-- NEW: Weekly stats cleanup
+CREATE EVENT IF NOT EXISTS weekly_stats_cleanup
+ON SCHEDULE EVERY 1 WEEK
+DO
+BEGIN
+    -- Delete old suspicious redirects (older than 3 months)
+    UPDATE suspicious_redirects 
+    SET is_deleted = 1, deleted_at = NOW()
+    WHERE created_at < DATE_SUB(NOW(), INTERVAL 3 MONTH)
+        AND is_deleted = 0
+        AND is_malicious = FALSE;
+END //
+
 DELIMITER ;
 
 -- ============================================
@@ -664,11 +768,14 @@ CREATE TABLE IF NOT EXISTS webdecept_validation_logs_archive (
     is_phishing BOOLEAN,
     is_malware BOOLEAN,
     is_scam BOOLEAN,
+    is_malicious BOOLEAN,
+    ip_address VARCHAR(45),
     created_at TIMESTAMP,
     archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     INDEX idx_archive_created (created_at),
-    INDEX idx_archive_archived (archived_at)
+    INDEX idx_archive_archived (archived_at),
+    INDEX idx_archive_ip (ip_address)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS domain_reputation_archive (
@@ -676,6 +783,7 @@ CREATE TABLE IF NOT EXISTS domain_reputation_archive (
     domain VARCHAR(255),
     trust_score INT,
     risk_level VARCHAR(20),
+    category VARCHAR(50),
     violation_count INT,
     total_checks INT,
     created_at TIMESTAMP,
@@ -690,10 +798,10 @@ CREATE TABLE IF NOT EXISTS domain_reputation_archive (
 -- ============================================
 
 -- Insert sample domains
-INSERT INTO domain_reputation (domain, trust_score, risk_level) VALUES
-('example.com', 95, 'safe'),
-('suspicious-site.com', 30, 'high'),
-('malware-site.com', 10, 'critical');
+INSERT INTO domain_reputation (domain, trust_score, risk_level, category) VALUES
+('example.com', 95, 'safe', 'ecommerce'),
+('suspicious-site.com', 30, 'high', 'phishing'),
+('malware-site.com', 10, 'critical', 'malware');
 
 -- Insert sample blacklist entries
 INSERT INTO url_blacklist (url, category, severity, verification_status) VALUES
@@ -701,3 +809,6 @@ INSERT INTO url_blacklist (url, category, severity, verification_status) VALUES
 ('https://malware-site.com/download', 'malware', 'critical', 'verified'),
 ('https://scam-site.com/fake-offer', 'scam', 'medium', 'verified');
 
+-- ============================================
+-- END OF SCHEMA
+-- ============================================
