@@ -55,8 +55,10 @@ const verifyAgentIdentity = async (req, res, next) => {
         req.verifiedAgent = agent;
         next();
     } catch (error) {
+        console.error("AGENT VERIFICATION ERROR:", error);
+
         res.status(500).json({
-            error: error.message
+            error: "Agent verification failed"
         });
     }
 };
@@ -98,8 +100,11 @@ const checkAgentReputation = async (req, res, next) => {
         req.agentReputation = reputation;
         next();
     } catch (error) {
-        res.status(500).json({
-            error: error.message
+        console.error("AGENT REPUTATION CHECK ERROR:", error);
+
+        return res.status(500).json({
+            success: false,
+            error: "Agent reputation check failed"
         });
     }
 };
