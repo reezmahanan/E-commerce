@@ -314,7 +314,8 @@ html, body {
 
 .category-menu-link:hover,
 .category-menu-link:focus-visible,
-.category-menu-link.active {
+.category-menu-link.active,
+.category-menu-link.is-preview-active {
     background: rgba(8, 129, 120, 0.1);
     color: var(--primary-color, #088178);
     transform: translateX(3px);

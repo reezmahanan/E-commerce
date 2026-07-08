@@ -150,7 +150,6 @@ const validatePromoCode = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to validate promo code",
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
@@ -204,8 +203,7 @@ const validateMultiplePromos = async (req, res) => {
         console.error("BULK PROMO VALIDATION ERROR:", error);
         return res.status(500).json({
             success: false,
-            message: "Failed to validate promo codes",
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: "Failed to validate promo codes"
         });
     }
 };
@@ -298,7 +296,6 @@ const applyMultiplePromos = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to apply multiple promo codes",
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
@@ -341,7 +338,6 @@ const getPromoDetails = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to get promo details",
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };

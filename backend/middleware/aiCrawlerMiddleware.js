@@ -1,5 +1,6 @@
 // backend/middleware/aiCrawlerMiddleware.js
 const aiCrawlerVerification = require('../services/aiCrawlerVerificationService');
+const { db } = require("../config/db");
 
 /**
  * Middleware to verify AI crawlers
@@ -53,15 +54,17 @@ async function verifyAICrawler(req, res, next) {
  * Middleware to verify specific crawlers
  */
 async function verifySpecificCrawler(crawlerType) {
-    return async function(req, res, next) {
+    return async function (req, res, next) {
         try {
             const userAgent = req.headers['user-agent'] || '';
-            
+
             // Check if User-Agent matches target crawler
-            if (!userAgent.includes(crawlerType)) {
+            const normalizedUserAgent = String(userAgent || "").toLowerCase();
+            const normalizedCrawlerType = String(crawlerType || "").toLowerCase();
+
+            if (!normalizedUserAgent.includes(normalizedCrawlerType)) {
                 return next();
             }
-
             // Verify the crawler
             const verification = await aiCrawlerVerification.verifyCrawler(req);
 
@@ -89,7 +92,7 @@ async function verifySpecificCrawler(crawlerType) {
 async function blockSuspiciousIPs(req, res, next) {
     try {
         const ip = req.ip || req.connection.remoteAddress || 'unknown';
-        
+
         // Check if IP is blocked
         const [blocked] = await db.query(
             'SELECT * FROM blocked_ips WHERE ip_address = ? AND blocked_at > DATE_SUB(NOW(), INTERVAL 7 DAY)',
