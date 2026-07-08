@@ -1,5 +1,6 @@
 // backend/middleware/aiCrawlerMiddleware.js
 const aiCrawlerVerification = require('../services/aiCrawlerVerificationService');
+const {db} = require("../config/db");
 
 /**
  * Middleware to verify AI crawlers
