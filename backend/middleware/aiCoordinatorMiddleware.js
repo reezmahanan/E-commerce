@@ -304,7 +304,7 @@ async function aiCoordinatorMiddleware(req, res, next) {
                 data: {
                     agentId,
                     ...session,
-                    age: Date.now() - session.createdAt
+                    age: Date.now() - session.createdAt.getTime()
                 }
             });
 
@@ -379,4 +379,4 @@ async function aiCoordinatorMiddleware(req, res, next) {
         coordinator,
         actionLimiter,
         validActions
-    };
+    }}
