@@ -40,6 +40,8 @@ const PRODUCTS_PER_PAGE =
 let filters = {
     search: "",
     categories: [],
+    megaCategory: "",
+    megaSubcategory: "",
     minPrice: 0,
     maxPrice: 0,
     rating: 0,
@@ -54,6 +56,7 @@ let priceBounds = {
 
 let activeSuggestionIndex = -1;
 let searchHistory = [];
+let hasAppliedUrlFilters = false;
 
 // SHOP PAGE ELEMENTS
 const elements = {};
@@ -283,11 +286,16 @@ function createProductCard(
 }
 
 // RENDER PRODUCTS
-function renderProducts(products = []) {
+function renderProducts(
+    products = [],
+    {
+        emptyMessage = "No products found."
+    } = {}
+) {
     if (!elements.productContainer) return;
 
     if (!Array.isArray(products) || products.length === 0) {
-        renderEmptyState("No products found.");
+        renderEmptyState(emptyMessage);
         return;
     }
 
@@ -485,7 +493,46 @@ function initializeFilterControls() {
     };
 
     renderCategoryFilters();
+    applyUrlCategoryFilters();
     updatePriceControls();
+}
+
+function getUrlCategoryFilters() {
+    const params =
+        new URLSearchParams(window.location.search);
+
+    return {
+        category: params.get("category") || "",
+        subcategory: params.get("subcategory") || ""
+    };
+}
+
+function applyUrlCategoryFilters() {
+    if (hasAppliedUrlFilters) {
+        return;
+    }
+
+    const {
+        category,
+        subcategory
+    } = getUrlCategoryFilters();
+
+    filters.megaCategory = category;
+    filters.megaSubcategory = subcategory;
+
+    if (category) {
+        const matchingCategoryInput =
+            Array.from(
+                document.querySelectorAll('input[name="category-filter"]')
+            ).find((input) => input.value === category);
+
+        if (matchingCategoryInput) {
+            matchingCategoryInput.checked = true;
+            filters.categories = [category];
+        }
+    }
+
+    hasAppliedUrlFilters = true;
 }
 
 function renderCategoryFilters() {
@@ -616,7 +663,15 @@ function applyFilters({ resetPage = false } = {}) {
 
     updatePriceControls();
     updateResultsSummary();
-    renderProducts(currentProducts);
+    renderProducts(
+        currentProducts,
+        {
+            emptyMessage:
+                filters.megaCategory || filters.megaSubcategory
+                    ? "No products available in this category."
+                    : "No products found."
+        }
+    );
     renderPagination();
 }
 
@@ -980,6 +1035,9 @@ function setupFilterControls() {
 
             filters.minPrice = priceBounds.min;
             filters.maxPrice = priceBounds.max;
+            filters.megaCategory = "";
+            filters.megaSubcategory = "";
+            hasAppliedUrlFilters = true;
             updatePriceControls();
             closeSuggestions();
             applyFilters({

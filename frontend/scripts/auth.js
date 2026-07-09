@@ -20,6 +20,7 @@ const elements = {
     signupName: document.getElementById("signup-name"),
     signupEmail: document.getElementById("signup-email"),
     signupPassword: document.getElementById("signup-password"),
+    signupConfirmPassword: document.getElementById("signup-confirm-password"),
     signinEmail: document.getElementById("signin-email"),
     signinPassword: document.getElementById("signin-password"),
     authLink: document.getElementById("auth-link"),
@@ -206,10 +207,10 @@ function resetOtpTimer(buttonId, timerId) {
 }
 
 // ==================== API CALLS ====================
-async function signupUser(name, email, password) {
+async function signupUser(name, email, password, confirmPassword) {
     return await AppUtils.apiRequest("/auth/signup", {
         method: "POST",
-        body: JSON.stringify({ name, email, password })
+        body: JSON.stringify({ name, email, password, confirmPassword })
     });
 }
 
@@ -305,6 +306,7 @@ if (elements.signupForm) {
         const name = elements.signupName.value.trim();
         const email = elements.signupEmail.value.trim();
         const password = elements.signupPassword.value;
+        const confirmPassword = elements.signupConfirmPassword?.value || "";
 
         if (!name) {
             AppUtils.notify("Name is required.", "error");
@@ -313,6 +315,11 @@ if (elements.signupForm) {
 
         if (!emailRegex.test(email)) {
             AppUtils.notify("Enter a valid email.", "error");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            AppUtils.notify("Passwords do not match. Please try again.", "error");
             return;
         }
 
@@ -327,7 +334,7 @@ if (elements.signupForm) {
         toggleFormLoading(submitBtn, true, "Sending OTP...");
 
         try {
-            const response = await signupUser(name, email, password);
+            const response = await signupUser(name, email, password, confirmPassword);
 
             if (response.success) {
                 AppUtils.notify("OTP sent to your email!", "success");
@@ -408,7 +415,7 @@ if (otpForm) {
             const password = elements.signupPassword.value;
             
             try {
-                const response = await signupUser(name, email, password);
+                const response = await signupUser(name, email, password, elements.signupConfirmPassword?.value || "");
                 if (response.success) {
                     AppUtils.notify("OTP resent successfully!", "success");
                     startOtpTimer('resend-signup-otp-link', 'resend-signup-timer');
