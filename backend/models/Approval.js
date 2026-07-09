@@ -4,21 +4,28 @@ const approvalSchema = new mongoose.Schema({
     transactionId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Transaction',
-        required: true
+        required: [true, 'Transaction ID is required']
     },
     type: {
         type: String,
-        enum: ['human_approval', 'multi_sig', 'verification', 'rollback_approval'],
-        required: true
+        required: [true, 'Approval type is required'],
+        enum: {
+            values: ['human_approval', 'multi_sig', 'verification', 'rollback_approval'],
+            message: '{VALUE} is not a valid approval type'
+        }
     },
     status: {
         type: String,
-        enum: ['pending', 'approved', 'rejected', 'expired', 'escalated'],
+        enum: {
+            values: ['pending', 'approved', 'rejected', 'expired', 'escalated'],
+            message: '{VALUE} is not a valid status'
+        },
         default: 'pending'
     },
     requiredApprovals: {
         type: Number,
-        default: 1
+        default: 1,
+        min: [1, 'Required approvals must be at least 1']
     },
     approvals: [{
         userId: {
@@ -27,18 +34,35 @@ const approvalSchema = new mongoose.Schema({
         },
         action: {
             type: String,
-            enum: ['approve', 'reject']
+            enum: {
+                values: ['approve', 'reject'],
+                message: '{VALUE} is not a valid approval action'
+            }
         },
         timestamp: {
             type: Date,
             default: Date.now
         },
-        comment: String,
-        ipAddress: String,
-        userAgent: String
+        comment: {
+            type: String,
+            trim: true,
+            maxlength: [500, 'Comment cannot exceed 500 characters']
+        },
+        ipAddress: {
+            type: String,
+            trim: true
+        },
+        userAgent: {
+            type: String,
+            trim: true
+        }
     }],
     checkpoints: [{
-        name: String,
+        name: {
+            type: String,
+            trim: true,
+            maxlength: [100, 'Checkpoint name cannot exceed 100 characters']
+        },
         required: Boolean,
         verified: {
             type: Boolean,
@@ -53,17 +77,30 @@ const approvalSchema = new mongoose.Schema({
     }],
     riskScore: {
         type: Number,
-        min: 0,
-        max: 100,
+        min: [0, 'Risk score cannot be less than 0'],
+        max: [100, 'Risk score cannot exceed 100'],
         default: 0
     },
     context: {
-        agentId: String,
-        sessionId: String,
-        reason: String,
+        agentId: {
+            type: String,
+            trim: true
+        },
+        sessionId: {
+            type: String,
+            trim: true
+        },
+        reason: {
+            type: String,
+            trim: true,
+            maxlength: [500, 'Reason cannot exceed 500 characters']
+        },
         priority: {
             type: String,
-            enum: ['low', 'medium', 'high', 'critical'],
+            enum: {
+                values: ['low', 'medium', 'high', 'critical'],
+                message: '{VALUE} is not a valid priority level'
+            },
             default: 'medium'
         }
     },
@@ -75,19 +112,23 @@ const approvalSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
-    escalationReason: String,
+    escalationReason: {
+        type: String,
+        trim: true,
+        maxlength: [500, 'Escalation reason cannot exceed 500 characters']
+    },
     metadata: mongoose.Schema.Types.Mixed
 }, {
     timestamps: true
 });
 
-// Indexes
+// Indexes (Bilkul waisa hi)
 approvalSchema.index({ transactionId: 1, status: 1 });
 approvalSchema.index({ status: 1, expiresAt: 1 });
 approvalSchema.index({ 'approvals.userId': 1 });
 
-// Methods
-approvalSchema.methods.addApproval = function(userId, action, comment = '') {
+// Methods (Bilkul waisa hi)
+approvalSchema.methods.addApproval = function (userId, action, comment = '') {
     this.approvals.push({
         userId,
         action,
@@ -110,7 +151,7 @@ approvalSchema.methods.addApproval = function(userId, action, comment = '') {
     return this.save();
 };
 
-approvalSchema.methods.addCheckpoint = function(name, metadata = {}) {
+approvalSchema.methods.addCheckpoint = function (name, metadata = {}) {
     this.checkpoints.push({
         name,
         required: true,
@@ -120,7 +161,7 @@ approvalSchema.methods.addCheckpoint = function(name, metadata = {}) {
     return this.save();
 };
 
-approvalSchema.methods.verifyCheckpoint = function(name, userId) {
+approvalSchema.methods.verifyCheckpoint = function (name, userId) {
     const checkpoint = this.checkpoints.find(c => c.name === name);
     if (checkpoint) {
         checkpoint.verified = true;
