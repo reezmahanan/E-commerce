@@ -556,6 +556,56 @@ const focusMegaCategoryByOffset = (currentCategory, offset) => {
     activateMegaCategory(nextCategory?.dataset.megaCategory);
 };
 
+const renderFashionMenuProducts = async (link) => {
+    const fashionProductsContainer =
+        document.querySelector("[data-fashion-products]");
+
+    if (!fashionProductsContainer || !link) {
+        return;
+    }
+
+    const linkUrl = new URL(link.href);
+    const subcategory = linkUrl.searchParams.get("subcategory");
+
+    if (!subcategory) {
+        return;
+    }
+
+    fashionProductsContainer.innerHTML =
+        `<p class="mega-menu-empty">Loading products...</p>`;
+
+    try {
+        await ensureProductCardFactory();
+
+        const products = getProductsForFashionSubcategory(
+            await getFashionProducts(),
+            subcategory
+        );
+
+        document
+            .querySelectorAll("#mega-panel-fashion .category-menu-link")
+            .forEach((categoryLink) => {
+                categoryLink.classList.toggle("is-preview-active", categoryLink === link);
+            });
+
+        fashionProductsContainer.innerHTML = products.length
+            ? products.slice(0, 2)
+                .map((product) =>
+                    `<a class="mega-menu-product-link" href="${link.href}">
+                        ${window.createProductCard(product, null, {
+                            compact: true,
+                            showActions: false
+                        })}
+                    </a>`
+                )
+                .join("")
+            : `<p class="mega-menu-empty">No products available in this category.</p>`;
+    } catch {
+        fashionProductsContainer.innerHTML =
+            `<p class="mega-menu-empty">No products available in this category.</p>`;
+    }
+};
+
 categoryMenuToggle?.addEventListener("click", (event) => {
     event.stopPropagation();
     setCategoryMenuOpen(
@@ -655,6 +705,31 @@ categoryMenuLinks.forEach((link) => {
         link.setAttribute("aria-current", "page");
     }
 });
+
+const fashionSubcategoryLinks = Array.from(
+    document.querySelectorAll("#mega-panel-fashion .category-menu-link")
+);
+
+fashionSubcategoryLinks.forEach((link) => {
+    link.addEventListener("mouseenter", () => {
+        if (window.matchMedia("(min-width: 1025px)").matches) {
+            renderFashionMenuProducts(link);
+        }
+    });
+
+    link.addEventListener("focus", () => {
+        renderFashionMenuProducts(link);
+    });
+
+    link.addEventListener("touchstart", () => {
+        renderFashionMenuProducts(link);
+    }, { passive: true });
+});
+
+renderFashionMenuProducts(
+    fashionSubcategoryLinks.find((link) => link.classList.contains("active")) ||
+    fashionSubcategoryLinks[0]
+);
 
 if (currentCategory) {
     categoryMenuToggle?.classList.add("active");

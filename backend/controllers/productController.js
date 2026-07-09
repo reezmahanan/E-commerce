@@ -464,7 +464,9 @@ const getProductSuggestions = async (req, res) => {
     if (!keyword || keyword.trim() === '') {
         return res.json([]);
     }
-    const searchTerm = `%${keyword}%`;
+    // Sanitize: trim, limit length, escape special LIKE characters
+    const sanitized = keyword.trim().slice(0, 100).replace(/[%_\\]/g, '\\$&');
+    const searchTerm = `%${sanitized}%`;
     const query = `SELECT id, name FROM products WHERE name LIKE ? LIMIT 10`;
     try {
         const [results] = await db.query(query, [searchTerm]);

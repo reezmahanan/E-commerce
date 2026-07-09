@@ -48,4 +48,16 @@
     <loc>https://www.bhuvansh.xyz/tshirt.html</loc>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://www.bhuvansh.xyz/mens.html</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.bhuvansh.xyz/womens.html</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://www.bhuvansh.xyz/Buy1Get1.html</loc>
+    <priority>0.7</priority>
+  </url>
 </urlset>

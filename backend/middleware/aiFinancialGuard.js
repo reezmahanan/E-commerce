@@ -73,11 +73,7 @@ async function createApprovalRequest({
             [userId, actionType, JSON.stringify(proposedAction), autoRollbackMinutes]
         );
 
-        // Schedule auto-rollback
-        setTimeout(async () => {
-            await autoRollbackIfPending(result.insertId);
-        }, autoRollbackMinutes * 60 * 1000);
-
+        // Auto-rollback is now handled by the durable background worker polling the DB
         return result.insertId;
     } catch (error) {
         console.error('Error creating approval request:', error);
@@ -422,3 +418,29 @@ module.exports = {
     FINANCIAL_LIMITS,
     logAIDecision
 };
+
+// ============================================
+// DURABLE BACKGROUND WORKER
+// ============================================
+// Polls for expired pending approvals every minute to auto-rollback reliably
+const rollbackWorker = setInterval(async () => {
+    try {
+        const [expiredRequests] = await db.query(
+            `SELECT id FROM ai_approval_requests 
+             WHERE status = 'pending' AND auto_rollback_at <= NOW()`
+        );
+        for (const req of expiredRequests) {
+            await db.query(
+                `UPDATE ai_approval_requests 
+                 SET status = 'auto_rolled_back', 
+                     auto_rollback_reason = 'Approval timeout - automatically rolled back by worker'
+                 WHERE id = ?`,
+                [req.id]
+            );
+            console.log(`🔄 Auto-rolled back AI decision ${req.id} (Worker)`);
+        }
+    } catch (error) {
+        console.error('Error in rollback worker:', error);
+    }
+}, 60000);
+rollbackWorker.unref();

@@ -13,23 +13,26 @@ const SHARE_TOKEN_LENGTH = 32;
 // ==================== CACHE ====================
 const cache = new Map();
 
-function getCacheKey(userId) {
-    return `wishlist:${userId}`;
+function getCacheKey(userId, page, limit) {
+    return `wishlist:${userId}:page:${page}:limit:${limit}`;
 }
 
-function getFromCache(userId) {
-    const key = getCacheKey(userId);
+function getFromCache(userId, page, limit) {
+    const key = getCacheKey(userId, page, limit);
     const cached = cache.get(key);
+
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         return cached.data;
     }
+
     return null;
 }
 
-function setCache(userId, data) {
-    const key = getCacheKey(userId);
+function setCache(userId, page, limit, data) {
+    const key = getCacheKey(userId, page, limit);
+
     cache.set(key, {
-        data: data,
+        data,
         timestamp: Date.now()
     });
 }
@@ -75,7 +78,7 @@ const wishlistController = {
             const offset = (page - 1) * limit;
 
             // Check cache first
-            const cachedData = getFromCache(userId);
+            const cachedData = getFromCache(userId, page, limit);
             if (cachedData) {
                 logger.debug(`Cache hit for wishlist: ${userId}`);
                 return res.status(200).json({
@@ -124,7 +127,7 @@ const wishlistController = {
             };
 
             // Cache the data
-            setCache(userId, wishlistData);
+            setCache(userId, page, limit, wishlistData);
 
             return res.status(200).json({
                 success: true,
@@ -259,12 +262,14 @@ const wishlistController = {
     // ==================== BATCH ADD TO WISHLIST ====================
     batchAddToWishlist: async (req, res) => {
         const connection = await promisePool.getConnection();
+
         try {
             const userId = req.user.id;
             const { productIds } = req.body;
+            const uniqueProductIds = [...new Set(productIds.map((id) => safeNumber(id)))];
 
             // Validate batch
-            const validation = validateBatchOperation(productIds);
+            const validation = validateBatchOperation(uniqueProductIds);
             if (!validation.valid) {
                 return res.status(400).json({
                     success: false,
@@ -274,17 +279,17 @@ const wishlistController = {
 
             await connection.beginTransaction();
 
-            const results = [];
             const added = [];
             const alreadyExist = [];
             const notFound = [];
 
-            for (const productId of productIds) {
+            for (const productId of uniqueProductIds) {
                 // Check if product exists and is active
                 const [product] = await connection.query(
                     'SELECT id FROM products WHERE id = ? AND is_active = 1',
                     [productId]
                 );
+
                 if (!product.length) {
                     notFound.push(productId);
                     continue;
@@ -295,6 +300,7 @@ const wishlistController = {
                     'SELECT id FROM wishlist_items WHERE user_id = ? AND product_id = ?',
                     [userId, productId]
                 );
+
                 if (existing.length) {
                     alreadyExist.push(productId);
                     continue;
@@ -305,6 +311,7 @@ const wishlistController = {
                     'INSERT INTO wishlist_items (user_id, product_id, created_at) VALUES (?, ?, NOW())',
                     [userId, productId]
                 );
+
                 added.push(productId);
             }
 
@@ -313,22 +320,25 @@ const wishlistController = {
             // Invalidate cache
             invalidateCache(userId);
 
-            logger.info(`Batch add: ${added.length} added, ${alreadyExist.length} existing, ${notFound.length} not found`);
+            logger.info(
+                `Batch add: ${added.length} added, ${alreadyExist.length} existing, ${notFound.length} not found`
+            );
 
             return res.status(200).json({
                 success: true,
                 message: `Added ${added.length} products to wishlist`,
                 data: {
-                    added: added,
-                    alreadyExist: alreadyExist,
-                    notFound: notFound,
-                    totalProcessed: productIds.length
+                    added,
+                    alreadyExist,
+                    notFound,
+                    totalProcessed: uniqueProductIds.length
                 }
             });
 
         } catch (error) {
             await connection.rollback();
             logger.error(`BATCH ADD TO WISHLIST ERROR: ${error.message}`);
+
             return res.status(500).json({
                 success: false,
                 message: "Failed to add products to wishlist"
@@ -809,7 +819,7 @@ const wishlistController = {
         try {
             const userId = req.user.id;
             invalidateCache(userId);
-            
+
             return res.status(200).json({
                 success: true,
                 message: 'Wishlist cache cleared'
