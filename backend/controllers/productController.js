@@ -5,23 +5,34 @@ const {
     safeNumber,
     safeInteger,
     sanitizeString,
-    getPagination,
     buildPaginationMeta,
     safeArray
 } = require("../utils/helpers");
 
+const MAX_PRODUCT_LIMIT = 50;
+
+function parsePaginationValue(value, defaultValue, fieldName) {
+    if (value === undefined || value === null || value === "") {
+        return defaultValue;
+    }
+
+    const normalizedValue = String(value).trim();
+    const parsedValue = Number(normalizedValue);
+
+    if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+        throw new Error(`Invalid ${fieldName}`);
+    }
+
+    return parsedValue;
+}
+
 // ---------- Get all products ----------
 const getProducts = async (req, res) => {
     try {
-        const {
-            page,
-            limit,
-            offset
-        } = getPagination(
-            req.query.page,
-            req.query.limit,
-            50
-        );
+        const page = parsePaginationValue(req.query.page, 1, "page");
+        const requestedLimit = parsePaginationValue(req.query.limit, 10, "limit");
+        const limit = Math.min(requestedLimit, MAX_PRODUCT_LIMIT);
+        const offset = (page - 1) * limit;
 
         const search =
             req.query.search
@@ -149,6 +160,13 @@ const getProducts = async (req, res) => {
             });
 
     } catch (error) {
+        if (error.message === "Invalid page" || error.message === "Invalid limit") {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
+
         console.error(
             "GET PRODUCTS ERROR:"
         );
@@ -465,7 +483,7 @@ const getProductSuggestions = async (req, res) => {
         return res.json([]);
     }
     // Sanitize: trim, limit length, escape special LIKE characters
-    const sanitized = keyword.trim().slice(0, 100).replace(/[%_\\]/g, '\\$&');
+    const sanitized = keyword.trim().slice(0, 100).replace(/[%_\\]/g, String.raw`\$&`);
     const searchTerm = `%${sanitized}%`;
     const query = `SELECT id, name FROM products WHERE name LIKE ? LIMIT 10`;
     try {
