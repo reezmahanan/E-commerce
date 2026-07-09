@@ -4,32 +4,56 @@ const complianceRecordSchema = new mongoose.Schema({
     recordId: {
         type: String,
         unique: true,
-        required: true
+        required: [true, 'Record ID is required'],
+        trim: true,
+        minlength: [8, 'Record ID must be at least 8 characters long'],
+        maxlength: [50, 'Record ID must be at most 50 characters long']
     },
     negotiationId: {
         type: String,
         ref: 'Negotiation',
-        required: true
+        required: [true, 'Negotiation ID is required'],
+        trim: true,
+        minlength: [3, 'Negotiation ID must be at least 3 characters long'],
+        maxlength: [50, 'Negotiation ID must be at most 50 characters long']
     },
     // Regulatory framework
     framework: {
         type: String,
-        enum: ['gdpr', 'ccpa', 'hipaa', 'pci_dss', 'soc2', 'iso27001'],
-        required: true
+        required: [true, 'Regulatory framework is required'],
+        enum: {
+            values: ['gdpr', 'ccpa', 'hipaa', 'pci_dss', 'soc2', 'iso27001'],
+            message: '{VALUE} is not a valid regulatory framework'
+        }
     },
     // Compliance checks
     checks: [{
         name: {
             type: String,
-            required: true
+            required: [true, 'Check name is required'],
+            trim: true,
+            minlength: [2, 'Check name must be at least 2 characters long'],
+            maxlength: [100, 'Check name cannot exceed 100 characters']
         },
-        description: String,
+        description: {
+            type: String,
+            trim: true,
+            maxlength: [500, 'Description cannot exceed 500 characters']
+        },
         passed: {
             type: Boolean,
             default: false
         },
-        details: String,
-        evidence: String,
+        details: {
+            type: String,
+            trim: true,
+            maxlength: [1000, 'Details cannot exceed 1000 characters']
+        },
+        evidence: {
+            type: String,
+            trim: true,
+            maxlength: [500, 'Evidence field cannot exceed 500 characters']
+        },
         checkedAt: {
             type: Date,
             default: Date.now
@@ -42,31 +66,55 @@ const complianceRecordSchema = new mongoose.Schema({
     // Status
     status: {
         type: String,
-        enum: ['pending', 'in_progress', 'compliant', 'non_compliant', 'exempt'],
+        enum: {
+            values: ['pending', 'in_progress', 'compliant', 'non_compliant', 'exempt'],
+            message: '{VALUE} is not a valid compliance status'
+        },
         default: 'pending'
     },
     // Risk assessment
     riskLevel: {
         type: String,
-        enum: ['low', 'medium', 'high', 'critical'],
+        enum: {
+            values: ['low', 'medium', 'high', 'critical'],
+            message: '{VALUE} is not a valid risk level'
+        },
         default: 'low'
     },
-    riskFactors: [String],
+    riskFactors: [{
+        type: String,
+        trim: true,
+        maxlength: [100, 'Risk factor cannot exceed 100 characters']
+    }],
     // Audit readiness
     auditReady: {
         type: Boolean,
         default: false
     },
-    auditNotes: String,
+    auditNotes: {
+        type: String,
+        trim: true,
+        maxlength: [2000, 'Audit notes cannot exceed 2000 characters']
+    },
     // Reporting
     reports: [{
         type: {
             type: String,
-            enum: ['internal', 'regulatory', 'customer']
+            enum: {
+                values: ['internal', 'regulatory', 'customer'],
+                message: '{VALUE} is not a valid report type'
+            }
         },
-        format: String,
+        format: {
+            type: String,
+            trim: true,
+            maxlength: [50, 'Format cannot exceed 50 characters']
+        },
         generatedAt: Date,
-        fileUrl: String,
+        fileUrl: {
+            type: String,
+            trim: true
+        },
         metadata: mongoose.Schema.Types.Mixed
     }],
     // Escalation
@@ -78,15 +126,19 @@ const complianceRecordSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     },
-    escalationReason: String,
+    escalationReason: {
+        type: String,
+        trim: true,
+        maxlength: [500, 'Escalation reason cannot exceed 500 characters']
+    },
     // Metadata
     metadata: mongoose.Schema.Types.Mixed
 }, {
     timestamps: true
 });
 
-// Generate record ID
-complianceRecordSchema.pre('save', function(next) {
+// Generate record ID (Bilkul waisa hi)
+complianceRecordSchema.pre('save', function (next) {
     if (this.isNew && !this.recordId) {
         const crypto = require('crypto');
         this.recordId = `COMPLY-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -94,8 +146,8 @@ complianceRecordSchema.pre('save', function(next) {
     next();
 });
 
-// Methods
-complianceRecordSchema.methods.addCheck = function(checkData) {
+// Methods (Bilkul waisa hi)
+complianceRecordSchema.methods.addCheck = function (checkData) {
     this.checks.push({
         ...checkData,
         checkedAt: new Date()
@@ -103,13 +155,13 @@ complianceRecordSchema.methods.addCheck = function(checkData) {
     return this.save();
 };
 
-complianceRecordSchema.methods.updateStatus = function() {
+complianceRecordSchema.methods.updateStatus = function () {
     const allPassed = this.checks.every(c => c.passed);
     this.status = allPassed ? 'compliant' : 'non_compliant';
     return this.save();
 };
 
-// Indexes
+// Indexes (Bilkul waisa hi)
 complianceRecordSchema.index({ negotiationId: 1 });
 complianceRecordSchema.index({ framework: 1, status: 1 });
 complianceRecordSchema.index({ auditReady: 1 });
