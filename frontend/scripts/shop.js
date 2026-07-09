@@ -1073,7 +1073,7 @@ function renderPagination() {
     prevBtn.innerText =
         "← Prev";
 
-    prevBtn.className = 
+    prevBtn.className =
         "pagination-btn";
 
     prevBtn.disabled =
@@ -1167,6 +1167,24 @@ document.addEventListener(
         setupFilterControls();
         setupFilterDrawer();
         fetchProducts();
+         // Category card click filter
+        document.querySelectorAll(".fashion-card").forEach((card) => {
+            card.addEventListener("click", () => {
+                const category = card.dataset.category;
+                const checkbox = document.querySelector(
+                    `input[name="category-filter"][value="${category}"]`
+                );
+                if (checkbox) {
+                    document.querySelectorAll('input[name="category-filter"]')
+                        .forEach(cb => cb.checked = false);
+                    checkbox.checked = true;
+                    applyFilters({ resetPage: true });
+                    document.getElementById("product-container")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                }
+            });
+        });
     }
 );
+    
 })()

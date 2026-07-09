@@ -264,22 +264,63 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 // Newsletter validation - runs on all pages
+// Newsletter validation - runs on all pages
 const newsletterForm = document.querySelector("#newsletter .form");
 
 if (newsletterForm) {
-    newsletterForm.addEventListener("submit", (event) => {
+    newsletterForm.addEventListener("submit", async (event) => {
         event.preventDefault();
 
         const input = newsletterForm.querySelector("input");
+        const btn = newsletterForm.querySelector("button");
         const email = input?.value.trim();
         const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        if (!email || !validEmail.test(email)) {
-            notify("Please enter a valid email", "error");
+        // Validate email format
+        if (!email) {
+            notify("Please enter your email address", "error");
+            input?.focus();
             return;
         }
 
-        notify("Newsletter subscription successful!", "success");
-        newsletterForm.reset();
+        if (!validEmail.test(email)) {
+            notify("Please enter a valid email address", "error");
+            input?.focus();
+            return;
+        }
+
+        // Check for duplicate subscription in localStorage
+        const subscribers = JSON.parse(localStorage.getItem("newsletter_subscribers") || "[]");
+        if (subscribers.includes(email.toLowerCase())) {
+            notify("You're already subscribed! 🎉", "info");
+            return;
+        }
+
+        // Show loading state
+        const originalText = btn.textContent;
+        btn.textContent = "Subscribing...";
+        btn.disabled = true;
+        input.disabled = true;
+
+        try {
+            // Simulate network delay (replace with real API call when backend endpoint exists)
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // Save to localStorage
+            subscribers.push(email.toLowerCase());
+            localStorage.setItem("newsletter_subscribers", JSON.stringify(subscribers));
+
+            // Success feedback
+            notify("Thanks for subscribing! 🎉", "success");
+            newsletterForm.reset();
+
+        } catch (error) {
+            notify("Something went wrong. Please try again.", "error");
+        } finally {
+            // Restore button state
+            btn.textContent = originalText;
+            btn.disabled = false;
+            input.disabled = false;
+        }
     });
 }

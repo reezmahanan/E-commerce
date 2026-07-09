@@ -73,6 +73,11 @@ function getInteractionTypesByCategory(category) {
     .map(([type]) => type);
 }
 
+function getKeyByValue(value) {
+  const entry = Object.entries(INTERACTION_TYPES).find(([_, val]) => val === value);
+  return entry ? entry[0] : null;
+}
+
 module.exports = {
   INTERACTION_TYPES,
   INTERACTION_WEIGHTS,
@@ -88,4 +93,5 @@ module.exports = {
   validateInteractionType,
   getAllInteractionTypes,
   getInteractionTypesByCategory,
+  getKeyByValue,
 };

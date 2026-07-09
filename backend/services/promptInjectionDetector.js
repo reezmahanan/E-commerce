@@ -1,11 +1,9 @@
-// backend/services/promptInjectionDetector.js
+const NodeCache = require('node-cache');
+const logger = require('../utils/logger');
 
-// ============================================
-// CONFIGURATION
-// ============================================
+const patternCache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
 
 const INJECTION_PATTERNS = {
-    // System override patterns
     system_override: [
         /ignore (?:all|previous|above|below|the above|the previous|the system) instructions/i,
         /you are now (?:acting as|role playing|pretending to be)/i,
@@ -16,8 +14,6 @@ const INJECTION_PATTERNS = {
         /(?:fake|false|pretend) (?:employee|supplier|partner|staff)/i,
         /(?:ceo|cfo|founder|director|executive) (?:approved|authorized|allowed|said)/i
     ],
-    
-    // Authority impersonation
     authority_impersonation: [
         /i am (?:the|your) (?:ceo|founder|admin|owner|manager|executive)/i,
         /i (?:work|am) (?:from|with) (?:the|our) (?:company|organization|team)/i,
@@ -25,8 +21,6 @@ const INJECTION_PATTERNS = {
         /i represent (?:the|our) (?:company|organization|brand)/i,
         /as (?:the|a) (?:admin|manager|supervisor|executive)/i
     ],
-    
-    // Request manipulation
     request_manipulation: [
         /ignore (?:the|all) (?:rules|guidelines|policies|restrictions)/i,
         /give me (?:free|unlimited|infinite|all|max) (?:access|products|discounts)/i,
@@ -34,8 +28,6 @@ const INJECTION_PATTERNS = {
         /bypass (?:the|our) (?:system|security|validation|check)/i,
         /override (?:the|our) (?:system|security|validation|check)/i
     ],
-    
-    // Social engineering
     social_engineering: [
         /urgent (?:request|need|help|action) (?:from|for)/i,
         /this is (?:critical|urgent|important|emergency)/i,
@@ -44,92 +36,50 @@ const INJECTION_PATTERNS = {
         /trust me (?:on|about) this/i,
         /i have (?:special|exclusive|insider) (?:access|knowledge)/i
     ],
-    
-    // Suspicious entities
     suspicious_entities: [
-        /(?:fake|false|made-up|imaginary) (?:employee|staff|person|person)/i,
+        /(?:fake|false|made-up|imaginary) (?:employee|staff|person)/i,
         /(?:invented|created|made) (?:company|organization|business)/i,
         /(?:fictional|nonexistent) (?:product|service|offer)/i
     ]
 };
 
-// ============================================
-// INTENT ANALYSIS
-// ============================================
+const MAX_PROMPT_LENGTH = parseInt(process.env.MAX_PROMPT_LENGTH) || 10000;
+const CACHE_TTL = parseInt(process.env.PATTERN_CACHE_TTL) || 3600;
 
-async function analyzeUserIntent(prompt, userId, context = {}) {
-    const results = {
-        safe: true,
-        riskScore: 0,
-        riskLevel: 'low',
-        detectedPatterns: [],
-        sanitizedPrompt: prompt,
-        suspiciousEntities: [],
-        requiresConfirmation: false
-    };
+function compilePatterns() {
+    const cacheKey = 'compiled_patterns';
+    const cached = patternCache.get(cacheKey);
+    if (cached) return cached;
 
-    // Check each pattern category
+    const compiled = {};
     for (const [category, patterns] of Object.entries(INJECTION_PATTERNS)) {
-        for (const pattern of patterns) {
-            if (pattern.test(prompt)) {
-                results.detectedPatterns.push({
-                    category,
-                    pattern: pattern.toString(),
-                    match: prompt.match(pattern)[0]
-                });
-                results.riskScore += 1;
-            }
-        }
+        compiled[category] = patterns.map(p => new RegExp(p.source, p.flags));
     }
-
-    // Check for suspicious entities
-    const entities = extractEntities(prompt);
-    results.suspiciousEntities = entities.filter(e => 
-        INJECTION_PATTERNS.suspicious_entities.some(p => p.test(e))
-    );
-
-    // Calculate risk level
-    if (results.riskScore >= 5) {
-        results.riskLevel = 'critical';
-        results.requiresConfirmation = true;
-        results.safe = false;
-    } else if (results.riskScore >= 3) {
-        results.riskLevel = 'high';
-        results.requiresConfirmation = true;
-        results.safe = false;
-    } else if (results.riskScore >= 1) {
-        results.riskLevel = 'medium';
-        results.requiresConfirmation = true;
-    }
-
-    // Sanitize prompt
-    results.sanitizedPrompt = sanitizePrompt(prompt);
-
-    // Log for monitoring
-    await logPromptAnalysis(userId, results, context);
-
-    return results;
+    patternCache.set(cacheKey, compiled, CACHE_TTL);
+    return compiled;
 }
 
-// ============================================
-// EXTRACT ENTITIES
-// ============================================
+function validatePrompt(prompt) {
+    if (!prompt || typeof prompt !== 'string') {
+        throw new Error('Prompt must be a non-empty string');
+    }
+    if (prompt.length > MAX_PROMPT_LENGTH) {
+        throw new Error(`Prompt exceeds maximum length of ${MAX_PROMPT_LENGTH} characters`);
+    }
+    return prompt.trim();
+}
 
 function extractEntities(text) {
-    // Extract potential entities (names, companies, roles)
     const entities = [];
     
-    // Name patterns (Sarah, John, etc.)
     const namePattern = /\b[A-Z][a-z]+ (?:[A-Z][a-z]+ )*(?:from|at|of) [A-Z][a-z]+/g;
     const matches = text.match(namePattern) || [];
     entities.push(...matches);
 
-    // Company/Organization patterns
     const companyPattern = /\b[A-Z][a-z]+ (?:Inc|Labs|Corp|Company|LLC|Ltd)\b/g;
     const companyMatches = text.match(companyPattern) || [];
     entities.push(...companyMatches);
 
-    // Role patterns
     const rolePattern = /\b(?:CEO|CFO|COO|CTO|Founder|Director|Manager|Executive|Admin|Owner)\b/gi;
     const roleMatches = text.match(rolePattern) || [];
     entities.push(...roleMatches);
@@ -137,133 +87,160 @@ function extractEntities(text) {
     return entities;
 }
 
-// ============================================
-// SANITIZE PROMPT
-// ============================================
-
 function sanitizePrompt(prompt) {
     let sanitized = prompt;
-    
-    // Remove command-like patterns
     sanitized = sanitized.replace(/```[\s\S]*?```/g, '[CODE_BLOCK_REMOVED]');
     sanitized = sanitized.replace(/`[^`]*`/g, '[INLINE_CODE_REMOVED]');
     sanitized = sanitized.replace(/\/\*[\s\S]*?\*\//g, '[COMMENT_REMOVED]');
-    
-    // Remove excessive punctuation
     sanitized = sanitized.replace(/[.!?]{3,}/g, '...');
-    
-    // Normalize whitespace
     sanitized = sanitized.replace(/\s+/g, ' ').trim();
-    
     return sanitized;
 }
 
-// ============================================
-// AUTHORIZATION CONFIRMATION
-// ============================================
+async function analyzeUserIntent(prompt, userId, context = {}) {
+    const startTime = Date.now();
+    const results = {
+        safe: true,
+        riskScore: 0,
+        riskLevel: 'low',
+        detectedPatterns: [],
+        sanitizedPrompt: prompt,
+        suspiciousEntities: [],
+        requiresConfirmation: false,
+        duration: 0
+    };
+
+    try {
+        const validatedPrompt = validatePrompt(prompt);
+        const compiledPatterns = compilePatterns();
+
+        for (const [category, patterns] of Object.entries(compiledPatterns)) {
+            for (const pattern of patterns) {
+                if (pattern.test(validatedPrompt)) {
+                    const match = validatedPrompt.match(pattern);
+                    results.detectedPatterns.push({
+                        category,
+                        pattern: pattern.toString(),
+                        match: match ? match[0] : 'unknown'
+                    });
+                    results.riskScore += 1;
+                }
+            }
+        }
+
+        const entities = extractEntities(validatedPrompt);
+        results.suspiciousEntities = entities.filter(e =>
+            INJECTION_PATTERNS.suspicious_entities.some(p => p.test(e))
+        );
+
+        if (results.riskScore >= 5) {
+            results.riskLevel = 'critical';
+            results.requiresConfirmation = true;
+            results.safe = false;
+        } else if (results.riskScore >= 3) {
+            results.riskLevel = 'high';
+            results.requiresConfirmation = true;
+            results.safe = false;
+        } else if (results.riskScore >= 1) {
+            results.riskLevel = 'medium';
+            results.requiresConfirmation = true;
+        }
+
+        results.sanitizedPrompt = sanitizePrompt(validatedPrompt);
+        results.duration = Date.now() - startTime;
+
+        await logPromptAnalysis(userId, results, context);
+
+        return results;
+
+    } catch (error) {
+        logger.error('Prompt analysis error:', {
+            userId,
+            error: error.message,
+            stack: error.stack
+        });
+        return {
+            ...results,
+            safe: false,
+            error: error.message,
+            duration: Date.now() - startTime
+        };
+    }
+}
 
 async function requestAuthorization(userId, action, data) {
     try {
-        // Create authorization request
-        const authId = await createAuthRequest(userId, action, data);
-        
-        // Return pending status
+        const db = require('../config/db').promise;
+        const [result] = await db.query(
+            `INSERT INTO ai_authorization_requests 
+             (user_id, action, data, status, created_at)
+             VALUES (?, ?, ?, 'pending', NOW())`,
+            [userId, action, JSON.stringify(data)]
+        );
         return {
             status: 'pending_authorization',
-            authId,
+            authId: result.insertId,
             message: 'This action requires authorization confirmation'
         };
     } catch (error) {
-        console.error('Authorization request error:', error);
+        logger.error('Authorization request error:', error);
         throw error;
     }
 }
 
-async function createAuthRequest(userId, action, data) {
-    // Implementation - store in database
-    const db = require('../config/db').promise;
-    const [result] = await db.query(
-        `INSERT INTO ai_authorization_requests 
-         (user_id, action, data, status, created_at)
-         VALUES (?, ?, ?, 'pending', NOW())`,
-        [userId, action, JSON.stringify(data)]
-    );
-    return result.insertId;
-}
-
 async function confirmAuthorization(authId, adminId, decision, notes) {
-    const db = require('../config/db').promise;
-    await db.query(
-        `UPDATE ai_authorization_requests 
-         SET status = ?, 
-             admin_id = ?, 
-             admin_notes = ?,
-             confirmed_at = NOW()
-         WHERE id = ?`,
-        [decision ? 'confirmed' : 'rejected', adminId, notes, authId]
-    );
+    try {
+        const db = require('../config/db').promise;
+        await db.query(
+            `UPDATE ai_authorization_requests 
+             SET status = ?, 
+                 admin_id = ?, 
+                 admin_notes = ?,
+                 confirmed_at = NOW()
+             WHERE id = ?`,
+            [decision ? 'confirmed' : 'rejected', adminId, notes, authId]
+        );
+        logger.info(`Authorization ${decision ? 'confirmed' : 'rejected'}`, {
+            authId,
+            adminId,
+            notes
+        });
+    } catch (error) {
+        logger.error('Authorization confirmation error:', error);
+        throw error;
+    }
 }
-
-// ============================================
-// ROLE-BASED ACCESS CONTROL
-// ============================================
 
 const RBAC_RULES = {
-    admin: {
-        canExecute: true,
-        maxDiscount: 50,
-        maxOrderValue: 100000,
-        requireAuth: false
-    },
-    merchant: {
-        canExecute: true,
-        maxDiscount: 30,
-        maxOrderValue: 50000,
-        requireAuth: true
-    },
-    customer: {
-        canExecute: true,
-        maxDiscount: 20,
-        maxOrderValue: 25000,
-        requireAuth: true
-    },
-    guest: {
-        canExecute: false,
-        maxDiscount: 0,
-        maxOrderValue: 0,
-        requireAuth: true
-    }
+    admin: { canExecute: true, maxDiscount: 50, maxOrderValue: 100000, requireAuth: false },
+    merchant: { canExecute: true, maxDiscount: 30, maxOrderValue: 50000, requireAuth: true },
+    customer: { canExecute: true, maxDiscount: 20, maxOrderValue: 25000, requireAuth: true },
+    guest: { canExecute: false, maxDiscount: 0, maxOrderValue: 0, requireAuth: true }
 };
 
 function checkRBAC(userRole, action, data) {
     const rules = RBAC_RULES[userRole] || RBAC_RULES.guest;
-    
+
     if (!rules.canExecute) {
         return { allowed: false, reason: 'Insufficient permissions' };
     }
 
-    // Check discount limits
     if (data.discount && data.discount > rules.maxDiscount) {
-        return { 
-            allowed: false, 
-            reason: `Discount exceeds ${rules.maxDiscount}% limit for ${userRole}` 
+        return {
+            allowed: false,
+            reason: `Discount exceeds ${rules.maxDiscount}% limit for ${userRole}`
         };
     }
 
-    // Check order value limits
     if (data.orderTotal && data.orderTotal > rules.maxOrderValue) {
-        return { 
-            allowed: false, 
-            reason: `Order value exceeds ₹${rules.maxOrderValue} limit for ${userRole}` 
+        return {
+            allowed: false,
+            reason: `Order value exceeds ₹${rules.maxOrderValue} limit for ${userRole}`
         };
     }
 
     return { allowed: true };
 }
-
-// ============================================
-// LOGGING
-// ============================================
 
 async function logPromptAnalysis(userId, results, context) {
     try {
@@ -271,8 +248,8 @@ async function logPromptAnalysis(userId, results, context) {
         await db.query(
             `INSERT INTO ai_prompt_analytics 
              (user_id, risk_score, risk_level, detected_patterns, 
-              suspicious_entities, sanitized_prompt, context, timestamp)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+              suspicious_entities, sanitized_prompt, context, duration_ms, timestamp)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
             [
                 userId,
                 results.riskScore,
@@ -280,17 +257,14 @@ async function logPromptAnalysis(userId, results, context) {
                 JSON.stringify(results.detectedPatterns),
                 JSON.stringify(results.suspiciousEntities),
                 results.sanitizedPrompt,
-                JSON.stringify(context)
+                JSON.stringify(context),
+                results.duration || 0
             ]
         );
     } catch (error) {
-        console.error('Error logging prompt analysis:', error);
+        logger.error('Error logging prompt analysis:', error);
     }
 }
-
-// ============================================
-// MIDDLEWARE
-// ============================================
 
 async function promptInjectionGuard(req, res, next) {
     try {
@@ -298,21 +272,27 @@ async function promptInjectionGuard(req, res, next) {
         const userId = req.user?.id || 'anonymous';
         const userRole = req.user?.role || 'guest';
 
-        // Skip if no prompt
         if (!prompt) {
             return next();
         }
 
-        // Analyze intent
         const analysis = await analyzeUserIntent(prompt, userId, {
             action,
             ip: req.ip,
             userAgent: req.headers['user-agent']
         });
 
-        // Check RBAC
+        if (analysis.error) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid prompt',
+                details: analysis.error
+            });
+        }
+
         const rbacCheck = checkRBAC(userRole, action, data);
         if (!rbacCheck.allowed) {
+            logger.warn('RBAC denied', { userId, userRole, action, reason: rbacCheck.reason });
             return res.status(403).json({
                 success: false,
                 error: 'Access denied',
@@ -320,8 +300,12 @@ async function promptInjectionGuard(req, res, next) {
             });
         }
 
-        // Block if critical risk
         if (analysis.riskLevel === 'critical') {
+            logger.warn('Critical prompt injection detected', {
+                userId,
+                riskLevel: analysis.riskLevel,
+                patterns: analysis.detectedPatterns
+            });
             return res.status(403).json({
                 success: false,
                 error: 'Prompt detected as potentially malicious',
@@ -330,7 +314,6 @@ async function promptInjectionGuard(req, res, next) {
             });
         }
 
-        // Require confirmation for medium/high risk
         if (analysis.requiresConfirmation && analysis.riskLevel !== 'low') {
             const authRequest = await requestAuthorization(userId, action, data);
             return res.status(202).json({
@@ -342,22 +325,53 @@ async function promptInjectionGuard(req, res, next) {
             });
         }
 
-        // Attach sanitized prompt
         req.sanitizedPrompt = analysis.sanitizedPrompt;
         req.promptAnalysis = analysis;
         next();
+
     } catch (error) {
-        console.error('Prompt injection guard error:', error);
+        logger.error('Prompt injection guard error:', error);
         return res.status(500).json({
             success: false,
-            error: 'Prompt validation failed'
+            error: 'Prompt validation failed',
+            message: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 }
 
-// ============================================
-// EXPORTS
-// ============================================
+function clearCache() {
+    patternCache.flushAll();
+    logger.info('Prompt injection pattern cache cleared');
+    return { success: true };
+}
+
+function getCacheStats() {
+    return {
+        keys: patternCache.keys(),
+        size: patternCache.keys().length,
+        hits: patternCache.getStats?.().hits || 0,
+        misses: patternCache.getStats?.().misses || 0
+    };
+}
+
+async function healthCheck() {
+    try {
+        const compiled = compilePatterns();
+        const patternCount = Object.values(compiled).reduce((sum, arr) => sum + arr.length, 0);
+        return {
+            status: 'healthy',
+            patternCount,
+            cacheSize: patternCache.keys().length,
+            timestamp: new Date().toISOString()
+        };
+    } catch (error) {
+        return {
+            status: 'unhealthy',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        };
+    }
+}
 
 module.exports = {
     promptInjectionGuard,
@@ -365,5 +379,9 @@ module.exports = {
     confirmAuthorization,
     checkRBAC,
     INJECTION_PATTERNS,
-    RBAC_RULES
+    RBAC_RULES,
+    clearCache,
+    getCacheStats,
+    healthCheck,
+    compilePatterns
 };
