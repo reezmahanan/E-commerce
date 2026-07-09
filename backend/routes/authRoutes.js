@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-
+const cookieOptions = require("../config/cookieOptions");
 // ======================== CONTROLLERS ========================
 const {
     signup,
@@ -9,9 +9,14 @@ const {
     forgotPassword,
     resetPassword,
     refreshAccessToken,
-    getMe
+    getMe,
+    getStatus,
+    logout,
+    validateToken,
+    changePassword,
+    getSecurityAudit,
+    getFraudStatus
 } = require("../controllers/authController");
-
 // ======================== MIDDLEWARE ========================
 const authMiddleware = require("../middleware/authMiddleware");
 const {
@@ -20,7 +25,7 @@ const {
     forgotPasswordLimiter,
     refreshTokenLimiter
 } = require("../middleware/rateLimiter");
-const { verifyHumanChallenge } = require("../middleware/behavioralCaptcha");
+const { applyCaptchaCheck } = require("../middleware/captchaMiddleware");
 const { detectSyntheticIdentity } = require("../middleware/fraudDetectionMiddleware");
 
 // ✅ New Validation Middleware Import Added
@@ -77,19 +82,7 @@ function applyCaptchaCheck(req, res, next) {
  * GET /api/auth/status
  * Check auth API status
  */
-router.get("/status", (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: "Auth API running",
-        timestamp: new Date().toISOString(),
-        version: "2.1.0",
-        security: {
-            behavioralCaptcha: process.env.ENABLE_BEHAVIORAL_CAPTCHA === 'true',
-            syntheticFraudDetection: true,
-            rateLimiting: true
-        }
-    });
-});
+router.get("/status", getStatus);
 
 /**
  * POST /api/auth/signup
@@ -171,36 +164,7 @@ router.post(
 router.post(
     "/logout",
     authMiddleware,
-    async (req, res) => {
-        try {
-            await db.query(
-                `UPDATE users 
-                 SET refresh_token = NULL, 
-                     last_logout = NOW() 
-                 WHERE id = ?`,
-                [req.user.id]
-            );
-
-            // Clear cookies if using cookie-based auth
-            res.clearCookie('accessToken');
-            res.clearCookie('refreshToken');
-
-            console.log(`🔓 User ${req.user.id} logged out successfully`);
-
-            return res.status(200).json({
-                success: true,
-                message: "Logged out successfully",
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error("❌ LOGOUT ERROR:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Logout failed. Please try again."
-            });
-        }
-    }
+   logout
 );
 
 /**
@@ -220,18 +184,7 @@ router.get(
 router.post(
     "/validate-token",
     authMiddleware,
-    (req, res) => {
-        res.status(200).json({
-            success: true,
-            message: "Token is valid",
-            user: {
-                id: req.user.id,
-                email: req.user.email,
-                role: req.user.role,
-                isTrustedAgent: req.isTrustedAgent || false
-            }
-        });
-    }
+    validateToken
 );
 
 /**
@@ -311,37 +264,7 @@ router.post(
 router.get(
     "/security-audit",
     authMiddleware,
-    async (req, res) => {
-        try {
-            // Check if user is admin
-            if (req.user.role !== 'admin') {
-                return res.status(403).json({
-                    success: false,
-                    message: "Admin access required"
-                });
-            }
-
-            const [logs] = await db.query(
-                `SELECT * FROM security_logs 
-                 ORDER BY timestamp DESC 
-                 LIMIT 100`
-            );
-
-            return res.status(200).json({
-                success: true,
-                data: logs,
-                count: logs.length,
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error("❌ SECURITY AUDIT ERROR:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Failed to fetch security logs"
-            });
-        }
-    }
+   getSecurityAudit
 );
 
 /**

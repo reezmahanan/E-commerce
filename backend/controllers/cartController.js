@@ -69,38 +69,54 @@ const cartController = {
 
             await connection.beginTransaction();
 
-            // clear existing cart
+            let placeholders = [];
+            let values = [];
+
+            if (quantities.size) {
+                const ids = [...quantities.keys()];
+
+                const [products] = await connection.query(
+                    `SELECT id, stock FROM products WHERE id IN (${ids.map(() => "?").join(",")})`,
+                    ids
+                );
+
+                const productMap = new Map(
+                    products.map((product) => [
+                        safeNumber(product.id),
+                        safeNumber(product.stock)
+                    ])
+                );
+
+                for (const [productId, qty] of quantities) {
+                    if (!productMap.has(productId)) continue;
+
+                    const availableStock = productMap.get(productId);
+
+                    if (qty > availableStock) {
+                        await connection.rollback();
+
+                        return res.status(400).json({
+                            success: false,
+                            message: `Requested quantity exceeds available stock for product ${productId}`
+                        });
+                    }
+
+                    placeholders.push("(?, ?, ?)");
+                    values.push(userId, productId, qty);
+                }
+            }
+
+            // clear existing cart only after validation succeeds
             await connection.query(
                 "DELETE FROM cart_items WHERE user_id = ?",
                 [userId]
             );
 
-            if (quantities.size) {
-                const ids = [...quantities.keys()];
-
-                // keep only products that still exist
-                const [products] = await connection.query(
-                    `SELECT id FROM products WHERE id IN (${ids.map(() => "?").join(",")})`,
-                    ids
+            if (placeholders.length) {
+                await connection.query(
+                    `INSERT INTO cart_items (user_id, product_id, quantity) VALUES ${placeholders.join(",")}`,
+                    values
                 );
-
-                const validIds = new Set(products.map((p) => p.id));
-
-                const placeholders = [];
-                const values = [];
-
-                for (const [productId, qty] of quantities) {
-                    if (!validIds.has(productId)) continue;
-                    placeholders.push("(?, ?, ?)");
-                    values.push(userId, productId, qty);
-                }
-
-                if (placeholders.length) {
-                    await connection.query(
-                        `INSERT INTO cart_items (user_id, product_id, quantity) VALUES ${placeholders.join(",")}`,
-                        values
-                    );
-                }
             }
 
             await connection.commit();

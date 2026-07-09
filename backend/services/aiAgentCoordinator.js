@@ -79,7 +79,7 @@ class AIAgentCoordinator extends EventEmitter {
             timestamp,
             status: 'pending',
             priority: this.getAgentPriority(agentId),
-            retries: 0,
+            retries: context.retryCount || 0,
             conflicts: [],
             approvals: []
         };
@@ -149,8 +149,7 @@ class AIAgentCoordinator extends EventEmitter {
             
             // Retry if configured
             if (actionObj.retries < AGENT_CONFIG.maxRetries) {
-                actionObj.retries++;
-                return this.submitAction(agentId, action, data, { ...context, retry: true });
+                return this.submitAction(agentId, action, data, { ...context, retry: true, retryCount: actionObj.retries + 1 });
             }
             
             return {
