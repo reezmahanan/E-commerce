@@ -9,13 +9,8 @@ const morgan = require("morgan");
 const timeout = require("connect-timeout");
 const fs = require("fs");
 const path = require("path");
-const { logServerStartup } = require('./utils/serverStartupLogger');
-
-const { accessLogStream, errorLogStream } = require('./utils/logstreams');
-const { buildHealthResponse } = require('./utils/healthResponseBuilder');
-
+const { apiLimiter, adminLimiter, mcpLimiter } = require('./config/rateLimiters');
 const dotenv = require("dotenv");
-const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
 // Add with other route imports
@@ -230,45 +225,6 @@ if (process.env.NODE_ENV !== "production") {
     });
 }
 
-// rate limiting
-// global api limiter - 120 requests per minute
-const apiLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 120,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        errorCode: "API_RATE_LIMIT_EXCEEDED",
-        message: "Too many API requests. Please slow down.",
-    },
-});
-
-// admin limiter - 100 requests per 15 minutes
-const adminLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        errorCode: "ADMIN_RATE_LIMIT_EXCEEDED",
-        message: "Too many admin requests. Please try again after 15 minutes.",
-    },
-});
-
-// ✅ MCP specific rate limiter - stricter
-const mcpLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 10, // 10 requests per minute
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        errorCode: "MCP_RATE_LIMIT_EXCEEDED",
-        message: "Too many MCP requests. Please try again after 1 minute.",
-    },
-});
 
 // apply rate limiting
 app.use("/api", apiLimiter);
