@@ -10,9 +10,14 @@ const {
     forgotPassword,
     resetPassword,
     refreshAccessToken,
-    getMe
+    getMe,
+    getStatus,
+    logout,
+    validateToken,
+    changePassword,
+    getSecurityAudit,
+    getFraudStatus
 } = require("../controllers/authController");
-
 // ======================== MIDDLEWARE ========================
 const authMiddleware = require("../middleware/authMiddleware");
 const { 
@@ -37,20 +42,6 @@ if (!process.env.JWT_SECRET) {
 
 // ======================== HELPER FUNCTIONS ========================
 
-/**
- * Validate required fields in request body
- */
-function validateRequiredFields(req, res, fields) {
-    const missing = fields.filter(field => !sanitizeString(req.body[field]));
-    
-    if (missing.length > 0) {
-        return res.status(400).json({
-            success: false,
-            message: `${missing.join(', ')} is/are required`
-        });
-    }
-    return null;
-}
 
 // ======================== ROUTES ========================
 
@@ -58,19 +49,7 @@ function validateRequiredFields(req, res, fields) {
  * GET /api/auth/status
  * Check auth API status
  */
-router.get("/status", (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: "Auth API running",
-        timestamp: new Date().toISOString(),
-        version: "2.1.0",
-        security: {
-            behavioralCaptcha: process.env.ENABLE_BEHAVIORAL_CAPTCHA === 'true',
-            syntheticFraudDetection: true,
-            rateLimiting: true
-        }
-    });
-});
+router.get("/status", getStatus);
 
 /**
  * POST /api/auth/signup
@@ -96,16 +75,16 @@ router.post(
             });
         }
 
-        if (password.length < 6) {
+        const passwordCheck = validatePassword(password);
+        if (!passwordCheck.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "Password must be at least 6 characters long"
+                message: passwordCheck.message
             });
         }
 
         // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!isValidEmail(email)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid email format"
@@ -140,7 +119,7 @@ router.post(
         if (validationError) return validationError;
 
         // OTP should be 6 digits
-        if (!/^\d{6}$/.test(otp)) {
+        if (!isValidOTP(otp)) {
             return res.status(400).json({
                 success: false,
                 message: "OTP must be 6 digits"
@@ -167,8 +146,7 @@ router.post(
         if (validationError) return validationError;
 
         // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!isValidEmail(email)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid email format"
@@ -195,8 +173,7 @@ router.post(
         if (validationError) return validationError;
 
         // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!isValidEmail(email)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid email format"
@@ -231,7 +208,8 @@ router.post(
         }
 
         // OTP should be 6 digits
-        if (!/^\d{6}$/.test(otp)) {
+        // OTP should be 6 digits
+        if (!isValidOTP(otp)) {
             return res.status(400).json({
                 success: false,
                 message: "OTP must be 6 digits"
@@ -239,13 +217,13 @@ router.post(
         }
 
         // Password should be strong enough
-        if (newPassword.length < 6) {
+        const passwordCheck = validatePassword(newPassword);
+        if (!passwordCheck.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "Password must be at least 6 characters long"
+                message: passwordCheck.message
             });
         }
-
         next();
     },
     resetPassword
@@ -285,36 +263,7 @@ router.post(
 router.post(
     "/logout",
     authMiddleware,
-    async (req, res) => {
-        try {
-            await db.query(
-                `UPDATE users 
-                 SET refresh_token = NULL, 
-                     last_logout = NOW() 
-                 WHERE id = ?`,
-                [req.user.id]
-            );
-
-            // Clear cookies if using cookie-based auth
-            res.clearCookie('accessToken',cookieOptions);
-            res.clearCookie('refreshToken',cookieOptions);
-
-            console.log(`🔓 User ${req.user.id} logged out successfully`);
-
-            return res.status(200).json({
-                success: true,
-                message: "Logged out successfully",
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error("❌ LOGOUT ERROR:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Logout failed. Please try again."
-            });
-        }
-    }
+   logout
 );
 
 /**
@@ -334,18 +283,7 @@ router.get(
 router.post(
     "/validate-token",
     authMiddleware,
-    (req, res) => {
-        res.status(200).json({
-            success: true,
-            message: "Token is valid",
-            user: {
-                id: req.user.id,
-                email: req.user.email,
-                role: req.user.role,
-                isTrustedAgent: req.isTrustedAgent || false
-            }
-        });
-    }
+    validateToken
 );
 
 /**
@@ -367,10 +305,11 @@ router.post(
                 });
             }
 
-            if (newPassword.length < 6) {
+            const passwordCheck = validatePassword(newPassword);
+            if (!passwordCheck.isValid) {
                 return res.status(400).json({
                     success: false,
-                    message: "New password must be at least 6 characters long"
+                    message: passwordCheck.message
                 });
             }
 
@@ -436,37 +375,7 @@ router.post(
 router.get(
     "/security-audit",
     authMiddleware,
-    async (req, res) => {
-        try {
-            // Check if user is admin
-            if (req.user.role !== 'admin') {
-                return res.status(403).json({
-                    success: false,
-                    message: "Admin access required"
-                });
-            }
-
-            const [logs] = await db.query(
-                `SELECT * FROM security_logs 
-                 ORDER BY timestamp DESC 
-                 LIMIT 100`
-            );
-
-            return res.status(200).json({
-                success: true,
-                data: logs,
-                count: logs.length,
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error("❌ SECURITY AUDIT ERROR:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Failed to fetch security logs"
-            });
-        }
-    }
+   getSecurityAudit
 );
 
 /**
@@ -476,44 +385,7 @@ router.get(
 router.get(
     "/fraud-status",
     authMiddleware,
-    async (req, res) => {
-        try {
-            const [detection] = await db.query(
-                `SELECT risk_level, risk_score, confidence, timestamp 
-                 FROM synthetic_identity_detections 
-                 WHERE user_id = ? 
-                 ORDER BY timestamp DESC 
-                 LIMIT 1`,
-                [req.user.id]
-            );
-
-            if (detection.length === 0) {
-                return res.status(200).json({
-                    success: true,
-                    message: "No fraud detection records found",
-                    status: "clean"
-                });
-            }
-
-            const isFlagged = detection[0].risk_level === 'critical' || 
-                             detection[0].risk_level === 'high';
-
-            return res.status(200).json({
-                success: true,
-                data: detection[0],
-                isFlagged,
-                status: isFlagged ? 'flagged' : 'clean',
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error("❌ FRAUD STATUS ERROR:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Failed to fetch fraud status"
-            });
-        }
-    }
+    getFraudStatus
 );
 
 // ======================== ROUTE FALLBACK ========================
