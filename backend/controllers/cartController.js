@@ -1,6 +1,24 @@
 const promisePool = require("../config/db");
 const { safeNumber } = require("../utils/helpers");
 
+function normalizeCartQuantities(items) {
+    const quantities = new Map();
+
+    for (const item of items) {
+        if (!item) continue;
+
+        const productId = safeNumber(item.productId ?? item.id);
+        let qty = safeNumber(item.qty ?? item.quantity);
+
+        if (productId < 1) continue;
+        if (qty < 1) qty = 1;
+
+        quantities.set(productId, qty);
+    }
+
+    return quantities;
+}
+
 const cartController = {
     // Get the logged-in user's cart (joined with product data)
     getUserCart: async (req, res) => {
@@ -39,33 +57,16 @@ const cartController = {
 
     // Replace the user's entire cart with the posted items
     syncCart: async (req, res) => {
-        const connection = await promisePool.getConnection();
+        let connection;
 
         try {
+            connection = await promisePool.getConnection();
+
             const userId = req.user.id;
             const items = Array.isArray(req.body.items)
                 ? req.body.items
                 : [];
-
-            // normalize to productId -> quantity (last write wins, qty >= 1)
-            const quantities = new Map();
-
-            for (const item of items) {
-                if (!item) continue;
-
-                const productId = safeNumber(
-                    item.productId != null ? item.productId : item.id
-                );
-
-                let qty = safeNumber(
-                    item.qty != null ? item.qty : item.quantity
-                );
-
-                if (!productId || productId < 1) continue;
-                if (!qty || qty < 1) qty = 1;
-
-                quantities.set(productId, qty);
-            }
+            const quantities = normalizeCartQuantities(items);
 
             await connection.beginTransaction();
 
@@ -134,7 +135,9 @@ const cartController = {
                 message: "Failed to sync cart"
             });
         } finally {
-            connection.release();
+            if (connection) {
+                connection.release();
+            }
         }
     }
 };
