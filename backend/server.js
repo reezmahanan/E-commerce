@@ -15,6 +15,17 @@ const { apiLimiter, adminLimiter, mcpLimiter } = require('./config/rateLimiters'
 const dotenv = require("dotenv");
 const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
+
+// Add with other imports
+const responseExampleRoutes = require('./routes/responseExampleRoutes');
+const { standardizeResponse } = require('./middleware/responseStandardizer');
+
+// Add response standardization middleware BEFORE routes
+app.use(standardizeResponse);
+
+// Add response example routes (for testing)
+app.use('/api/response-example', responseExampleRoutes);
+
 const { buildHealthResponse } = require("./utils/healthResponseBuilder");
 const { logServerStartup } = require("./utils/serverStartupLogger");
 const { errorLogStream } = require("./utils/logstreams");
@@ -40,6 +51,7 @@ app.use('/api/legal', legalRoutes);
 app.use('/api/agents', agentRoutes);
 // Add AI feed routes
 app.use('/api/ai-feed', aiFeedRoutes);
+
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
