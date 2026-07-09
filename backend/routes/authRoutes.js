@@ -61,10 +61,10 @@ router.post(
     applyCaptchaCheck,
     detectSyntheticIdentity,  // ✅ FRAUD DETECTION ADDED
     (req, res, next) => {
-        const { name, email, password, age } = req.body;
+        const { name, email, password, confirmPassword, age } = req.body;
 
         // Validate all required fields
-        const validationError = validateRequiredFields(req, res, ['name', 'email', 'password']);
+        const validationError = validateRequiredFields(req, res, ['name', 'email', 'password', 'confirmPassword']);
         if (validationError) return validationError;
 
         // Additional validations
@@ -80,6 +80,13 @@ router.post(
             return res.status(400).json({
                 success: false,
                 message: passwordCheck.message
+            });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Passwords do not match"
             });
         }
 
