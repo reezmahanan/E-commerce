@@ -74,7 +74,11 @@ function verifyClaudeSignature(signature, body, secret, options = {}) {
         validateBody(body);
 
         if (!validateSignature(signature)) {
-            console.warn('Invalid signature format', { signature: signature.substring(0, 10) });
+            console.warn('Invalid signature format', {
+                signature: typeof signature === 'string'
+                    ? signature.substring(0, 10)
+                    : 'invalid'
+            });
             return false;
         }
 
@@ -159,7 +163,7 @@ function isTrustedAgent(req) {
         }
 
         const signature = req.headers[config.signatureHeader] ||
-                         req.headers['x-claude-signature'];
+            req.headers['x-claude-signature'];
 
         if (!signature) {
             console.warn('Missing signature header', {

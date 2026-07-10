@@ -54,7 +54,7 @@ const initSocket = (server, allowedOrigins) => {
 
             const userConnections = Array.from(userSockets.entries())
                 .filter(([userId]) => userId === socket.userId);
-            
+
             if (userConnections.length >= MAX_CONNECTIONS_PER_USER) {
                 logger.warn(`User ${socket.userId} exceeded max connections`);
                 return next(new Error("Too many connections"));
@@ -70,7 +70,7 @@ const initSocket = (server, allowedOrigins) => {
     io.on("connection", (socket) => {
         const userId = socket.userId;
         const userRole = socket.userRole;
-        
+
         logger.info(`User connected: ${userId} (${userRole}) - Socket: ${socket.id}`);
 
         userSockets.set(userId, socket.id);
@@ -80,17 +80,10 @@ const initSocket = (server, allowedOrigins) => {
         io.emit('user_status_change', { userId, status: 'online' });
         io.emit('users_online', userSockets.size);
 
-        deliverQueuedMessages(socket, userId);
-
         setupEventHandlers(socket);
         setupHeartbeat(socket);
 
         socket.on("disconnect", () => {
-            handleDisconnect(socket);
-        });
-
-        socket.on("error", (error) => {
-            logger.error(`Socket error for ${userId}:`, error.message);
             handleDisconnect(socket);
         });
     });
@@ -105,7 +98,7 @@ function setupEventHandlers(socket) {
     socket.on("join_conversation", async (data, callback) => {
         try {
             let conversationId = data?.conversationId;
-            
+
             if (userRole === 'customer' && !conversationId) {
                 const conv = await chatService.findOrCreateConversation(userId);
                 conversationId = conv.id;
@@ -126,20 +119,24 @@ function setupEventHandlers(socket) {
 
             const roomId = `conversation:${conversationId}`;
             socket.join(roomId);
+
             if (!activeRooms.has(roomId)) {
                 activeRooms.set(roomId, new Set());
             }
             activeRooms.get(roomId).add(socket.id);
             socket.currentRoom = roomId;
-            
+
+            // deliver queued messages only after the socket has joined the room
+            deliverQueuedMessages(socket, userId);
+
             logger.info(`User ${userId} joined ${roomId}`);
-            
+
             const participants = Array.from(activeRooms.get(roomId))
                 .map(sId => socketUsers.get(sId))
                 .filter(id => id);
-            
+
             io.to(roomId).emit('room_participants', participants);
-            
+
             if (callback) callback({ success: true, conversationId });
         } catch (err) {
             logger.error(`Socket Join Error: ${err.message}`);
@@ -150,8 +147,8 @@ function setupEventHandlers(socket) {
     socket.on("send_message", async (data, callback) => {
         try {
             if (!checkRateLimit(socket.id)) {
-                socket.emit('error', { 
-                    message: 'Rate limit exceeded. Please wait before sending more messages.' 
+                socket.emit('error', {
+                    message: 'Rate limit exceeded. Please wait before sending more messages.'
                 });
                 if (callback) callback({ success: false, message: "Rate limit exceeded" });
                 return;
@@ -176,15 +173,15 @@ function setupEventHandlers(socket) {
 
             const roomId = `conversation:${conversationId}`;
             const roomSockets = io.sockets.adapter.rooms.get(roomId);
-            
+
             if (roomSockets && roomSockets.size > 0) {
                 io.to(roomId).emit("message_received", savedMessage);
             } else {
                 queueMessage(conversationId, savedMessage);
             }
 
-            io.to('admin_room').emit("conversation_updated", { 
-                conversationId, 
+            io.to('admin_room').emit("conversation_updated", {
+                conversationId,
                 last_message: sanitizedMessage,
                 timestamp: new Date().toISOString()
             });
@@ -212,7 +209,7 @@ function setupEventHandlers(socket) {
             if (!messageId || !conversationId) return;
 
             await chatService.markMessageAsRead(messageId, userId);
-            
+
             io.to(`conversation:${conversationId}`).emit('message_read', {
                 messageId,
                 userId,
@@ -486,8 +483,8 @@ function cleanup() {
     logger.info('Socket manager cleanup completed');
 }
 
-module.exports = { 
-    initSocket, 
+module.exports = {
+    initSocket,
     getIo,
     sendToUser,
     broadcastToRoom,

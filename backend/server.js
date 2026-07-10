@@ -9,10 +9,31 @@ const morgan = require("morgan");
 const timeout = require("connect-timeout");
 const fs = require("fs");
 const path = require("path");
+const setupGracefulShutdown = require('./src/utils/gracefulShutdown');
+
 const { apiLimiter, adminLimiter, mcpLimiter } = require('./config/rateLimiters');
 const dotenv = require("dotenv");
 const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
+
+// Add with other imports
+const responseExampleRoutes = require('./routes/responseExampleRoutes');
+const { standardizeResponse } = require('./middleware/responseStandardizer');
+
+// Add response standardization middleware BEFORE routes
+app.use(standardizeResponse);
+
+// Add response example routes (for testing)
+app.use('/api/response-example', responseExampleRoutes);
+
+const { buildHealthResponse } = require("./utils/healthResponseBuilder");
+const { logServerStartup } = require("./utils/serverStartupLogger");
+const { errorLogStream } = require("./utils/logstreams");
+
+// init app early so route and middleware registration can safely use it
+const app = express();
+
+const logDir = path.join(process.cwd(), "logs");
 // Add with other route imports
 const aiFeedRoutes = require('./routes/aiFeedRoutes');
 // Import agent routes
@@ -30,10 +51,19 @@ app.use('/api/legal', legalRoutes);
 app.use('/api/agents', agentRoutes);
 // Add AI feed routes
 app.use('/api/ai-feed', aiFeedRoutes);
+
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other route imports
+const eventRoutes = require('./routes/eventRoutes');
+const { setupAllSubscribers } = require('./services/eventSubscribers');
 
+// Add event routes
+app.use('/api/events', eventRoutes);
+
+// Setup event subscribers after all services are initialized
+setupAllSubscribers();
 // Add with other route imports
 const performanceRoutes = require('./routes/performanceRoutes');
 
@@ -111,9 +141,7 @@ validateEnv();
 // database
 require("./config/db");
 
-// init app
-const app = express();
-const http = require("http");
+const http = require("node:http");
 const server = http.createServer(app);
 const { initSocket } = require("./utils/socketManager");
 const { accessLogger, errorLogger, devLogger } = require('./config/morganConfig');
@@ -321,18 +349,8 @@ process.on("uncaughtException", (error) => {
     }, 1000);
 });
 
-// graceful shutdown
-function shutdown() {
-    console.log("\nShutting down server gracefully...");
-    server.close(() => {
-        console.log("HTTP server closed");
-        process.exit(0);
-    });
-    setTimeout(() => {
-        console.error("Force shutdown after timeout");
-        process.exit(1);
-    }, 10000);
-}
+// Initialize graceful shutdown logic
+setupGracefulShutdown(server);
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);

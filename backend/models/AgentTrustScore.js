@@ -4,54 +4,146 @@ const agentTrustScoreSchema = new mongoose.Schema({
     agentId: {
         type: String,
         ref: 'AgentIdentity',
-        required: true,
-        unique: true
+        required: [true, 'Agent ID is required'],
+        unique: true,
+        trim: true
     },
     overallScore: {
         type: Number,
-        min: 0,
-        max: 100,
+        min: [0, 'Overall score cannot be less than 0'],
+        max: [100, 'Overall score cannot exceed 100'],
         default: 50
     },
     trustLevel: {
         type: String,
-        enum: ['untrusted', 'low', 'medium', 'high', 'verified'],
+        enum: {
+            values: ['untrusted', 'low', 'medium', 'high', 'verified'],
+            message: '{VALUE} is not a valid trust level'
+        },
         default: 'low'
     },
     components: {
         identityVerification: {
-            score: { type: Number, default: 0 },
-            weight: { type: Number, default: 0.25 }
+            score: {
+                type: Number,
+                default: 0,
+                min: [0, 'Identity verification score cannot be less than 0'],
+                max: [100, 'Identity verification score cannot exceed 100']
+            },
+            weight: {
+                type: Number,
+                default: 0.25,
+                min: [0, 'Weight cannot be negative'],
+                max: [1, 'Weight cannot exceed 1']
+            }
         },
         transactionHistory: {
-            score: { type: Number, default: 0 },
-            weight: { type: Number, default: 0.25 }
+            score: {
+                type: Number,
+                default: 0,
+                min: [0, 'Transaction history score cannot be less than 0'],
+                max: [100, 'Transaction history score cannot exceed 100']
+            },
+            weight: {
+                type: Number,
+                default: 0.25,
+                min: [0, 'Weight cannot be negative'],
+                max: [1, 'Weight cannot exceed 1']
+            }
         },
         successRate: {
-            score: { type: Number, default: 0 },
-            weight: { type: Number, default: 0.20 }
+            score: {
+                type: Number,
+                default: 0,
+                min: [0, 'Success rate score cannot be less than 0'],
+                max: [100, 'Success rate score cannot exceed 100']
+            },
+            weight: {
+                type: Number,
+                default: 0.20,
+                min: [0, 'Weight cannot be negative'],
+                max: [1, 'Weight cannot exceed 1']
+            }
         },
         merchantRatings: {
-            score: { type: Number, default: 0 },
-            weight: { type: Number, default: 0.15 }
+            score: {
+                type: Number,
+                default: 0,
+                min: [0, 'Merchant ratings score cannot be less than 0'],
+                max: [100, 'Merchant ratings score cannot exceed 100']
+            },
+            weight: {
+                type: Number,
+                default: 0.15,
+                min: [0, 'Weight cannot be negative'],
+                max: [1, 'Weight cannot exceed 1']
+            }
         },
         fraudDetection: {
-            score: { type: Number, default: 0 },
-            weight: { type: Number, default: 0.15 }
+            score: {
+                type: Number,
+                default: 0,
+                min: [0, 'Fraud detection score cannot be less than 0'],
+                max: [100, 'Fraud detection score cannot exceed 100']
+            },
+            weight: {
+                type: Number,
+                default: 0.15,
+                min: [0, 'Weight cannot be negative'],
+                max: [1, 'Weight cannot exceed 1']
+            }
         }
     },
     metrics: {
-        totalTransactions: { type: Number, default: 0 },
-        successfulTransactions: { type: Number, default: 0 },
-        failedTransactions: { type: Number, default: 0 },
-        flaggedTransactions: { type: Number, default: 0 },
-        averageResponseTime: { type: Number, default: 0 },
-        uptime: { type: Number, default: 100 }
+        totalTransactions: {
+            type: Number,
+            default: 0,
+            min: [0, 'Total transactions count cannot be negative']
+        },
+        successfulTransactions: {
+            type: Number,
+            default: 0,
+            min: [0, 'Successful transactions count cannot be negative']
+        },
+        failedTransactions: {
+            type: Number,
+            default: 0,
+            min: [0, 'Failed transactions count cannot be negative']
+        },
+        flaggedTransactions: {
+            type: Number,
+            default: 0,
+            min: [0, 'Flagged transactions count cannot be negative']
+        },
+        averageResponseTime: {
+            type: Number,
+            default: 0,
+            min: [0, 'Average response time cannot be negative']
+        },
+        uptime: {
+            type: Number,
+            default: 100,
+            min: [0, 'Uptime cannot be less than 0'],
+            max: [100, 'Uptime cannot exceed 100']
+        }
     },
     history: [{
-        score: Number,
-        trustLevel: String,
-        reason: String,
+        score: {
+            type: Number,
+            min: [0, 'Historical score cannot be less than 0'],
+            max: [100, 'Historical score cannot exceed 100']
+        },
+        trustLevel: {
+            type: String,
+            enum: {
+                values: ['untrusted', 'low', 'medium', 'high', 'verified'],
+                message: '{VALUE} is not a valid historical trust level'
+            }
+        },
+        reason: {
+            type: String,
+            trim: true
+        },
         timestamp: {
             type: Date,
             default: Date.now
@@ -60,9 +152,15 @@ const agentTrustScoreSchema = new mongoose.Schema({
     flags: [{
         type: {
             type: String,
-            enum: ['warning', 'critical', 'review']
+            enum: {
+                values: ['warning', 'critical', 'review'],
+                message: '{VALUE} is not a valid flag type'
+            }
         },
-        reason: String,
+        reason: {
+            type: String,
+            trim: true
+        },
         timestamp: {
             type: Date,
             default: Date.now
@@ -80,8 +178,8 @@ const agentTrustScoreSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Calculate overall score
-agentTrustScoreSchema.methods.calculateScore = function() {
+// Calculate overall score (Bilkul waisa hi)
+agentTrustScoreSchema.methods.calculateScore = function () {
     let totalScore = 0;
     let totalWeight = 0;
 
@@ -115,14 +213,14 @@ agentTrustScoreSchema.methods.calculateScore = function() {
     return this.save();
 };
 
-// Add flag
-agentTrustScoreSchema.methods.addFlag = function(type, reason) {
+// Add flag (Bilkul waisa hi)
+agentTrustScoreSchema.methods.addFlag = function (type, reason) {
     this.flags.push({ type, reason });
     return this.save();
 };
 
-// Update metrics
-agentTrustScoreSchema.methods.updateMetrics = function(transaction) {
+// Update metrics (Bilkul waisa hi)
+agentTrustScoreSchema.methods.updateMetrics = function (transaction) {
     this.metrics.totalTransactions++;
 
     if (transaction.status === 'success') {
