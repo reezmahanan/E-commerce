@@ -1,7 +1,7 @@
 // backend/routes/authRoutes.js
 const express = require("express");
 const router = express.Router();
-
+const cookieOptions = require("../config/cookieOptions");
 // ======================== CONTROLLERS ========================
 const {
     signup,
@@ -10,9 +10,14 @@ const {
     forgotPassword,
     resetPassword,
     refreshAccessToken,
-    getMe
+    getMe,
+    getStatus,
+    logout,
+    validateToken,
+    changePassword,
+    getSecurityAudit,
+    getFraudStatus
 } = require("../controllers/authController");
-
 // ======================== MIDDLEWARE ========================
 const authMiddleware = require("../middleware/authMiddleware");
 const { 
@@ -21,7 +26,8 @@ const {
     forgotPasswordLimiter, 
     refreshTokenLimiter 
 } = require("../middleware/rateLimiter");
-const { verifyHumanChallenge } = require("../middleware/behavioralCaptcha");
+const { applyCaptchaCheck } = require("../middleware/captchaMiddleware");
+const { detectSyntheticIdentity } = require("../middleware/fraudDetectionMiddleware");
 
 // ======================== DATABASE ========================
 const db = require("../config/db").promise;
@@ -36,44 +42,6 @@ if (!process.env.JWT_SECRET) {
 
 // ======================== HELPER FUNCTIONS ========================
 
-/**
- * Validate required fields in request body
- */
-function validateRequiredFields(req, res, fields) {
-    const missing = fields.filter(field => !sanitizeString(req.body[field]));
-    
-    if (missing.length > 0) {
-        return res.status(400).json({
-            success: false,
-            message: `${missing.join(', ')} is/are required`
-        });
-    }
-    return null;
-}
-
-/**
- * Apply behavioral CAPTCHA check
- */
-function applyCaptchaCheck(req, res, next) {
-    if (process.env.ENABLE_BEHAVIORAL_CAPTCHA === 'true') {
-        const captchaResult = verifyHumanChallenge(req);
-        
-        if (!captchaResult.passed) {
-            console.warn(`🛡️ CAPTCHA failed for ${req.ip} on ${req.path}: ${captchaResult.reason}`);
-            
-            const statusCode = captchaResult.reason === 'rate_limit_exceeded' ? 429 : 403;
-            return res.status(statusCode).json({
-                success: false,
-                message: captchaResult.reason === 'rate_limit_exceeded' 
-                    ? 'Too many requests. Please slow down.' 
-                    : 'Automated access detected. Please verify you are human.',
-                retryAfter: captchaResult.retryAfter || 60,
-                score: captchaResult.score
-            });
-        }
-    }
-    next();
-}
 
 // ======================== ROUTES ========================
 
@@ -81,28 +49,22 @@ function applyCaptchaCheck(req, res, next) {
  * GET /api/auth/status
  * Check auth API status
  */
-router.get("/status", (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: "Auth API running",
-        timestamp: new Date().toISOString(),
-        version: "2.0.0"
-    });
-});
+router.get("/status", getStatus);
 
 /**
  * POST /api/auth/signup
- * Register new user
+ * Register new user with synthetic identity fraud detection
  */
 router.post(
     "/signup",
     signupLimiter,
     applyCaptchaCheck,
+    detectSyntheticIdentity,  // ✅ FRAUD DETECTION ADDED
     (req, res, next) => {
-        const { name, email, password } = req.body;
+        const { name, email, password, confirmPassword, age } = req.body;
 
         // Validate all required fields
-        const validationError = validateRequiredFields(req, res, ['name', 'email', 'password']);
+        const validationError = validateRequiredFields(req, res, ['name', 'email', 'password', 'confirmPassword']);
         if (validationError) return validationError;
 
         // Additional validations
@@ -113,19 +75,34 @@ router.post(
             });
         }
 
-        if (password.length < 6) {
+        const passwordCheck = validatePassword(password);
+        if (!passwordCheck.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "Password must be at least 6 characters long"
+                message: passwordCheck.message
+            });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Passwords do not match"
             });
         }
 
         // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!isValidEmail(email)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid email format"
+            });
+        }
+
+        // Age validation (if provided)
+        if (age && (age < 18 || age > 100)) {
+            return res.status(400).json({
+                success: false,
+                message: "Age must be between 18 and 100"
             });
         }
 
@@ -149,7 +126,7 @@ router.post(
         if (validationError) return validationError;
 
         // OTP should be 6 digits
-        if (!/^\d{6}$/.test(otp)) {
+        if (!isValidOTP(otp)) {
             return res.status(400).json({
                 success: false,
                 message: "OTP must be 6 digits"
@@ -176,8 +153,7 @@ router.post(
         if (validationError) return validationError;
 
         // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!isValidEmail(email)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid email format"
@@ -204,8 +180,7 @@ router.post(
         if (validationError) return validationError;
 
         // Email format validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!isValidEmail(email)) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid email format"
@@ -240,7 +215,8 @@ router.post(
         }
 
         // OTP should be 6 digits
-        if (!/^\d{6}$/.test(otp)) {
+        // OTP should be 6 digits
+        if (!isValidOTP(otp)) {
             return res.status(400).json({
                 success: false,
                 message: "OTP must be 6 digits"
@@ -248,13 +224,13 @@ router.post(
         }
 
         // Password should be strong enough
-        if (newPassword.length < 6) {
+        const passwordCheck = validatePassword(newPassword);
+        if (!passwordCheck.isValid) {
             return res.status(400).json({
                 success: false,
-                message: "Password must be at least 6 characters long"
+                message: passwordCheck.message
             });
         }
-
         next();
     },
     resetPassword
@@ -294,36 +270,7 @@ router.post(
 router.post(
     "/logout",
     authMiddleware,
-    async (req, res) => {
-        try {
-            await db.query(
-                `UPDATE users 
-                 SET refresh_token = NULL, 
-                     last_logout = NOW() 
-                 WHERE id = ?`,
-                [req.user.id]
-            );
-
-            // Clear cookies if using cookie-based auth
-            res.clearCookie('accessToken');
-            res.clearCookie('refreshToken');
-
-            console.log(`🔓 User ${req.user.id} logged out successfully`);
-
-            return res.status(200).json({
-                success: true,
-                message: "Logged out successfully",
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error("❌ LOGOUT ERROR:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Logout failed. Please try again."
-            });
-        }
-    }
+   logout
 );
 
 /**
@@ -343,18 +290,7 @@ router.get(
 router.post(
     "/validate-token",
     authMiddleware,
-    (req, res) => {
-        res.status(200).json({
-            success: true,
-            message: "Token is valid",
-            user: {
-                id: req.user.id,
-                email: req.user.email,
-                role: req.user.role,
-                isTrustedAgent: req.isTrustedAgent || false
-            }
-        });
-    }
+    validateToken
 );
 
 /**
@@ -376,10 +312,11 @@ router.post(
                 });
             }
 
-            if (newPassword.length < 6) {
+            const passwordCheck = validatePassword(newPassword);
+            if (!passwordCheck.isValid) {
                 return res.status(400).json({
                     success: false,
-                    message: "New password must be at least 6 characters long"
+                    message: passwordCheck.message
                 });
             }
 
@@ -445,37 +382,17 @@ router.post(
 router.get(
     "/security-audit",
     authMiddleware,
-    async (req, res) => {
-        try {
-            // Check if user is admin
-            if (req.user.role !== 'admin') {
-                return res.status(403).json({
-                    success: false,
-                    message: "Admin access required"
-                });
-            }
+   getSecurityAudit
+);
 
-            const [logs] = await db.query(
-                `SELECT * FROM security_logs 
-                 ORDER BY timestamp DESC 
-                 LIMIT 100`
-            );
-
-            return res.status(200).json({
-                success: true,
-                data: logs,
-                count: logs.length,
-                timestamp: new Date().toISOString()
-            });
-
-        } catch (error) {
-            console.error("❌ SECURITY AUDIT ERROR:", error);
-            return res.status(500).json({
-                success: false,
-                message: "Failed to fetch security logs"
-            });
-        }
-    }
+/**
+ * GET /api/auth/fraud-status
+ * Get fraud detection status for current user (authenticated)
+ */
+router.get(
+    "/fraud-status",
+    authMiddleware,
+    getFraudStatus
 );
 
 // ======================== ROUTE FALLBACK ========================

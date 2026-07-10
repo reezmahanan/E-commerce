@@ -1,67 +1,59 @@
-// backend/utils/signatureVerification.js
-const crypto = require('crypto');
+// backend/middleware/authMiddleware.js
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 /**
- * Verify ClaudeBot signature using HMAC-SHA256
+ * Verify JWT token from Authorization header
  */
-function verifyClaudeSignature(signature, body, secret) {
-    if (!signature || !body) {
-        console.warn('⚠️ Missing signature or body for verification');
-        return false;
+function authMiddleware(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authorization header required'
+        });
     }
+
+    const token = authHeader.startsWith('Bearer ')
+        ? authHeader.slice(7)
+        : authHeader;
 
     try {
-        const expectedSignature = crypto
-            .createHmac('sha256', secret)
-            .update(JSON.stringify(body))
-            .digest('hex');
-
-        return crypto.timingSafeEqual(
-            Buffer.from(signature, 'utf8'),
-            Buffer.from(expectedSignature, 'utf8')
-        );
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
     } catch (error) {
-        console.error('❌ Signature verification error:', error);
-        return false;
+        return res.status(401).json({
+            success: false,
+            message: 'Invalid or expired token'
+        });
     }
 }
 
 /**
- * Generate signature for outgoing requests (for testing)
+ * Optional auth - doesn't fail if no token
  */
-function generateClaudeSignature(body, secret) {
-    return crypto
-        .createHmac('sha256', secret)
-        .update(JSON.stringify(body))
-        .digest('hex');
-}
+function optionalAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
 
-/**
- * Check if request is from a trusted agent
- */
-function isTrustedAgent(req) {
-    // First check: Cryptographic signature
-    const signature = req.headers['x-claude-signature'];
-    if (signature) {
-        const secret = process.env.CLAUDE_WEBHOOK_SECRET;
-        if (secret && verifyClaudeSignature(signature, req.body, secret)) {
-            return {
-                isTrusted: true,
-                verificationMethod: 'signature'
-            };
-        }
+    if (!authHeader) {
+        return next();
     }
 
-    // If signature is missing or invalid, reject immediately. No insecure fallbacks.
-    return { 
-        isTrusted: false, 
-        reason: 'not_verified',
-        verificationMethod: 'none'
-    };
+    const token = authHeader.startsWith('Bearer ')
+        ? authHeader.slice(7)
+        : authHeader;
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+    } catch (error) {
+        // Ignore invalid tokens for optional auth
+    }
+
+    next();
 }
 
-module.exports = {
-    verifyClaudeSignature,
-    generateClaudeSignature,
-    isTrustedAgent
-};
+module.exports = { authMiddleware, optionalAuth };
