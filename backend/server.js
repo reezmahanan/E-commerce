@@ -57,6 +57,16 @@ const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 
 // Add with other imports
+
+const flagRoutes = require('./routes/flagRoutes');
+const { featureFlagService } = require('./services/featureFlagService');
+
+// Initialize feature flag service
+await featureFlagService.initialize();
+
+// Add flag routes
+app.use('/api/flags', flagRoutes);
+
 const correlationRoutes = require('./routes/correlationRoutes');
 const { correlationIdMiddleware, logCompletionMiddleware } = require('./middleware/correlationIdMiddleware');
 
@@ -66,6 +76,7 @@ app.use(logCompletionMiddleware);
 
 // Add correlation routes
 app.use('/api/correlation', correlationRoutes);
+
 
 // Add with other route imports
 
