@@ -184,8 +184,8 @@ const negotiationSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Generate negotiation ID (Bilkul waisa hi)
-negotiationSchema.pre('save', function (next) {
+// Generate negotiation ID before validation so required validation does not fail
+negotiationSchema.pre('validate', function (next) {
     if (this.isNew && !this.negotiationId) {
         const crypto = require('crypto');
         this.negotiationId = `NEG-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;

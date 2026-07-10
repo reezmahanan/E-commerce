@@ -1,5 +1,7 @@
 // backend/middleware/responseStandardizer.js
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 // ============================================
 // RESPONSE FORMAT CONFIGURATION
@@ -8,10 +10,21 @@ const crypto = require('crypto');
 const RESPONSE_CONFIG = {
     includeTimestamp: true,
     includeRequestId: true,
-    includePath: false,
+    includePath: true,
     includeDuration: true,
-    environment: process.env.NODE_ENV || 'development'
+    includeEnvironment: true,
+    includeVersion: true,
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0',
+    logErrors: true,
+    errorLogPath: path.join(__dirname, '../logs/api-errors.log')
 };
+
+// Create logs directory if it doesn't exist
+const logDir = path.dirname(RESPONSE_CONFIG.errorLogPath);
+if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+}
 
 // ============================================
 // STANDARD RESPONSE CLASS
@@ -30,6 +43,9 @@ class StandardResponse {
         this.duration = options.duration || null;
         this.pagination = options.pagination || null;
         this.meta = options.meta || null;
+        this.environment = RESPONSE_CONFIG.environment;
+        this.version = RESPONSE_CONFIG.version;
+        this.correlationId = options.correlationId || null;
     }
 
     /**
@@ -49,13 +65,20 @@ class StandardResponse {
      * Create an error response
      */
     static error(message, statusCode = 400, errors = null, options = {}) {
-        return new StandardResponse({
+        const errorResponse = new StandardResponse({
             success: false,
             message,
             errors,
             statusCode,
             ...options
         });
+
+        // Log errors if enabled
+        if (RESPONSE_CONFIG.logErrors && errors) {
+            errorResponse.logError();
+        }
+
+        return errorResponse;
     }
 
     /**
@@ -164,16 +187,58 @@ class StandardResponse {
     }
 
     /**
-     * Create a server error response
+     * Create a too many requests response
      */
-    static serverError(message = 'Internal server error', errors = null, options = {}) {
+    static tooManyRequests(message = 'Too many requests', options = {}) {
         return new StandardResponse({
             success: false,
             message,
-            errors,
+            errors: [{ code: 'RATE_LIMIT_EXCEEDED', message }],
+            statusCode: 429,
+            ...options
+        });
+    }
+
+    /**
+     * Create a server error response
+     */
+    static serverError(message = 'Internal server error', errors = null, options = {}) {
+        const errorResponse = new StandardResponse({
+            success: false,
+            message,
+            errors: errors || [{ code: 'INTERNAL_SERVER_ERROR', message }],
             statusCode: 500,
             ...options
         });
+
+        // Log server errors
+        if (RESPONSE_CONFIG.logErrors) {
+            errorResponse.logError();
+        }
+
+        return errorResponse;
+    }
+
+    /**
+     * Log error to file
+     */
+    logError() {
+        try {
+            const logEntry = {
+                timestamp: this.timestamp,
+                requestId: this.requestId,
+                statusCode: this.statusCode,
+                message: this.message,
+                errors: this.errors,
+                path: this.path,
+                environment: this.environment
+            };
+
+            const logLine = JSON.stringify(logEntry) + '\n';
+            fs.appendFileSync(RESPONSE_CONFIG.errorLogPath, logLine);
+        } catch (error) {
+            console.error('Error logging response error:', error);
+        }
     }
 
     /**
@@ -182,23 +247,17 @@ class StandardResponse {
     toJSON() {
         const response = {
             success: this.success,
-            message: this.message
+            message: this.message,
+            timestamp: this.timestamp,
+            requestId: this.requestId
         };
 
         if (this.data !== null) {
             response.data = this.data;
         }
 
-        if (this.errors !== null) {
+        if (this.errors !== null && this.errors.length > 0) {
             response.errors = this.errors;
-        }
-
-        if (RESPONSE_CONFIG.includeTimestamp) {
-            response.timestamp = this.timestamp;
-        }
-
-        if (RESPONSE_CONFIG.includeRequestId && this.requestId) {
-            response.requestId = this.requestId;
         }
 
         if (this.pagination) {
@@ -215,6 +274,18 @@ class StandardResponse {
 
         if (RESPONSE_CONFIG.includeDuration && this.duration !== null) {
             response.duration = this.duration;
+        }
+
+        if (RESPONSE_CONFIG.includeEnvironment) {
+            response.environment = this.environment;
+        }
+
+        if (RESPONSE_CONFIG.includeVersion) {
+            response.version = this.version;
+        }
+
+        if (this.correlationId) {
+            response.correlationId = this.correlationId;
         }
 
         return response;
@@ -242,8 +313,12 @@ function standardizeResponse(req, res, next) {
     // Generate request ID
     req.requestId = generateRequestId();
 
+    // Get correlation ID from headers
+    req.correlationId = req.headers['x-correlation-id'] || null;
+
     // Override res.json to standardize responses
     const originalJson = res.json;
+    const originalSend = res.send;
 
     res.json = function(data) {
         // Calculate duration
@@ -254,19 +329,31 @@ function standardizeResponse(req, res, next) {
             // Already standardized, add additional fields
             const standardized = {
                 ...data,
-                requestId: req.requestId,
-                timestamp: new Date().toISOString()
+                requestId: data.requestId || req.requestId,
+                timestamp: data.timestamp || new Date().toISOString()
             };
 
-            if (duration !== null) {
+            if (duration !== null && !data.duration) {
                 standardized.duration = duration;
+            }
+
+            if (RESPONSE_CONFIG.includeEnvironment && !data.environment) {
+                standardized.environment = RESPONSE_CONFIG.environment;
+            }
+
+            if (RESPONSE_CONFIG.includeVersion && !data.version) {
+                standardized.version = RESPONSE_CONFIG.version;
+            }
+
+            if (req.correlationId && !data.correlationId) {
+                standardized.correlationId = req.correlationId;
             }
 
             return originalJson.call(this, standardized);
         }
 
         // Not standardized - wrap it
-        let statusCode = this.statusCode;
+        const statusCode = this.statusCode || 200;
 
         // Determine if success or error based on status code
         const isSuccess = statusCode >= 200 && statusCode < 300;
@@ -275,8 +362,9 @@ function standardizeResponse(req, res, next) {
         let response;
 
         if (isSuccess) {
-            response = StandardResponse.success(data, 'Success', {
+            response = StandardResponse.success(data, data?.message || 'Success', {
                 requestId: req.requestId,
+                correlationId: req.correlationId,
                 duration,
                 path: req.path
             });
@@ -285,18 +373,41 @@ function standardizeResponse(req, res, next) {
             const errors = data?.errors || (data?.error ? [{ message: data.error }] : null);
             response = StandardResponse.error(message, statusCode, errors, {
                 requestId: req.requestId,
+                correlationId: req.correlationId,
                 duration,
                 path: req.path
             });
         } else {
-            response = StandardResponse.success(data, 'Success', {
+            response = StandardResponse.success(data, data?.message || 'Success', {
                 requestId: req.requestId,
+                correlationId: req.correlationId,
                 duration,
                 path: req.path
             });
         }
 
         return originalJson.call(this, response.toJSON());
+    };
+
+    // Also handle res.send for non-JSON responses
+    res.send = function(data) {
+        // If data is a string and not JSON, send as is
+        if (typeof data === 'string' && !data.startsWith('{') && !data.startsWith('[')) {
+            return originalSend.call(this, data);
+        }
+
+        // If it's a buffer, send as is
+        if (Buffer.isBuffer(data)) {
+            return originalSend.call(this, data);
+        }
+
+        // Otherwise, try to parse as JSON
+        try {
+            const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+            return res.json(parsed);
+        } catch (e) {
+            return originalSend.call(this, data);
+        }
     };
 
     next();
@@ -319,7 +430,11 @@ function generateRequestId() {
  * Send a standardized success response
  */
 function sendSuccess(res, data, message = 'Success', statusCode = 200) {
-    const response = StandardResponse.success(data, message);
+    const response = StandardResponse.success(data, message, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    });
     response.statusCode = statusCode;
     return response.send(res);
 }
@@ -328,7 +443,11 @@ function sendSuccess(res, data, message = 'Success', statusCode = 200) {
  * Send a standardized error response
  */
 function sendError(res, message, statusCode = 400, errors = null) {
-    const response = StandardResponse.error(message, statusCode, errors);
+    const response = StandardResponse.error(message, statusCode, errors, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    });
     return response.send(res);
 }
 
@@ -336,35 +455,188 @@ function sendError(res, message, statusCode = 400, errors = null) {
  * Send a standardized created response
  */
 function sendCreated(res, data, message = 'Resource created successfully') {
-    return StandardResponse.created(data, message).send(res);
+    return StandardResponse.created(data, message, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    }).send(res);
 }
 
 /**
  * Send a standardized paginated response
  */
 function sendPaginated(res, data, pagination, message = 'Success') {
-    return StandardResponse.paginated(data, pagination, message).send(res);
+    return StandardResponse.paginated(data, pagination, message, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    }).send(res);
 }
 
 /**
  * Send a standardized validation error
  */
 function sendValidationError(res, errors, message = 'Validation failed') {
-    return StandardResponse.validationError(errors, message).send(res);
+    return StandardResponse.validationError(errors, message, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    }).send(res);
 }
 
 /**
  * Send a standardized not found response
  */
 function sendNotFound(res, message = 'Resource not found') {
-    return StandardResponse.notFound(message).send(res);
+    return StandardResponse.notFound(message, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    }).send(res);
 }
 
 /**
  * Send a standardized server error
  */
 function sendServerError(res, message = 'Internal server error', errors = null) {
-    return StandardResponse.serverError(message, errors).send(res);
+    return StandardResponse.serverError(message, errors, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    }).send(res);
+}
+
+/**
+ * Send a standardized unauthorized response
+ */
+function sendUnauthorized(res, message = 'Unauthorized') {
+    return StandardResponse.unauthorized(message, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    }).send(res);
+}
+
+/**
+ * Send a standardized forbidden response
+ */
+function sendForbidden(res, message = 'Forbidden') {
+    return StandardResponse.forbidden(message, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    }).send(res);
+}
+
+/**
+ * Send a standardized too many requests response
+ */
+function sendTooManyRequests(res, message = 'Too many requests') {
+    return StandardResponse.tooManyRequests(message, {
+        requestId: res.req?.requestId || generateRequestId(),
+        correlationId: res.req?.correlationId || null,
+        path: res.req?.path
+    }).send(res);
+}
+
+// ============================================
+// VALIDATION HELPERS
+// ============================================
+
+/**
+ * Validate request body with standardized error response
+ */
+function validateBody(schema) {
+    return (req, res, next) => {
+        const errors = [];
+        const body = req.body;
+
+        for (const [field, rules] of Object.entries(schema)) {
+            const value = body[field];
+
+            if (rules.required && (value === undefined || value === null || value === '')) {
+                errors.push({ field, message: `${field} is required` });
+                continue;
+            }
+
+            if (value !== undefined && value !== null) {
+                if (rules.type && typeof value !== rules.type) {
+                    errors.push({ field, message: `${field} must be of type ${rules.type}` });
+                }
+
+                if (rules.min !== undefined && value < rules.min) {
+                    errors.push({ field, message: `${field} must be at least ${rules.min}` });
+                }
+
+                if (rules.max !== undefined && value > rules.max) {
+                    errors.push({ field, message: `${field} must be at most ${rules.max}` });
+                }
+
+                if (rules.pattern && !rules.pattern.test(value)) {
+                    errors.push({ field, message: `${field} format is invalid` });
+                }
+
+                if (rules.enum && !rules.enum.includes(value)) {
+                    errors.push({ field, message: `${field} must be one of: ${rules.enum.join(', ')}` });
+                }
+            }
+        }
+
+        if (errors.length > 0) {
+            return sendValidationError(res, errors);
+        }
+
+        next();
+    };
+}
+
+/**
+ * Validate query parameters
+ */
+function validateQuery(schema) {
+    return (req, res, next) => {
+        const errors = [];
+        const query = req.query;
+
+        for (const [field, rules] of Object.entries(schema)) {
+            const value = query[field];
+
+            if (rules.required && (value === undefined || value === null || value === '')) {
+                errors.push({ field, message: `${field} query parameter is required` });
+                continue;
+            }
+
+            if (value !== undefined && value !== null) {
+                if (rules.type) {
+                    const parsed = value;
+                    if (rules.type === 'number' && isNaN(Number(parsed))) {
+                        errors.push({ field, message: `${field} must be a number` });
+                    }
+                    if (rules.type === 'boolean' && !['true', 'false'].includes(parsed)) {
+                        errors.push({ field, message: `${field} must be true or false` });
+                    }
+                }
+
+                if (rules.min !== undefined && Number(value) < rules.min) {
+                    errors.push({ field, message: `${field} must be at least ${rules.min}` });
+                }
+
+                if (rules.max !== undefined && Number(value) > rules.max) {
+                    errors.push({ field, message: `${field} must be at most ${rules.max}` });
+                }
+
+                if (rules.enum && !rules.enum.includes(value)) {
+                    errors.push({ field, message: `${field} must be one of: ${rules.enum.join(', ')}` });
+                }
+            }
+        }
+
+        if (errors.length > 0) {
+            return sendValidationError(res, errors);
+        }
+
+        next();
+    };
 }
 
 // ============================================
@@ -381,5 +653,11 @@ module.exports = {
     sendValidationError,
     sendNotFound,
     sendServerError,
-    generateRequestId
+    sendUnauthorized,
+    sendForbidden,
+    sendTooManyRequests,
+    generateRequestId,
+    validateBody,
+    validateQuery,
+    RESPONSE_CONFIG
 };
