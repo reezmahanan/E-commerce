@@ -317,6 +317,14 @@
     color: #27ae60 !important;
 }
 
-#category-menu-toggle {
-    display: none !important;
+/* About Section Hover Animation - CSS Classes */
+.about-section {
+    transition: transform 0.3s ease;
 }
+
+.about-section:hover {
+    transform: translateY(-5px);
+}
+
+/* =============================
+Breadcrumb Navigation (Issue #344)
