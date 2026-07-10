@@ -257,6 +257,12 @@ const grocerySubcategoryLinks = Array.from(
 const groceryProductPreview = document.getElementById(
     "grocery-product-preview"
 );
+const toySubcategoryLinks = Array.from(
+    document.querySelectorAll(".toy-subcategory-link")
+);
+const toyProductPreview = document.getElementById(
+    "toy-product-preview"
+);
 
 const grocerySubcategoryKeywords = {
     "Fruits & Vegetables": [
@@ -328,6 +334,58 @@ const grocerySubcategoryKeywords = {
     ]
 };
 
+const toySubcategoryKeywords = {
+    "Educational Toys": [
+        "educational",
+        "learning",
+        "stem",
+        "science",
+        "math",
+        "puzzle",
+        "flash",
+        "activity"
+    ],
+    "Building Blocks": [
+        "building",
+        "blocks",
+        "block",
+        "brick",
+        "bricks",
+        "construction",
+        "lego",
+        "stack"
+    ],
+    Dolls: [
+        "doll",
+        "dolls",
+        "plush",
+        "figure",
+        "figurine",
+        "pretend",
+        "playset"
+    ],
+    "RC Toys": [
+        "rc",
+        "remote",
+        "control",
+        "controlled",
+        "car",
+        "drone",
+        "robot",
+        "vehicle"
+    ],
+    "Outdoor Toys": [
+        "outdoor",
+        "scooter",
+        "ball",
+        "frisbee",
+        "water",
+        "garden",
+        "sports",
+        "ride"
+    ]
+};
+
 const normalizeMenuValue = (value) =>
     String(value || "")
         .toLowerCase()
@@ -350,6 +408,11 @@ const stringifyProductValue = (value) => {
 
     return String(value);
 };
+
+const escapeMenuHTML = (value) =>
+    window.AppUtils?.escapeHTML
+        ? AppUtils.escapeHTML(value)
+        : String(value || "");
 
 const getProductSearchText = (product) =>
     [
@@ -400,14 +463,74 @@ const matchesGrocerySubcategory = (product, subcategory) => {
     );
 };
 
-const getProductLink = (product, fallbackSubcategory) => {
+const matchesToySubcategory = (product, subcategory) => {
+    const normalizedSubcategory = normalizeMenuValue(subcategory);
+    const category = normalizeMenuValue(product?.category);
+    const productSubcategory = normalizeMenuValue(
+        getProductSubcategory(product)
+    );
+    const searchText = normalizeMenuValue(
+        getProductSearchText(product)
+    );
+    const keywords = toySubcategoryKeywords[subcategory] || [];
+
+    if (productSubcategory) {
+        return productSubcategory === normalizedSubcategory;
+    }
+
+    if (category === normalizedSubcategory) {
+        return true;
+    }
+
+    if (
+        category !== "toys" &&
+        !searchText.includes("toy")
+    ) {
+        return false;
+    }
+
+    return keywords.some((keyword) =>
+        searchText.includes(normalizeMenuValue(keyword))
+    );
+};
+
+const getProductLink = (
+    product,
+    fallbackCategory,
+    fallbackSubcategory
+) => {
     if (product?.id !== undefined && product?.id !== null) {
         return `product.html?id=${encodeURIComponent(product.id)}`;
     }
 
-    return `shop.html?category=Grocery&subcategory=${encodeURIComponent(
+    return `shop.html?category=${encodeURIComponent(
+        fallbackCategory
+    )}&subcategory=${encodeURIComponent(
         fallbackSubcategory
     )}`;
+};
+
+const renderMenuRating = (rating) => {
+    const normalizedRating = Number(rating);
+
+    if (!Number.isFinite(normalizedRating) || normalizedRating <= 0) {
+        return "";
+    }
+
+    const starCount = Math.max(
+        1,
+        Math.min(5, Math.round(normalizedRating))
+    );
+    const stars = Array.from(
+        { length: starCount },
+        () => `<i class="fas fa-star" aria-hidden="true"></i>`
+    ).join("");
+
+    return `
+        <span class="grocery-menu-product-rating toy-menu-product-rating" aria-label="${starCount} out of 5 stars">
+            ${stars}
+        </span>
+    `;
 };
 
 const renderGroceryProducts = (products, subcategory) => {
@@ -432,7 +555,7 @@ const renderGroceryProducts = (products, subcategory) => {
             const escapedName = AppUtils.escapeHTML(name);
             const image = AppUtils.defaultImage(product?.image);
             const price = AppUtils.formatPrice(product?.price || 0);
-            const href = getProductLink(product, subcategory);
+            const href = getProductLink(product, "Grocery", subcategory);
 
             return `
                 <a class="grocery-menu-product" href="${href}">
@@ -451,6 +574,49 @@ const renderGroceryProducts = (products, subcategory) => {
         .join("");
 };
 
+const renderToyProducts = (products, subcategory) => {
+    if (!toyProductPreview) {
+        return;
+    }
+
+    const safeProducts = Array.isArray(products)
+        ? products
+        : [];
+
+    if (!safeProducts.length) {
+        toyProductPreview.innerHTML =
+            `<p class="grocery-menu-empty toy-menu-empty">No toys available for ${escapeMenuHTML(subcategory)} yet.</p>`;
+        return;
+    }
+
+    toyProductPreview.innerHTML = safeProducts
+        .slice(0, 4)
+        .map((product) => {
+            const name = product?.name || "Toy";
+            const escapedName = AppUtils.escapeHTML(name);
+            const image = AppUtils.defaultImage(product?.image);
+            const price = AppUtils.formatPrice(product?.price || 0);
+            const href = getProductLink(product, "Toys", subcategory);
+            const rating = renderMenuRating(product?.rating);
+
+            return `
+                <a class="grocery-menu-product toy-menu-product" href="${href}">
+                    <img
+                        src="${AppUtils.escapeHTML(image)}"
+                        alt="${escapedName}"
+                        loading="lazy"
+                    />
+                    <span class="grocery-menu-product-info toy-menu-product-info">
+                        <span class="grocery-menu-product-name toy-menu-product-name">${escapedName}</span>
+                        <span class="grocery-menu-product-price toy-menu-product-price">${price}</span>
+                        ${rating}
+                    </span>
+                </a>
+            `;
+        })
+        .join("");
+};
+
 const setActiveGrocerySubcategory = (activeLink) => {
     grocerySubcategoryLinks.forEach((link) => {
         const isActive = link === activeLink;
@@ -459,26 +625,64 @@ const setActiveGrocerySubcategory = (activeLink) => {
     });
 };
 
-const fetchGroceryProducts = async () => {
-    if (!groceryProductPreview || !window.AppUtils) {
+const setActiveToySubcategory = (activeLink) => {
+    toySubcategoryLinks.forEach((link) => {
+        const isActive = link === activeLink;
+
+        link.classList.toggle("is-active", isActive);
+    });
+};
+
+let megaMenuProductsCache;
+
+const fetchMegaMenuProducts = async () => {
+    if (!window.AppUtils) {
         return [];
+    }
+
+    if (megaMenuProductsCache) {
+        return megaMenuProductsCache;
     }
 
     try {
-        const data = await AppUtils.apiRequest(
-            "/products?page=1&limit=200"
+        const requestedLimit = 200;
+        const firstPage = await AppUtils.apiRequest(
+            `/products?page=1&limit=${requestedLimit}`
+        );
+        const products = firstPage.success && Array.isArray(firstPage.products)
+            ? [...firstPage.products]
+            : [];
+        const pageLimit = Number(firstPage.limit) || products.length || 50;
+        const totalPages = Number(firstPage.totalPages) || 1;
+        const pagesToFetch = Math.min(
+            totalPages,
+            Math.ceil(requestedLimit / pageLimit)
         );
 
-        return data.success && Array.isArray(data.products)
-            ? data.products
-            : [];
+        for (let page = 2; page <= pagesToFetch; page += 1) {
+            if (products.length >= requestedLimit) {
+                break;
+            }
+
+            const data = await AppUtils.apiRequest(
+                `/products?page=${page}&limit=${requestedLimit}`
+            );
+
+            if (data.success && Array.isArray(data.products)) {
+                products.push(...data.products);
+            }
+        }
+
+        megaMenuProductsCache = products.slice(0, requestedLimit);
     } catch (error) {
         console.error(
-            "GROCERY MEGA MENU FETCH ERROR:",
+            "MEGA MENU PRODUCTS FETCH ERROR:",
             error
         );
-        return [];
+        megaMenuProductsCache = [];
     }
+
+    return megaMenuProductsCache;
 };
 
 const initializeGroceryMegaMenu = async () => {
@@ -510,12 +714,51 @@ const initializeGroceryMegaMenu = async () => {
         });
     });
 
-    groceryProducts = await fetchGroceryProducts();
+    groceryProducts = await fetchMegaMenuProducts();
 
     const defaultLink =
         grocerySubcategoryLinks.find((link) =>
             link.dataset.grocerySubcategory === currentSubcategory
         ) || grocerySubcategoryLinks[0];
+
+    showSubcategoryProducts(defaultLink);
+};
+
+const initializeToyMegaMenu = async () => {
+    if (!toySubcategoryLinks.length || !toyProductPreview) {
+        return;
+    }
+
+    let toyProducts = [];
+
+    const showSubcategoryProducts = (link) => {
+        const subcategory =
+            link.dataset.toySubcategory ||
+            link.textContent.trim();
+        const products = toyProducts.filter((product) =>
+            matchesToySubcategory(product, subcategory)
+        );
+
+        setActiveToySubcategory(link);
+        renderToyProducts(products, subcategory);
+    };
+
+    toySubcategoryLinks.forEach((link) => {
+        link.addEventListener("mouseenter", () => {
+            showSubcategoryProducts(link);
+        });
+
+        link.addEventListener("focus", () => {
+            showSubcategoryProducts(link);
+        });
+    });
+
+    toyProducts = await fetchMegaMenuProducts();
+
+    const defaultLink =
+        toySubcategoryLinks.find((link) =>
+            link.dataset.toySubcategory === currentSubcategory
+        ) || toySubcategoryLinks[0];
 
     showSubcategoryProducts(defaultLink);
 };
@@ -765,6 +1008,7 @@ mobileCategoryAccordions.forEach((accordion) => {
     });
 });
     await initializeGroceryMegaMenu();
+    await initializeToyMegaMenu();
     // notify components ready
     document.dispatchEvent(new CustomEvent("componentsLoaded"));
 }

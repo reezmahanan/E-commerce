@@ -10,6 +10,16 @@ const {
 } = require("../utils/helpers");
 
 const MAX_PRODUCT_LIMIT = 50;
+const NORMALIZED_CATEGORY_SQL =
+    "LOWER(REPLACE(REPLACE(category, '-', ''), ' ', ''))";
+const TOYS_CATEGORY_VALUES = [
+    "Toys",
+    "Educational Toys",
+    "Building Blocks",
+    "Dolls",
+    "RC Toys",
+    "Outdoor Toys"
+];
 
 function parsePaginationValue(value, defaultValue, fieldName) {
     if (value === undefined || value === null || value === "") {
@@ -50,14 +60,27 @@ const getProducts = async (req, res) => {
 
         // category filter (case/format-insensitive)
         if (req.query.category) {
-            conditions.push(
-                "LOWER(REPLACE(REPLACE(category, '-', ''), ' ', '')) = LOWER(REPLACE(REPLACE(?, '-', ''), ' ', ''))"
+            const sanitizedCategory = sanitizeString(
+                req.query.category
             );
-            params.push(
-                sanitizeString(
-                    req.query.category
-                )
-            );
+            const isToysCategory =
+                sanitizedCategory
+                    .toLowerCase()
+                    .replace(/[-\s]+/g, "") === "toys";
+
+            if (isToysCategory) {
+                conditions.push(
+                    `${NORMALIZED_CATEGORY_SQL} IN (${TOYS_CATEGORY_VALUES.map(
+                        () => "LOWER(REPLACE(REPLACE(?, '-', ''), ' ', ''))"
+                    ).join(", ")})`
+                );
+                params.push(...TOYS_CATEGORY_VALUES);
+            } else {
+                conditions.push(
+                    `${NORMALIZED_CATEGORY_SQL} = LOWER(REPLACE(REPLACE(?, '-', ''), ' ', ''))`
+                );
+                params.push(sanitizedCategory);
+            }
         }
 
         // featured filter

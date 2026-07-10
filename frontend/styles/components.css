@@ -337,7 +337,8 @@ html, body {
     gap: 8px;
 }
 
-.grocery-subcategory-link.is-active {
+.grocery-subcategory-link.is-active,
+.toy-subcategory-link.is-active {
     background: rgba(8, 129, 120, 0.1);
     color: var(--primary-color, #088178);
     transform: translateX(3px);
@@ -409,6 +410,14 @@ html, body {
     color: var(--primary-color, #088178);
     font-size: 13px;
     font-weight: 800;
+}
+
+.toy-menu-product-rating {
+    display: flex;
+    gap: 2px;
+    color: #f5a623;
+    font-size: 11px;
+    line-height: 1;
 }
 
 .grocery-menu-empty {
@@ -1048,7 +1057,8 @@ body.dark-theme .category-menu-link.active {
   color: #39a4d6;
 }
 
-body.dark-theme .grocery-subcategory-link.is-active {
+body.dark-theme .grocery-subcategory-link.is-active,
+body.dark-theme .toy-subcategory-link.is-active {
   background: rgba(57, 164, 214, 0.16);
   color: #39a4d6;
 }
