@@ -9,15 +9,31 @@ const morgan = require("morgan");
 const timeout = require("connect-timeout");
 const fs = require("fs");
 const path = require("path");
-const { logServerStartup } = require('./utils/serverStartupLogger');
+const setupGracefulShutdown = require('./src/utils/gracefulShutdown');
 
-const { accessLogStream, errorLogStream } = require('./utils/logstreams');
-const { buildHealthResponse } = require('./utils/healthResponseBuilder');
-
+const { apiLimiter, adminLimiter, mcpLimiter } = require('./config/rateLimiters');
 const dotenv = require("dotenv");
-const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
+
+// Add with other imports
+const responseExampleRoutes = require('./routes/responseExampleRoutes');
+const { standardizeResponse } = require('./middleware/responseStandardizer');
+
+// Add response standardization middleware BEFORE routes
+app.use(standardizeResponse);
+
+// Add response example routes (for testing)
+app.use('/api/response-example', responseExampleRoutes);
+
+const { buildHealthResponse } = require("./utils/healthResponseBuilder");
+const { logServerStartup } = require("./utils/serverStartupLogger");
+const { errorLogStream } = require("./utils/logstreams");
+
+// init app early so route and middleware registration can safely use it
+const app = express();
+
+const logDir = path.join(process.cwd(), "logs");
 // Add with other route imports
 const aiFeedRoutes = require('./routes/aiFeedRoutes');
 // Import agent routes
@@ -35,10 +51,67 @@ app.use('/api/legal', legalRoutes);
 app.use('/api/agents', agentRoutes);
 // Add AI feed routes
 app.use('/api/ai-feed', aiFeedRoutes);
+
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other route imports
+const cqrsRoutes = require('./routes/cqrsRoutes');
+const { readModelSynchronizer } = require('./services/cqrsService');
 
+// Start read model synchronization
+readModelSynchronizer.start();
+
+// Add CQRS routes
+app.use('/api/cqrs', cqrsRoutes);
+// Add with other imports
+
+const flagRoutes = require('./routes/flagRoutes');
+const { featureFlagService } = require('./services/featureFlagService');
+
+// Initialize feature flag service
+await featureFlagService.initialize();
+
+// Add flag routes
+app.use('/api/flags', flagRoutes);
+
+const correlationRoutes = require('./routes/correlationRoutes');
+const { correlationIdMiddleware, logCompletionMiddleware } = require('./middleware/correlationIdMiddleware');
+
+// Add correlation ID middleware BEFORE any other middleware
+app.use(correlationIdMiddleware);
+app.use(logCompletionMiddleware);
+
+// Add correlation routes
+app.use('/api/correlation', correlationRoutes);
+
+
+// Add with other route imports
+
+
+const ruleRoutes = require('./routes/ruleRoutes');
+
+// Add rule routes
+app.use('/api/rules', ruleRoutes);
+
+const pluginRoutes = require('./routes/pluginRoutes');
+const { pluginSystem } = require('./services/pluginSystemService');
+
+// Initialize plugin system
+await pluginSystem.initialize();
+
+// Add plugin routes
+app.use('/api/plugins', pluginRoutes);
+
+
+const eventRoutes = require('./routes/eventRoutes');
+const { setupAllSubscribers } = require('./services/eventSubscribers');
+
+// Add event routes
+app.use('/api/events', eventRoutes);
+
+// Setup event subscribers after all services are initialized
+setupAllSubscribers();
 // Add with other route imports
 const performanceRoutes = require('./routes/performanceRoutes');
 
@@ -63,10 +136,16 @@ app.use('/api/ai/financial', aiFinancialRoutes);
 
 // Add performance routes
 app.use('/api/performance', performanceRoutes);
+
+
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
+// Add with other imports
+const experimentRoutes = require('./routes/experimentRoutes');
 
+// Add experiment routes
+app.use('/api/experiments', experimentRoutes);
 // Add copywriter routes
 app.use('/api/copywriter', copywriterRoutes);
 // Add with other imports
@@ -116,9 +195,7 @@ validateEnv();
 // database
 require("./config/db");
 
-// init app
-const app = express();
-const http = require("http");
+const http = require("node:http");
 const server = http.createServer(app);
 const { initSocket } = require("./utils/socketManager");
 const { accessLogger, errorLogger, devLogger } = require('./config/morganConfig');
@@ -230,45 +307,6 @@ if (process.env.NODE_ENV !== "production") {
     });
 }
 
-// rate limiting
-// global api limiter - 120 requests per minute
-const apiLimiter = rateLimit({
-    windowMs: 60 * 1000,
-    max: 120,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        errorCode: "API_RATE_LIMIT_EXCEEDED",
-        message: "Too many API requests. Please slow down.",
-    },
-});
-
-// admin limiter - 100 requests per 15 minutes
-const adminLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        errorCode: "ADMIN_RATE_LIMIT_EXCEEDED",
-        message: "Too many admin requests. Please try again after 15 minutes.",
-    },
-});
-
-// ✅ MCP specific rate limiter - stricter
-const mcpLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 10, // 10 requests per minute
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-        success: false,
-        errorCode: "MCP_RATE_LIMIT_EXCEEDED",
-        message: "Too many MCP requests. Please try again after 1 minute.",
-    },
-});
 
 // apply rate limiting
 app.use("/api", apiLimiter);
@@ -365,18 +403,8 @@ process.on("uncaughtException", (error) => {
     }, 1000);
 });
 
-// graceful shutdown
-function shutdown() {
-    console.log("\nShutting down server gracefully...");
-    server.close(() => {
-        console.log("HTTP server closed");
-        process.exit(0);
-    });
-    setTimeout(() => {
-        console.error("Force shutdown after timeout");
-        process.exit(1);
-    }, 10000);
-}
+// Initialize graceful shutdown logic
+setupGracefulShutdown(server);
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);

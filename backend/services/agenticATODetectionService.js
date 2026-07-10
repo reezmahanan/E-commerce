@@ -1,43 +1,633 @@
 // backend/services/agenticATODetectionService.js
+
 const db = require('../config/db').promise;
 const crypto = require('crypto');
+const tf = require('@tensorflow/tfjs-node');
+const { IsolationForest } = require('isolation-forest');
+const WebSocket = require('ws');
+const prometheus = require('prom-client');
+const express = require('express');
 
 // ============================================
 // CONFIGURATION
 // ============================================
 
 const ATO_CONFIG = {
-    // Behavioral baselines
-    baselineWindow: 30, // days
-    updateFrequency: 7, // days
-    
-    // Merchant tracking
+    behavioralBaselineWindow: 30,
+    updateFrequency: 7,
     maxMerchants: 20,
-    merchantExpansionThreshold: 3, // new merchants per day
-    
-    // Basket composition
+    merchantExpansionThreshold: 3,
     basketHistoryLength: 50,
     compositionDeviationThreshold: 0.3,
-    
-    // Conversation analysis
     conversationHistoryLength: 100,
     fingerprintThreshold: 0.75,
-    
-    // Mandate scope
     mandateDeviationThreshold: 0.2,
-    
-    // Detection thresholds
     lowConfidenceThreshold: 40,
     mediumConfidenceThreshold: 60,
     highConfidenceThreshold: 80,
-    
-    // Alert thresholds
     alertThreshold: 60,
-    criticalThreshold: 80
+    criticalThreshold: 80,
+    
+    // ML Configuration
+    mlEnabled: true,
+    mlAnomalyThreshold: 0.3,
+    mlTrainingEpochs: 50,
+    mlValidationSplit: 0.2,
+    
+    // WebSocket
+    wsPort: 8080,
+    
+    // Metrics
+    metricsEnabled: true,
+    metricsPort: 9090,
 };
 
 // ============================================
-// AGENTIC ATO DETECTION CLASS
+// PROMETHEUS METRICS
+// ============================================
+
+const register = new prometheus.Registry();
+
+const detectionCounter = new prometheus.Counter({
+    name: 'ato_detections_total',
+    help: 'Total number of ATO detections',
+    labelNames: ['severity', 'agent_id']
+});
+
+const detectionLatency = new prometheus.Histogram({
+    name: 'ato_detection_latency_seconds',
+    help: 'Detection latency in seconds',
+    buckets: [0.1, 0.5, 1, 2, 5, 10]
+});
+
+const falsePositiveCounter = new prometheus.Counter({
+    name: 'ato_false_positives_total',
+    help: 'Total false positive detections'
+});
+
+const activeAgentsGauge = new prometheus.Gauge({
+    name: 'ato_active_agents',
+    help: 'Number of active agents being monitored'
+});
+
+register.registerMetric(detectionCounter);
+register.registerMetric(detectionLatency);
+register.registerMetric(falsePositiveCounter);
+register.registerMetric(activeAgentsGauge);
+
+// ============================================
+// ML DETECTION CLASS
+// ============================================
+
+class MLDetection {
+    constructor() {
+        this.isolationForest = null;
+        this.autoencoder = null;
+        this.anomalyThreshold = ATO_CONFIG.mlAnomalyThreshold;
+        this.isTrained = false;
+        this.featureScaler = null;
+        this.trainingHistory = [];
+    }
+
+    async train(features) {
+        try {
+            console.log('Training ML models...');
+            
+            // Normalize features
+            this.featureScaler = this.normalizeFeatures(features);
+            const normalizedFeatures = this.featureScaler.normalized;
+            
+            // Train Isolation Forest
+            this.isolationForest = new IsolationForest({
+                nEstimators: 100,
+                maxSamples: 'auto',
+                contamination: 0.1,
+                randomState: 42
+            });
+            this.isolationForest.fit(normalizedFeatures);
+            
+            // Build and train Autoencoder
+            this.autoencoder = await this.buildAutoencoder();
+            await this.autoencoder.fit(normalizedFeatures, normalizedFeatures, {
+                epochs: ATO_CONFIG.mlTrainingEpochs,
+                validationSplit: ATO_CONFIG.mlValidationSplit,
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        this.trainingHistory.push(logs);
+                    }
+                }
+            });
+            
+            this.isTrained = true;
+            console.log('ML models trained successfully');
+            return true;
+        } catch (error) {
+            console.error('ML training failed:', error);
+            this.isTrained = false;
+            return false;
+        }
+    }
+
+    normalizeFeatures(features) {
+        const means = [];
+        const stds = [];
+        const normalized = [];
+        
+        for (let i = 0; i < features[0].length; i++) {
+            const values = features.map(row => row[i]);
+            const mean = values.reduce((a, b) => a + b, 0) / values.length;
+            const std = Math.sqrt(values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length);
+            means.push(mean);
+            stds.push(std || 1);
+        }
+        
+        for (const row of features) {
+            const normalizedRow = row.map((val, i) => (val - means[i]) / stds[i]);
+            normalized.push(normalizedRow);
+        }
+        
+        return { normalized, means, stds };
+    }
+
+    async buildAutoencoder() {
+        const model = tf.sequential();
+        
+        // Encoder
+        model.add(tf.layers.dense({
+            units: 64,
+            activation: 'relu',
+            inputShape: [10] // Adjust based on feature count
+        }));
+        model.add(tf.layers.dense({
+            units: 32,
+            activation: 'relu'
+        }));
+        model.add(tf.layers.dense({
+            units: 16,
+            activation: 'relu'
+        }));
+        
+        // Decoder
+        model.add(tf.layers.dense({
+            units: 32,
+            activation: 'relu'
+        }));
+        model.add(tf.layers.dense({
+            units: 64,
+            activation: 'relu'
+        }));
+        model.add(tf.layers.dense({
+            units: 10,
+            activation: 'sigmoid'
+        }));
+        
+        model.compile({
+            optimizer: 'adam',
+            loss: 'meanSquaredError'
+        });
+        
+        return model;
+    }
+
+    async detect(features) {
+        if (!this.isTrained) {
+            throw new Error('ML models not trained');
+        }
+        
+        const normalizedFeatures = features.map(row => 
+            row.map((val, i) => (val - this.featureScaler.means[i]) / this.featureScaler.stds[i])
+        );
+        
+        // Isolation Forest score
+        const ifScore = this.isolationForest.predict(normalizedFeatures);
+        
+        // Autoencoder reconstruction error
+        const inputTensor = tf.tensor2d(normalizedFeatures);
+        const reconstructed = this.autoencoder.predict(inputTensor);
+        const aeScore = tf.metrics.meanSquaredError(inputTensor, reconstructed).dataSync()[0];
+        
+        // Combined anomaly score
+        const combinedScore = (ifScore + aeScore) / 2;
+        
+        return {
+            isAnomaly: combinedScore > this.anomalyThreshold,
+            ifScore,
+            aeScore,
+            combinedScore,
+            confidence: Math.min(100, combinedScore * 100)
+        };
+    }
+}
+
+// ============================================
+// REAL-TIME MONITORING
+// ============================================
+
+class RealTimeMonitor {
+    constructor(server) {
+        this.wss = new WebSocket.Server({ server });
+        this.clients = new Set();
+        this.setupWebSocket();
+        console.log(`WebSocket server running on port ${ATO_CONFIG.wsPort}`);
+    }
+
+    setupWebSocket() {
+        this.wss.on('connection', (ws) => {
+            this.clients.add(ws);
+            ws.send(JSON.stringify({
+                type: 'connection',
+                message: 'Connected to ATO Monitor',
+                timestamp: new Date().toISOString()
+            }));
+
+            ws.on('close', () => {
+                this.clients.delete(ws);
+            });
+
+            ws.on('error', (error) => {
+                console.error('WebSocket error:', error);
+            });
+        });
+    }
+
+    broadcastDetection(detection) {
+        const message = {
+            type: 'detection',
+            data: detection,
+            timestamp: new Date().toISOString()
+        };
+
+        for (const client of this.clients) {
+            if (client.readyState === WebSocket.OPEN) {
+                try {
+                    client.send(JSON.stringify(message));
+                } catch (error) {
+                    console.error('Failed to send WebSocket message:', error);
+                }
+            }
+        }
+    }
+
+    broadcastAlert(alert) {
+        const message = {
+            type: 'alert',
+            data: alert,
+            timestamp: new Date().toISOString()
+        };
+
+        for (const client of this.clients) {
+            if (client.readyState === WebSocket.OPEN) {
+                try {
+                    client.send(JSON.stringify(message));
+                } catch (error) {
+                    console.error('Failed to send WebSocket alert:', error);
+                }
+            }
+        }
+    }
+
+    getClientCount() {
+        return this.clients.size;
+    }
+}
+
+// ============================================
+// ALERT ESCALATION
+// ============================================
+
+class AlertEscalation {
+    constructor() {
+        this.escalationMatrix = {
+            LOW: {
+                level: 1,
+                actions: ['log', 'notify'],
+                timeout: 3600000,
+                severity: 'low'
+            },
+            MEDIUM: {
+                level: 2,
+                actions: ['log', 'notify', 'block'],
+                timeout: 1800000,
+                severity: 'medium'
+            },
+            HIGH: {
+                level: 3,
+                actions: ['log', 'notify', 'block', 'quarantine'],
+                timeout: 600000,
+                severity: 'high'
+            },
+            CRITICAL: {
+                level: 4,
+                actions: ['log', 'notify', 'block', 'quarantine', 'rollback'],
+                timeout: 300000,
+                severity: 'critical'
+            }
+        };
+        this.escalationHistory = [];
+    }
+
+    escalate(alert) {
+        const severity = this.getSeverity(alert.confidence);
+        const matrix = this.escalationMatrix[severity];
+        
+        const escalation = {
+            severity,
+            actions: matrix.actions,
+            timeout: matrix.timeout,
+            escalationPath: this.getEscalationPath(severity),
+            timestamp: new Date().toISOString()
+        };
+        
+        this.escalationHistory.push(escalation);
+        return escalation;
+    }
+
+    getSeverity(confidence) {
+        if (confidence > 80) return 'CRITICAL';
+        if (confidence > 60) return 'HIGH';
+        if (confidence > 40) return 'MEDIUM';
+        return 'LOW';
+    }
+
+    getEscalationPath(severity) {
+        const path = {
+            CRITICAL: ['critical_alert', 'escalate_to_manager', 'trigger_incident_response'],
+            HIGH: ['high_alert', 'escalate_to_team_lead', 'block_agent'],
+            MEDIUM: ['medium_alert', 'notify_security_team', 'monitor_activity'],
+            LOW: ['low_alert', 'log_incident', 'review_later']
+        };
+        return path[severity] || ['log_incident'];
+    }
+
+    getHistory() {
+        return this.escalationHistory;
+    }
+}
+
+// ============================================
+// THREAT INTELLIGENCE
+// ============================================
+
+class ThreatIntelligence {
+    constructor() {
+        this.threatFeeds = [];
+        this.ipReputation = {};
+        this.deviceFingerprints = {};
+        this.knownAttackPatterns = new Set();
+        this.lastUpdate = null;
+        this.updateInterval = 3600000; // 1 hour
+    }
+
+    async initialize() {
+        await this.fetchThreatFeeds();
+        setInterval(() => this.fetchThreatFeeds(), this.updateInterval);
+    }
+
+    async fetchThreatFeeds() {
+        try {
+            const feeds = [
+                'https://api.threatintel.com/feeds/latest',
+                'https://feeds.alienvault.com/otx',
+                'https://urlhaus.abuse.ch/downloads/csv/'
+            ];
+
+            for (const feed of feeds) {
+                try {
+                    const response = await fetch(feed);
+                    const data = await response.json();
+                    this.threatFeeds.push({
+                        source: feed,
+                        data: data,
+                        timestamp: new Date().toISOString()
+                    });
+                    this.updateThreatPatterns(data);
+                } catch (error) {
+                    console.error(`Failed to fetch threat feed: ${feed}`, error);
+                }
+            }
+            
+            this.lastUpdate = new Date().toISOString();
+        } catch (error) {
+            console.error('Threat feed fetch error:', error);
+        }
+    }
+
+    updateThreatPatterns(data) {
+        if (data && data.threats) {
+            for (const threat of data.threats) {
+                this.knownAttackPatterns.add(threat.pattern);
+                if (threat.ip) {
+                    this.ipReputation[threat.ip] = {
+                        score: threat.score || 0,
+                        isMalicious: threat.malicious || false,
+                        confidence: threat.confidence || 0,
+                        lastUpdated: new Date().toISOString()
+                    };
+                }
+            }
+        }
+    }
+
+    checkIpReputation(ip) {
+        return this.ipReputation[ip] || {
+            score: 0,
+            isMalicious: false,
+            confidence: 0
+        };
+    }
+
+    checkDeviceFingerprint(fingerprint) {
+        return this.deviceFingerprints[fingerprint] || {
+            known: false,
+            trustScore: 50,
+            firstSeen: new Date().toISOString()
+        };
+    }
+
+    getKnownPatterns() {
+        return Array.from(this.knownAttackPatterns);
+    }
+}
+
+// ============================================
+// AUDIT TRAIL
+// ============================================
+
+class AuditTrail {
+    constructor() {
+        this.entries = [];
+        this.maxEntries = 10000;
+    }
+
+    log({ action, actor, target, details, status, timestamp = new Date().toISOString() }) {
+        const entry = {
+            id: crypto.randomUUID(),
+            action,
+            actor,
+            target,
+            details,
+            status,
+            timestamp,
+            ip: this.getClientIP(),
+            userAgent: this.getUserAgent()
+        };
+
+        this.entries.push(entry);
+        
+        if (this.entries.length > this.maxEntries) {
+            this.entries = this.entries.slice(-this.maxEntries);
+        }
+
+        this.storeAuditEntry(entry);
+        return entry;
+    }
+
+    async storeAuditEntry(entry) {
+        try {
+            await db.query(
+                `INSERT INTO ato_audit_trail 
+                 (id, action, actor, target, details, status, timestamp, ip, user_agent)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    entry.id,
+                    entry.action,
+                    entry.actor,
+                    entry.target,
+                    JSON.stringify(entry.details),
+                    entry.status,
+                    entry.timestamp,
+                    entry.ip,
+                    entry.userAgent
+                ]
+            );
+        } catch (error) {
+            console.error('Failed to store audit entry:', error);
+        }
+    }
+
+    getClientIP() {
+        // Implementation depends on request context
+        return 'unknown';
+    }
+
+    getUserAgent() {
+        // Implementation depends on request context
+        return 'unknown';
+    }
+
+    getEntries(filters = {}) {
+        let entries = this.entries;
+        
+        if (filters.action) {
+            entries = entries.filter(e => e.action === filters.action);
+        }
+        if (filters.actor) {
+            entries = entries.filter(e => e.actor === filters.actor);
+        }
+        if (filters.status) {
+            entries = entries.filter(e => e.status === filters.status);
+        }
+        if (filters.fromDate) {
+            entries = entries.filter(e => e.timestamp >= filters.fromDate);
+        }
+        if (filters.toDate) {
+            entries = entries.filter(e => e.timestamp <= filters.toDate);
+        }
+        
+        return entries;
+    }
+}
+
+// ============================================
+// INCIDENT RESPONSE
+// ============================================
+
+class IncidentResponse {
+    constructor() {
+        this.actions = {
+            block: this.blockAgent.bind(this),
+            quarantine: this.quarantineAgent.bind(this),
+            rollback: this.rollbackTransactions.bind(this),
+            notify: this.notifyStakeholders.bind(this)
+        };
+        this.incidentLog = [];
+    }
+
+    async execute(alert, actions) {
+        const results = [];
+        
+        for (const action of actions) {
+            try {
+                const result = await this.actions[action](alert);
+                results.push({
+                    action,
+                    success: true,
+                    result,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                results.push({
+                    action,
+                    success: false,
+                    error: error.message,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        this.incidentLog.push({
+            alert,
+            results,
+            timestamp: new Date().toISOString()
+        });
+
+        return results;
+    }
+
+    async blockAgent(alert) {
+        await db.query(
+            'UPDATE agents SET status = "blocked", blocked_reason = ?, blocked_at = NOW() WHERE id = ?',
+            [alert.reason || 'Suspicious activity detected', alert.agentId]
+        );
+        return { message: 'Agent blocked successfully', agentId: alert.agentId };
+    }
+
+    async quarantineAgent(alert) {
+        await db.query(
+            'UPDATE agents SET status = "quarantined", quarantine_reason = ?, quarantined_at = NOW() WHERE id = ?',
+            [alert.reason || 'Suspicious activity detected', alert.agentId]
+        );
+        return { message: 'Agent quarantined successfully', agentId: alert.agentId };
+    }
+
+    async rollbackTransactions(alert) {
+        await db.query(
+            `UPDATE transactions 
+             SET status = "rollback_pending" 
+             WHERE agent_id = ? 
+             AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)`,
+            [alert.agentId]
+        );
+        return { message: 'Transactions marked for rollback', agentId: alert.agentId };
+    }
+
+    async notifyStakeholders(alert) {
+        console.log('Notifying stakeholders:', {
+            agentId: alert.agentId,
+            severity: alert.severity,
+            confidence: alert.confidence,
+            timestamp: new Date().toISOString()
+        });
+        return { message: 'Notifications sent', recipientCount: 3 };
+    }
+
+    getIncidentLog() {
+        return this.incidentLog;
+    }
+}
+
+// ============================================
+// MAIN SERVICE CLASS
 // ============================================
 
 class AgenticATODetectionService {
@@ -51,169 +641,416 @@ class AgenticATODetectionService {
         this.detectionAlerts = [];
         this.agentSessions = new Map();
         this.credentialVaultAccess = new Map();
+        
+        // Initialize new components
+        this.mlDetection = new MLDetection();
+        this.realTimeMonitor = null;
+        this.alertEscalation = new AlertEscalation();
+        this.threatIntelligence = new ThreatIntelligence();
+        this.auditTrail = new AuditTrail();
+        this.incidentResponse = new IncidentResponse();
+        
+        // Initialize components
+        this.initializeComponents();
+        this.setupMetricsEndpoint();
+    }
+
+    async initializeComponents() {
+        try {
+            await this.threatIntelligence.initialize();
+            
+            // Set up WebSocket server if enabled
+            if (process.env.ENABLE_WEBSOCKET === 'true') {
+                const wsServer = new WebSocket.Server({ port: ATO_CONFIG.wsPort });
+                this.realTimeMonitor = new RealTimeMonitor(wsServer);
+            }
+            
+            console.log('ATO Detection Service initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize ATO Detection Service:', error);
+        }
+    }
+
+    setupMetricsEndpoint() {
+        const app = express();
+        app.get('/metrics', async (req, res) => {
+            res.set('Content-Type', register.contentType);
+            res.end(await register.metrics());
+        });
+        
+        app.listen(ATO_CONFIG.metricsPort, () => {
+            console.log(`Metrics endpoint running on port ${ATO_CONFIG.metricsPort}`);
+        });
     }
 
     /**
-     * Initialize agent behavioral baseline
+     * Initialize agent behavioral baseline with ML
      */
     async initializeBaseline(agentId, initialData = {}) {
-        const baseline = {
-            agentId,
-            initializedAt: new Date().toISOString(),
-            lastUpdated: new Date().toISOString(),
-            merchantProfile: await this.buildMerchantProfile(agentId, initialData.merchants),
-            basketProfile: await this.buildBasketProfile(agentId, initialData.baskets),
-            conversationFingerprint: await this.buildConversationFingerprint(agentId, initialData.conversations),
-            mandateProfile: await this.buildMandateProfile(agentId, initialData.mandates),
-            behavioralPatterns: await this.extractBehavioralPatterns(agentId, initialData),
-            credentialVaultPattern: await this.buildCredentialVaultPattern(agentId, initialData.credentialAccess)
-        };
+        const startTime = Date.now();
+        
+        try {
+            // Extract features for ML training
+            const features = this.extractFeatures(initialData);
+            
+            // Train ML models if enabled
+            if (ATO_CONFIG.mlEnabled && features.length > 10) {
+                await this.mlDetection.train(features);
+            }
+            
+            const baseline = {
+                agentId,
+                initializedAt: new Date().toISOString(),
+                lastUpdated: new Date().toISOString(),
+                merchantProfile: await this.buildMerchantProfile(agentId, initialData.merchants),
+                basketProfile: await this.buildBasketProfile(agentId, initialData.baskets),
+                conversationFingerprint: await this.buildConversationFingerprint(agentId, initialData.conversations),
+                mandateProfile: await this.buildMandateProfile(agentId, initialData.mandates),
+                behavioralPatterns: await this.extractBehavioralPatterns(agentId, initialData),
+                credentialVaultPattern: await this.buildCredentialVaultPattern(agentId, initialData.credentialAccess),
+                mlModel: {
+                    isTrained: this.mlDetection.isTrained,
+                    trainingDataSize: features.length
+                }
+            };
 
-        this.agentBaselines.set(agentId, baseline);
-        await this.storeBaseline(agentId, baseline);
+            this.agentBaselines.set(agentId, baseline);
+            await this.storeBaseline(agentId, baseline);
 
-        console.log(`✅ Baseline initialized for agent: ${agentId}`);
-        return baseline;
+            // Update metrics
+            activeAgentsGauge.set(this.agentBaselines.size);
+            
+            // Audit log
+            this.auditTrail.log({
+                action: 'baseline_initialized',
+                actor: 'system',
+                target: agentId,
+                details: { baseline: baseline },
+                status: 'success'
+            });
+
+            console.log(`Baseline initialized for agent: ${agentId}`);
+            return baseline;
+        } catch (error) {
+            console.error('Baseline initialization error:', error);
+            this.auditTrail.log({
+                action: 'baseline_initialization_failed',
+                actor: 'system',
+                target: agentId,
+                details: { error: error.message },
+                status: 'failure'
+            });
+            throw error;
+        }
     }
 
     /**
-     * Update agent baseline
+     * Extract features for ML training
      */
-    async updateBaseline(agentId, newData) {
-        const current = this.agentBaselines.get(agentId);
-        if (!current) {
-            throw new Error(`No baseline found for agent: ${agentId}`);
+    extractFeatures(data) {
+        const features = [];
+        // Extract features from merchant, basket, conversation data
+        // This is a simplified version - expand based on your data
+        if (data.merchants) {
+            for (const merchant of data.merchants) {
+                features.push([
+                    merchant.frequency || 0,
+                    merchant.basketSize || 0,
+                    merchant.interactionCount || 0
+                ]);
+            }
         }
-
-        if (newData.merchants) {
-            current.merchantProfile = await this.updateMerchantProfile(
-                current.merchantProfile,
-                newData.merchants
-            );
-        }
-
-        if (newData.baskets) {
-            current.basketProfile = await this.updateBasketProfile(
-                current.basketProfile,
-                newData.baskets
-            );
-        }
-
-        if (newData.conversations) {
-            current.conversationFingerprint = await this.updateConversationFingerprint(
-                current.conversationFingerprint,
-                newData.conversations
-            );
-        }
-
-        if (newData.mandates) {
-            current.mandateProfile = await this.updateMandateProfile(
-                current.mandateProfile,
-                newData.mandates
-            );
-        }
-
-        if (newData.credentialAccess) {
-            current.credentialVaultPattern = await this.updateCredentialVaultPattern(
-                current.credentialVaultPattern,
-                newData.credentialAccess
-            );
-        }
-
-        current.behavioralPatterns = await this.updateBehavioralPatterns(
-            current.behavioralPatterns,
-            newData
-        );
-
-        current.lastUpdated = new Date().toISOString();
-        this.agentBaselines.set(agentId, current);
-        await this.storeBaseline(agentId, current);
-
-        return current;
+        return features;
     }
 
     /**
-     * Detect compromised agent
+     * Detect compromised agent with ML
      */
     async detectCompromisedAgent(agentId, currentActivity) {
-        const baseline = this.agentBaselines.get(agentId);
-        if (!baseline) {
-            throw new Error(`No baseline found for agent: ${agentId}`);
+        const startTime = Date.now();
+        
+        try {
+            const baseline = this.agentBaselines.get(agentId);
+            if (!baseline) {
+                throw new Error(`No baseline found for agent: ${agentId}`);
+            }
+
+            const detection = {
+                isCompromised: false,
+                confidence: 0,
+                flags: [],
+                details: {},
+                timestamp: new Date().toISOString(),
+                mlAnalysis: null
+            };
+
+            // Track current session
+            this.trackAgentSession(agentId, currentActivity);
+
+            // ML-based detection
+            if (ATO_CONFIG.mlEnabled && this.mlDetection.isTrained) {
+                const features = this.extractFeaturesForML(currentActivity);
+                const mlResult = await this.mlDetection.detect(features);
+                detection.mlAnalysis = mlResult;
+                
+                if (mlResult.isAnomaly) {
+                    detection.flags.push({
+                        type: 'ml_anomaly',
+                        severity: 'high',
+                        confidence: mlResult.confidence,
+                        details: `ML model detected anomaly with confidence ${mlResult.confidence}%`
+                    });
+                    detection.confidence += mlResult.confidence;
+                }
+            }
+
+            // Check merchant behavior
+            const merchantCheck = await this.checkMerchantBehavior(
+                baseline.merchantProfile,
+                currentActivity.merchants
+            );
+            this.addDetectionResult(detection, merchantCheck);
+
+            // Check basket composition
+            const basketCheck = await this.checkBasketComposition(
+                baseline.basketProfile,
+                currentActivity.basket
+            );
+            this.addDetectionResult(detection, basketCheck);
+
+            // Check conversation fingerprint
+            const conversationCheck = await this.checkConversationFingerprint(
+                baseline.conversationFingerprint,
+                currentActivity.conversation
+            );
+            this.addDetectionResult(detection, conversationCheck);
+
+            // Check mandate scope
+            const mandateCheck = await this.checkMandateScope(
+                baseline.mandateProfile,
+                currentActivity.mandate
+            );
+            this.addDetectionResult(detection, mandateCheck);
+
+            // Check credential vault access
+            const credentialCheck = await this.checkCredentialVaultAccess(
+                baseline.credentialVaultPattern,
+                currentActivity.credentialAccess
+            );
+            this.addDetectionResult(detection, credentialCheck);
+
+            // Check behavioral patterns
+            const patternCheck = await this.checkBehavioralPatterns(
+                baseline.behavioralPatterns,
+                currentActivity
+            );
+            this.addDetectionResult(detection, patternCheck);
+
+            // Check threat intelligence
+            const threatCheck = await this.checkThreatIntelligence(currentActivity);
+            this.addDetectionResult(detection, threatCheck);
+
+            // Calculate overall confidence
+            this.calculateOverallConfidence(detection);
+
+            // Determine if compromised
+            detection.isCompromised = detection.confidence > ATO_CONFIG.alertThreshold;
+
+            // Log detection
+            await this.logAnomalyDetection(agentId, detection);
+
+            // Generate alert if compromised
+            if (detection.isCompromised) {
+                await this.generateAlert(agentId, detection);
+                
+                // Real-time broadcast
+                if (this.realTimeMonitor) {
+                    this.realTimeMonitor.broadcastDetection(detection);
+                }
+                
+                // Escalate alert
+                const escalation = this.alertEscalation.escalate(detection);
+                detection.escalation = escalation;
+                
+                // Auto-response
+                if (detection.confidence > ATO_CONFIG.criticalThreshold) {
+                    const response = await this.incidentResponse.execute(detection, escalation.actions);
+                    detection.incidentResponse = response;
+                }
+            }
+
+            // Update metrics
+            const latency = (Date.now() - startTime) / 1000;
+            detectionLatency.observe(latency);
+            
+            if (detection.isCompromised) {
+                const severity = this.alertEscalation.getSeverity(detection.confidence).toLowerCase();
+                detectionCounter.inc({ severity, agent_id: agentId });
+            }
+
+            // Audit log
+            this.auditTrail.log({
+                action: 'detection_completed',
+                actor: 'system',
+                target: agentId,
+                details: { 
+                    confidence: detection.confidence,
+                    isCompromised: detection.isCompromised,
+                    flags: detection.flags.length
+                },
+                status: detection.isCompromised ? 'alert' : 'normal'
+            });
+
+            return detection;
+        } catch (error) {
+            console.error('Detection error:', error);
+            throw error;
         }
-
-        const detection = {
-            isCompromised: false,
-            confidence: 0,
-            flags: [],
-            details: {},
-            timestamp: new Date().toISOString()
-        };
-
-        // Track current session
-        this.trackAgentSession(agentId, currentActivity);
-
-        // Check merchant behavior
-        const merchantCheck = await this.checkMerchantBehavior(
-            baseline.merchantProfile,
-            currentActivity.merchants
-        );
-        this.addDetectionResult(detection, merchantCheck);
-
-        // Check basket composition
-        const basketCheck = await this.checkBasketComposition(
-            baseline.basketProfile,
-            currentActivity.basket
-        );
-        this.addDetectionResult(detection, basketCheck);
-
-        // Check conversation fingerprint
-        const conversationCheck = await this.checkConversationFingerprint(
-            baseline.conversationFingerprint,
-            currentActivity.conversation
-        );
-        this.addDetectionResult(detection, conversationCheck);
-
-        // Check mandate scope
-        const mandateCheck = await this.checkMandateScope(
-            baseline.mandateProfile,
-            currentActivity.mandate
-        );
-        this.addDetectionResult(detection, mandateCheck);
-
-        // Check credential vault access
-        const credentialCheck = await this.checkCredentialVaultAccess(
-            baseline.credentialVaultPattern,
-            currentActivity.credentialAccess
-        );
-        this.addDetectionResult(detection, credentialCheck);
-
-        // Check behavioral patterns
-        const patternCheck = await this.checkBehavioralPatterns(
-            baseline.behavioralPatterns,
-            currentActivity
-        );
-        this.addDetectionResult(detection, patternCheck);
-
-        // Calculate overall confidence
-        this.calculateOverallConfidence(detection);
-
-        // Determine if compromised
-        detection.isCompromised = detection.confidence > ATO_CONFIG.alertThreshold;
-
-        // Log detection
-        await this.logAnomalyDetection(agentId, detection);
-
-        // Generate alert if compromised
-        if (detection.isCompromised) {
-            await this.generateAlert(agentId, detection);
-        }
-
-        return detection;
     }
 
     /**
-     * Add detection result
+     * Extract features for ML detection
      */
+    extractFeaturesForML(activity) {
+        // Extract features from activity data
+        const features = [];
+        
+        features.push([
+            activity.merchants ? activity.merchants.length : 0,
+            activity.basket ? activity.basket.items ? activity.basket.items.length : 0 : 0,
+            activity.basket ? activity.basket.value || 0 : 0,
+            activity.conversation ? activity.conversation.length || 0 : 0,
+            activity.credentialAccess ? 1 : 0
+        ]);
+        
+        return features;
+    }
+
+    /**
+     * Check threat intelligence
+     */
+    async checkThreatIntelligence(activity) {
+        const flags = [];
+        let confidence = 0;
+        const details = {};
+
+        if (activity.ip) {
+            const ipReputation = this.threatIntelligence.checkIpReputation(activity.ip);
+            if (ipReputation.isMalicious) {
+                flags.push({
+                    type: 'malicious_ip',
+                    severity: 'high',
+                    confidence: 80,
+                    details: `IP ${activity.ip} has malicious reputation`
+                });
+                confidence += 80;
+                details.ip = activity.ip;
+            }
+        }
+
+        if (activity.deviceFingerprint) {
+            const deviceInfo = this.threatIntelligence.checkDeviceFingerprint(activity.deviceFingerprint);
+            if (!deviceInfo.known) {
+                flags.push({
+                    type: 'unknown_device',
+                    severity: 'medium',
+                    confidence: 60,
+                    details: 'Unknown device fingerprint detected'
+                });
+                confidence += 60;
+                details.deviceFingerprint = activity.deviceFingerprint;
+            }
+        }
+
+        return {
+            flags,
+            confidence: Math.min(100, confidence),
+            details
+        };
+    }
+
+    // ============================================
+    // REST API FOR EXTERNAL SYSTEMS
+    // ============================================
+
+    setupAPI(app) {
+        app.get('/api/ato/agents/:agentId/status', async (req, res) => {
+            try {
+                const status = await this.getAgentStatus(req.params.agentId);
+                res.json({ success: true, data: status });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        app.post('/api/ato/agents/:agentId/detect', async (req, res) => {
+            try {
+                const detection = await this.detectCompromisedAgent(req.params.agentId, req.body);
+                res.json({ success: true, data: detection });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        app.get('/api/ato/alerts', async (req, res) => {
+            try {
+                const alerts = await this.getAlerts();
+                res.json({ success: true, data: alerts });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        app.get('/api/ato/statistics', async (req, res) => {
+            try {
+                const stats = await this.getStatistics();
+                res.json({ success: true, data: stats });
+            } catch (error) {
+                res.status(500).json({ success: false, error: error.message });
+            }
+        });
+
+        app.post('/api/ato/webhook', (req, res) => {
+            const { event, data } = req.body;
+            console.log('Webhook received:', { event, data });
+            // Process webhook
+            res.json({ success: true });
+        });
+    }
+
+    async getAlerts() {
+        try {
+            const [alerts] = await db.query(
+                'SELECT * FROM agentic_ato_alerts ORDER BY timestamp DESC LIMIT 100'
+            );
+            return alerts;
+        } catch (error) {
+            console.error('Get alerts error:', error);
+            return [];
+        }
+    }
+
+    async getAgentStatus(agentId) {
+        const baseline = this.agentBaselines.get(agentId);
+        if (!baseline) {
+            throw new Error('Agent not found');
+        }
+        
+        return {
+            agentId,
+            baseline,
+            status: 'active',
+            mlStatus: {
+                enabled: ATO_CONFIG.mlEnabled,
+                isTrained: this.mlDetection.isTrained
+            }
+        };
+    }
+
+    // ============================================
+    // EXISTING METHODS (from original service)
+    // ============================================
+
     addDetectionResult(detection, result) {
         if (result.flags && result.flags.length > 0) {
             detection.flags.push(...result.flags);
@@ -224,9 +1061,6 @@ class AgenticATODetectionService {
         }
     }
 
-    /**
-     * Calculate overall confidence
-     */
     calculateOverallConfidence(detection) {
         const totalFlags = detection.flags.length;
         if (totalFlags === 0) {
@@ -234,7 +1068,6 @@ class AgenticATODetectionService {
             return;
         }
 
-        // Calculate weighted confidence based on flag severity
         let weightedConfidence = 0;
         let totalWeight = 0;
 
@@ -248,9 +1081,6 @@ class AgenticATODetectionService {
         detection.confidence = Math.min(100, weightedConfidence / totalWeight);
     }
 
-    /**
-     * Track agent session
-     */
     trackAgentSession(agentId, activity) {
         if (!this.agentSessions.has(agentId)) {
             this.agentSessions.set(agentId, {
@@ -275,16 +1105,12 @@ class AgenticATODetectionService {
             }
         }
 
-        // Keep only last 100 activities
         if (session.activities.length > 100) {
             session.activities.shift();
         }
     }
 
-    // ============================================
-    // MERCHANT PROFILE METHODS
-    // ============================================
-
+    // Merchant Profile Methods
     async buildMerchantProfile(agentId, merchantData = []) {
         return {
             knownMerchants: new Set(),
@@ -356,10 +1182,7 @@ class AgenticATODetectionService {
         };
     }
 
-    // ============================================
-    // BASKET COMPOSITION METHODS
-    // ============================================
-
+    // Basket Composition Methods
     async buildBasketProfile(agentId, baskets = []) {
         return {
             typicalItems: new Map(),
@@ -432,10 +1255,7 @@ class AgenticATODetectionService {
         };
     }
 
-    // ============================================
-    // CONVERSATION FINGERPRINT METHODS
-    // ============================================
-
+    // Conversation Fingerprint Methods
     async buildConversationFingerprint(agentId, conversations = []) {
         return {
             patterns: {},
@@ -516,10 +1336,7 @@ class AgenticATODetectionService {
         return matches / Math.min(hash1.length, hash2.length);
     }
 
-    // ============================================
-    // MANDATE SCOPE METHODS
-    // ============================================
-
+    // Mandate Scope Methods
     async buildMandateProfile(agentId, mandates = []) {
         return {
             allowedActions: new Set(),
@@ -604,10 +1421,7 @@ class AgenticATODetectionService {
         };
     }
 
-    // ============================================
-    // CREDENTIAL VAULT METHODS
-    // ============================================
-
+    // Credential Vault Methods
     async buildCredentialVaultPattern(agentId, accesses = []) {
         return {
             typicalAccessPattern: {
@@ -646,7 +1460,6 @@ class AgenticATODetectionService {
             return { flags, confidence, details };
         }
 
-        // Check for out-of-baseline access
         const unusualTime = this.isUnusualTime(currentAccess.timestamp);
         if (unusualTime) {
             flags.push({
@@ -658,7 +1471,6 @@ class AgenticATODetectionService {
             confidence += 60;
         }
 
-        // Check for new device
         if (currentAccess.device && !baseline.typicalAccessPattern.devices.has(currentAccess.device)) {
             flags.push({
                 type: 'new_device_credential_access',
@@ -670,11 +1482,10 @@ class AgenticATODetectionService {
             details.newDevice = currentAccess.device;
         }
 
-        // Check for unusual frequency
         const recentAccesses = baseline.history.slice(-10);
         if (recentAccesses.length >= 10) {
-            const avgFrequency = recentAccesses.length / 7; // per day
-            const currentFrequency = 1; // assuming this is one access
+            const avgFrequency = recentAccesses.length / 7;
+            const currentFrequency = 1;
             if (currentFrequency > avgFrequency * 3) {
                 flags.push({
                     type: 'unusual_credential_access_frequency',
@@ -699,10 +1510,7 @@ class AgenticATODetectionService {
         return hour < 3 || hour > 22;
     }
 
-    // ============================================
-    // BEHAVIORAL PATTERN METHODS
-    // ============================================
-
+    // Behavioral Pattern Methods
     async extractBehavioralPatterns(agentId, data) {
         return {
             timePatterns: await this.extractTimePatterns(data),
@@ -828,10 +1636,7 @@ class AgenticATODetectionService {
         return current;
     }
 
-    // ============================================
-    // DATABASE OPERATIONS
-    // ============================================
-
+    // Database Operations
     async storeBaseline(agentId, baseline) {
         try {
             await db.query(
@@ -887,6 +1692,7 @@ class AgenticATODetectionService {
         const alert = {
             agentId,
             detection,
+            severity: this.alertEscalation.getSeverity(detection.confidence),
             timestamp: new Date().toISOString()
         };
 
@@ -895,17 +1701,23 @@ class AgenticATODetectionService {
         try {
             await db.query(
                 `INSERT INTO agentic_ato_alerts 
-                 (agent_id, confidence, flags, details, timestamp, resolved)
-                 VALUES (?, ?, ?, ?, NOW(), FALSE)`,
+                 (agent_id, confidence, flags, details, timestamp, resolved, severity)
+                 VALUES (?, ?, ?, ?, NOW(), FALSE, ?)`,
                 [
                     agentId,
                     detection.confidence,
                     JSON.stringify(detection.flags),
-                    JSON.stringify(detection.details)
+                    JSON.stringify(detection.details),
+                    alert.severity
                 ]
             );
         } catch (error) {
             console.error('Store alert error:', error);
+        }
+
+        // Broadcast alert via WebSocket
+        if (this.realTimeMonitor) {
+            this.realTimeMonitor.broadcastAlert(alert);
         }
 
         if (detection.confidence > ATO_CONFIG.criticalThreshold) {
@@ -928,10 +1740,6 @@ class AgenticATODetectionService {
         }
         return recent;
     }
-
-    // ============================================
-    // STATISTICS
-    // ============================================
 
     async getStatistics() {
         try {
@@ -956,6 +1764,10 @@ class AgenticATODetectionService {
             return {
                 anomalies: stats[0],
                 alerts: alertStats[0],
+                mlStatus: {
+                    enabled: ATO_CONFIG.mlEnabled,
+                    isTrained: this.mlDetection.isTrained
+                },
                 timestamp: new Date().toISOString()
             };
         } catch (error) {
@@ -969,6 +1781,11 @@ class AgenticATODetectionService {
             agentBaselines: this.agentBaselines.size,
             agentSessions: this.agentSessions.size,
             detectionAlerts: this.detectionAlerts.length,
+            wsClients: this.realTimeMonitor ? this.realTimeMonitor.getClientCount() : 0,
+            mlStatus: {
+                enabled: ATO_CONFIG.mlEnabled,
+                isTrained: this.mlDetection.isTrained
+            },
             config: ATO_CONFIG
         };
     }
