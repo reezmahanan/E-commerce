@@ -52,10 +52,9 @@ const initSocket = (server, allowedOrigins) => {
             socket.userId = decoded.id;
             socket.userRole = decoded.role || 'customer';
 
-            const userConnections = Array.from(userSockets.entries())
-                .filter(([userId]) => userId === socket.userId);
+            const existingSockets = userSockets.get(socket.userId) || new Set();
 
-            if (userConnections.length >= MAX_CONNECTIONS_PER_USER) {
+            if (existingSockets.size >= MAX_CONNECTIONS_PER_USER) {
                 logger.warn(`User ${socket.userId} exceeded max connections`);
                 return next(new Error("Too many connections"));
             }
@@ -73,9 +72,19 @@ const initSocket = (server, allowedOrigins) => {
 
         logger.info(`User connected: ${userId} (${userRole}) - Socket: ${socket.id}`);
 
-        userSockets.set(userId, socket.id);
+        if (!userSockets.has(userId)) {
+            userSockets.set(userId, new Set());
+        }
+
+        const userSocketSet = userSockets.get(userId);
+        userSocketSet.add(socket.id);
+
         socketUsers.set(socket.id, userId);
-        userStatus.set(userId, { status: 'online', lastSeen: new Date(), socketId: socket.id });
+        userStatus.set(userId, {
+            status: 'online',
+            lastSeen: new Date(),
+            socketId: socket.id
+        });
 
         io.emit('user_status_change', { userId, status: 'online' });
         io.emit('users_online', userSockets.size);
@@ -415,15 +424,28 @@ function handleDisconnect(socket) {
     if (userId) {
         cleanupPreviousRooms(socket);
 
-        userSockets.delete(userId);
-        socketUsers.delete(socket.id);
-        userStatus.set(userId, { status: 'offline', lastSeen: new Date() });
+        const userSocketSet = userSockets.get(userId);
 
+        if (userSocketSet) {
+            userSocketSet.delete(socket.id);
+
+            if (userSocketSet.size === 0) {
+                userSockets.delete(userId);
+                userStatus.set(userId, { status: 'offline', lastSeen: new Date() });
+                io.emit('user_status_change', { userId, status: 'offline' });
+            } else {
+                userStatus.set(userId, {
+                    status: 'online',
+                    lastSeen: new Date(),
+                    socketId: Array.from(userSocketSet)[0]
+                });
+            }
+        }
+
+        socketUsers.delete(socket.id);
         clearTypingForUser(userId);
 
-        io.emit('user_status_change', { userId, status: 'offline' });
         io.emit('users_online', userSockets.size);
-
         logger.info(`User disconnected: ${userId}`);
     }
 
@@ -439,9 +461,11 @@ function getIo() {
 }
 
 function sendToUser(userId, event, data) {
-    const socketId = userSockets.get(userId);
-    if (socketId) {
-        io.to(socketId).emit(event, data);
+    const socketIds = userSockets.get(userId);
+    if (socketIds && socketIds.size > 0) {
+        socketIds.forEach((socketId) => {
+            io.to(socketId).emit(event, data);
+        });
         return true;
     }
     return false;
