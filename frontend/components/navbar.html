@@ -201,12 +201,17 @@
                 <h3 id="mega-title-toys">Toys</h3>
                 <a href="shop.html?category=Toys">Shop all Toys</a>
               </div>
-              <div class="mega-menu-grid">
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=Educational%20Toys">Educational Toys</a>
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=Building%20Blocks">Building Blocks</a>
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=Dolls">Dolls</a>
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=RC%20Toys">RC Toys</a>
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=Outdoor%20Toys">Outdoor Toys</a>
+              <div class="mega-menu-grid grocery-mega-menu-grid toy-mega-menu-grid">
+                <div class="grocery-subcategory-list toy-subcategory-list" aria-label="Toys subcategories">
+                  <a class="category-menu-link toy-subcategory-link is-active" href="shop.html?category=Toys&amp;subcategory=Educational%20Toys" data-toy-subcategory="Educational Toys" aria-controls="toy-product-preview">Educational Toys</a>
+                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=Building%20Blocks" data-toy-subcategory="Building Blocks" aria-controls="toy-product-preview">Building Blocks</a>
+                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=Dolls" data-toy-subcategory="Dolls" aria-controls="toy-product-preview">Dolls</a>
+                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=RC%20Toys" data-toy-subcategory="RC Toys" aria-controls="toy-product-preview">RC Toys</a>
+                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=Outdoor%20Toys" data-toy-subcategory="Outdoor Toys" aria-controls="toy-product-preview">Outdoor Toys</a>
+                </div>
+                <div id="toy-product-preview" class="grocery-product-preview toy-product-preview" aria-live="polite">
+                  <p class="grocery-menu-empty toy-menu-empty">Loading products...</p>
+                </div>
               </div>
             </section>
 

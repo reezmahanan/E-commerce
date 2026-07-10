@@ -1295,11 +1295,28 @@ document.addEventListener(
         document.querySelectorAll(".fashion-card").forEach((card) => {
             card.addEventListener("click", () => {
                 const category = card.dataset.category;
-                const checkbox = document.querySelector(
+                let checkbox = document.querySelector(
                     `input[name="category-filter"][value="${category}"]`
                 );
+
+                resetCategoryCheckboxes();
+
+                if (!checkbox && elements.categoryList) {
+                    // Create checkbox dynamically if it doesn't exist
+                    const label = document.createElement("label");
+                    label.innerHTML = `
+                        <input
+                            type="checkbox"
+                            name="category-filter"
+                            value="${AppUtils.escapeHTML(category)}"
+                        >
+                        ${AppUtils.escapeHTML(category)}
+                    `;
+                    elements.categoryList.appendChild(label);
+                    checkbox = label.querySelector("input");
+                }
+
                 if (checkbox) {
-                    resetCategoryCheckboxes();
                     checkbox.checked = true;
                     applyFilters({ resetPage: true });
                     document.getElementById("product-container")

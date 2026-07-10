@@ -56,12 +56,25 @@ const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 
+
 // Add with other imports
 const { evaluateRisk } = require('./middleware/riskMiddleware');
 
 
 // Add risk evaluation middleware after authentication
 app.use(evaluateRisk);
+
+// Add with other imports
+const outboxRoutes = require('./routes/outboxRoutes');
+const { outboxService } = require('./services/outboxService');
+
+
+// Initialize outbox service
+await outboxService.initialize();
+
+// Add outbox routes
+app.use('/api/outbox', outboxRoutes);
+
 
 // Add with other route imports
 const cqrsRoutes = require('./routes/cqrsRoutes');
@@ -98,10 +111,17 @@ app.use('/api/correlation', correlationRoutes);
 // Add with other route imports
 
 
+
+const recommendationRoutes = require('./routes/recommendationRoutes');
+
+// Add recommendation routes
+app.use('/api/recommendations', recommendationRoutes);
+
 const ruleRoutes = require('./routes/ruleRoutes');
 
 // Add rule routes
 app.use('/api/rules', ruleRoutes);
+
 
 const pluginRoutes = require('./routes/pluginRoutes');
 const { pluginSystem } = require('./services/pluginSystemService');

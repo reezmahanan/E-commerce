@@ -175,6 +175,21 @@
         ],
         accessories: [
             "Accessories"
+        ],
+        educationaltoys: [
+            "Educational Toys"
+        ],
+        buildingblocks: [
+            "Building Blocks"
+        ],
+        dolls: [
+            "Dolls"
+        ],
+        rctoys: [
+            "RC Toys"
+        ],
+        outdoortoys: [
+            "Outdoor Toys"
         ]
     };
 
@@ -195,6 +210,9 @@
 
         const productKeys = toKeySet([
             getProductCategory(product),
+            product?.subcategory,
+            product?.sub_category,
+            product?.subCategory,
             getProductBrand(product),
             ...(Array.isArray(product?.tags) ? product.tags : [])
         ]);

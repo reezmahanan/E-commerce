@@ -10,7 +10,10 @@ router.use(promptInjectionGuard);
 
 // Your protected AI routes here
 router.post('/chat', async (req, res) => {
-    // Your chat handler
+    return res.status(501).json({
+        success: false,
+        message: 'AI protected chat endpoint is not implemented yet'
+    });
 });
 
 module.exports = router;

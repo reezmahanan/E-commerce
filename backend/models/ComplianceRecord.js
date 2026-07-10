@@ -137,8 +137,8 @@ const complianceRecordSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Generate record ID (Bilkul waisa hi)
-complianceRecordSchema.pre('save', function (next) {
+// Generate record ID before validation so required validation does not fail
+complianceRecordSchema.pre('validate', function (next) {
     if (this.isNew && !this.recordId) {
         const crypto = require('crypto');
         this.recordId = `COMPLY-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
