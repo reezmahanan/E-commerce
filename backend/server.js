@@ -16,7 +16,15 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other imports
+const outboxRoutes = require('./routes/outboxRoutes');
+const { outboxService } = require('./services/outboxService');
 
+// Initialize outbox service
+await outboxService.initialize();
+
+// Add outbox routes
+app.use('/api/outbox', outboxRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
