@@ -317,5 +317,6 @@
     color: #27ae60 !important;
 }
 
-/* =============================
-Breadcrumb Navigation (Issue #344)
+#category-menu-toggle {
+    display: none !important;
+}
