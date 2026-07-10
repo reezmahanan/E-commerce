@@ -6,6 +6,13 @@ const MAX_COMMENT_LENGTH = 1000;
 const MIN_RATING = 1;
 const MAX_RATING = 5;
 
+const REVIEW_SORT_OPTIONS = Object.freeze({
+  newest: "created_at DESC",
+  oldest: "created_at ASC",
+  rating_high: "rating DESC",
+  rating_low: "rating ASC",
+});
+
 class Review {
   constructor(review) {
     this.validate(review);
@@ -34,6 +41,14 @@ class Review {
     } catch (error) {
       return new Date();
     }
+  }
+
+  static getSafeSort(sort) {
+    if (typeof sort !== "string") {
+      return REVIEW_SORT_OPTIONS.newest;
+    }
+
+    return REVIEW_SORT_OPTIONS[sort] || REVIEW_SORT_OPTIONS.newest;
   }
 
   static validate(review) {
@@ -165,7 +180,8 @@ class Review {
 
   static async findByProduct(productId, options = {}) {
     try {
-      const { limit = 20, offset = 0, sort = 'created_at DESC', rating = null } = options;
+      const { limit = 20, offset = 0, sort = "newest", rating = null } = options;
+      const safeSort = Review.getSafeSort(sort);
 
       let query = `SELECT * FROM reviews WHERE product_id = ? AND is_deleted = FALSE`;
       const params = [productId];
@@ -175,29 +191,30 @@ class Review {
         params.push(rating);
       }
 
-      query += ` ORDER BY ${sort} LIMIT ? OFFSET ?`;
+      query += ` ORDER BY ${safeSort} LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
       const [rows] = await db.query(query, params);
-      return rows.map(row => new Review(row));
+      return rows.map((row) => new Review(row));
     } catch (error) {
-      console.error('Review.findByProduct error:', error.message);
+      console.error("Review.findByProduct error:", error.message);
       throw error;
     }
   }
 
   static async findByUser(userId, options = {}) {
     try {
-      const { limit = 20, offset = 0, sort = 'created_at DESC' } = options;
+      const { limit = 20, offset = 0, sort = "newest" } = options;
+      const safeSort = Review.getSafeSort(sort);
 
       const [rows] = await db.query(
-        `SELECT * FROM reviews WHERE user_id = ? AND is_deleted = FALSE ORDER BY ${sort} LIMIT ? OFFSET ?`,
+        `SELECT * FROM reviews WHERE user_id = ? AND is_deleted = FALSE ORDER BY ${safeSort} LIMIT ? OFFSET ?`,
         [userId, limit, offset]
       );
 
-      return rows.map(row => new Review(row));
+      return rows.map((row) => new Review(row));
     } catch (error) {
-      console.error('Review.findByUser error:', error.message);
+      console.error("Review.findByUser error:", error.message);
       throw error;
     }
   }
