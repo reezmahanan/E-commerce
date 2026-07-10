@@ -55,7 +55,15 @@ app.use('/api/ai-feed', aiFeedRoutes);
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other route imports
+const cqrsRoutes = require('./routes/cqrsRoutes');
+const { readModelSynchronizer } = require('./services/cqrsService');
 
+// Start read model synchronization
+readModelSynchronizer.start();
+
+// Add CQRS routes
+app.use('/api/cqrs', cqrsRoutes);
 // Add with other imports
 
 const flagRoutes = require('./routes/flagRoutes');
@@ -128,6 +136,7 @@ app.use('/api/ai/financial', aiFinancialRoutes);
 
 // Add performance routes
 app.use('/api/performance', performanceRoutes);
+
 
 // Add with other route imports
 
