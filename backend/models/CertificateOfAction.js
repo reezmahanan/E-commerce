@@ -69,8 +69,8 @@ const certificateSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Generate certificate ID
-certificateSchema.pre('save', function(next) {
+// Generate certificate ID before validation so required validation does not fail
+certificateSchema.pre('validate', function(next) {
     if (this.isNew && !this.certificateId) {
         this.certificateId = `CERT-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
     }

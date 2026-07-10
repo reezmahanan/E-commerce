@@ -55,6 +55,7 @@ app.use('/api/ai-feed', aiFeedRoutes);
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+
 // Add with other imports
 const tracingRoutes = require('./routes/tracingRoutes');
 const { traceRequest } = require('./middleware/tracingMiddleware');
@@ -79,7 +80,27 @@ process.on('SIGINT', async () => {
     await tracingService.shutdown();
 });
 
+// Add with other route imports
+const cqrsRoutes = require('./routes/cqrsRoutes');
+const { readModelSynchronizer } = require('./services/cqrsService');
+
+// Start read model synchronization
+readModelSynchronizer.start();
+
+
+// Add CQRS routes
+app.use('/api/cqrs', cqrsRoutes);
 // Add with other imports
+
+const flagRoutes = require('./routes/flagRoutes');
+const { featureFlagService } = require('./services/featureFlagService');
+
+// Initialize feature flag service
+await featureFlagService.initialize();
+
+// Add flag routes
+app.use('/api/flags', flagRoutes);
+
 const correlationRoutes = require('./routes/correlationRoutes');
 const { correlationIdMiddleware, logCompletionMiddleware } = require('./middleware/correlationIdMiddleware');
 
@@ -90,7 +111,14 @@ app.use(logCompletionMiddleware);
 // Add correlation routes
 app.use('/api/correlation', correlationRoutes);
 
+
 // Add with other route imports
+
+
+const ruleRoutes = require('./routes/ruleRoutes');
+
+// Add rule routes
+app.use('/api/rules', ruleRoutes);
 
 const pluginRoutes = require('./routes/pluginRoutes');
 const { pluginSystem } = require('./services/pluginSystemService');
@@ -100,6 +128,7 @@ await pluginSystem.initialize();
 
 // Add plugin routes
 app.use('/api/plugins', pluginRoutes);
+
 
 const eventRoutes = require('./routes/eventRoutes');
 const { setupAllSubscribers } = require('./services/eventSubscribers');
@@ -138,7 +167,11 @@ app.use('/api/performance', performanceRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
+// Add with other imports
+const experimentRoutes = require('./routes/experimentRoutes');
 
+// Add experiment routes
+app.use('/api/experiments', experimentRoutes);
 // Add copywriter routes
 app.use('/api/copywriter', copywriterRoutes);
 // Add with other imports
