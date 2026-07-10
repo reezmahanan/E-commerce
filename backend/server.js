@@ -141,7 +141,11 @@ app.use('/api/performance', performanceRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
+// Add with other imports
+const experimentRoutes = require('./routes/experimentRoutes');
 
+// Add experiment routes
+app.use('/api/experiments', experimentRoutes);
 // Add copywriter routes
 app.use('/api/copywriter', copywriterRoutes);
 // Add with other imports
