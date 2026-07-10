@@ -59,8 +59,6 @@ const getConversations = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch conversations",
-      details:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -106,8 +104,6 @@ const getConversationDetails = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch conversation details",
-      details:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
@@ -157,9 +153,7 @@ const updateStatus = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to update conversation status",
-      details:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
+      message: "Failed to update conversation status"
     });
   }
 };
@@ -214,8 +208,6 @@ const assignAdmin = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to assign conversation",
-      details:
-        process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
