@@ -16,7 +16,11 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other imports
+const { evaluateRisk } = require('./middleware/riskMiddleware');
 
+// Add risk evaluation middleware after authentication
+app.use(evaluateRisk);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
