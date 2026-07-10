@@ -327,3 +327,14 @@
 .category-menu-toggle[aria-expanded="true"] .dropdown-indicator {
     transform: rotate(180deg);
 }
+/* About Section Hover Animation - CSS Classes */
+.about-section {
+    transition: transform 0.3s ease;
+}
+
+.about-section:hover {
+    transform: translateY(-5px);
+}
+
+/* =============================
+Breadcrumb Navigation (Issue #344)
