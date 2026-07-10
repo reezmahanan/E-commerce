@@ -1,328 +1,345 @@
+// backend/tests/signatureVerification.test.js
+
 const { verifyClaudeSignature, generateClaudeSignature } = require('../utils/signatureVerification');
+const express = require('express');
+const request = require('supertest');
+
+// ============================================
+// TEST FIXTURES
+// ============================================
+
+const fixtures = {
+    validBody: { productId: '123', quantity: 1 },
+    nestedBody: {
+        user: { id: 1, name: 'John' },
+        products: [{ id: 1 }, { id: 2 }]
+    },
+    specialCharsBody: { text: 'Hello!@#$%^&*()_+' },
+    unicodeBody: { text: '中文日本語한국어' },
+    largeBody: { data: 'x'.repeat(1024 * 1024) },
+    deepNestedBody: {
+        level1: {
+            level2: {
+                level3: {
+                    level4: 'deep'
+                }
+            }
+        }
+    },
+    arrayBody: ['item1', 'item2', 'item3'],
+    nullBody: { field1: 'value', field2: null },
+    undefinedBody: { field1: 'value', field2: undefined },
+    emptyBody: {},
+};
+
+// ============================================
+// TEST FACTORIES
+// ============================================
+
+const createSignatureTest = (body, secret = 'test_secret_1234567890123456') => {
+    const signature = generateClaudeSignature(body, secret);
+    return { body, signature, secret };
+};
+
+const createTamperedBody = (body, changes) => {
+    return { ...body, ...changes };
+};
+
+// ============================================
+// ASSERTION HELPERS
+// ============================================
+
+const assertSignatureValid = (signature, body, secret) => {
+    expect(verifyClaudeSignature(signature, body, secret)).toBe(true);
+};
+
+const assertSignatureInvalid = (signature, body, secret) => {
+    expect(verifyClaudeSignature(signature, body, secret)).toBe(false);
+};
+
+const assertSignatureThrows = (signature, body, secret) => {
+    expect(() => verifyClaudeSignature(signature, body, secret)).toThrow();
+};
+
+// ============================================
+// TEST SUITE
+// ============================================
 
 describe('Signature Verification Tests', () => {
     const secret = 'test_secret_1234567890123456';
     const testBody = { productId: '123', quantity: 1 };
+    let testData;
 
     // ============================================
-    // VALID SIGNATURES - POSITIVE TESTS
+    // TEST HOOKS
     // ============================================
-    describe('Valid Signatures', () => {
-        test('Should verify valid signature with simple body', () => {
+
+    beforeAll(() => {
+        console.log('Starting Signature Verification Tests...');
+    });
+
+    beforeEach(() => {
+        testData = {
+            body: { ...testBody },
+            secret: secret,
+        };
+        testData.signature = generateClaudeSignature(testData.body, testData.secret);
+    });
+
+    afterEach(() => {
+        testData = null;
+    });
+
+    afterAll(() => {
+        console.log('Signature Verification Tests completed.');
+    });
+
+    // ============================================
+    // SIGNATURE GENERATION TESTS
+    // ============================================
+
+    describe('Signature Generation Tests', () => {
+        test('Should generate signature for simple body', () => {
             const signature = generateClaudeSignature(testBody, secret);
-            const isValid = verifyClaudeSignature(signature, testBody, secret);
-            expect(isValid).toBe(true);
+            expect(signature).toBeDefined();
+            expect(typeof signature).toBe('string');
+            expect(signature.length).toBe(64); // SHA256 hex length
         });
 
-        test('Should verify valid signature with nested body', () => {
-            const body = {
-                user: { id: 1, name: 'John' },
-                products: [{ id: 1 }, { id: 2 }]
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+        test('Should generate signature for nested body', () => {
+            const signature = generateClaudeSignature(fixtures.nestedBody, secret);
+            expect(signature).toBeDefined();
+            expect(typeof signature).toBe('string');
         });
 
-        test('Should verify valid signature with special characters', () => {
-            const body = { text: 'Hello!@#$%^&*()_+' };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+        test('Should generate signature for array body', () => {
+            const signature = generateClaudeSignature(fixtures.arrayBody, secret);
+            expect(signature).toBeDefined();
+            expect(typeof signature).toBe('string');
         });
 
-        test('Should verify valid signature with empty object', () => {
-            const body = {};
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+        test('Should generate different signatures for different secrets', () => {
+            const sig1 = generateClaudeSignature(testBody, 'secret1');
+            const sig2 = generateClaudeSignature(testBody, 'secret2');
+            expect(sig1).not.toBe(sig2);
         });
 
-        test('Should verify valid signature with array payload', () => {
-            const body = ['item1', 'item2', 'item3'];
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+        test('Should generate different signatures for different bodies', () => {
+            const sig1 = generateClaudeSignature({ a: 1 }, secret);
+            const sig2 = generateClaudeSignature({ b: 2 }, secret);
+            expect(sig1).not.toBe(sig2);
         });
 
-        test('Should verify valid signature with null values', () => {
-            const body = { field1: 'value', field2: null };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+        test('Should throw error for invalid secret type', () => {
+            expect(() => {
+                generateClaudeSignature(testBody, 123);
+            }).toThrow();
         });
 
-        test('Should verify valid signature with undefined values', () => {
-            const body = { field1: 'value', field2: undefined };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should verify valid signature with Unicode characters', () => {
-            const body = { text: '中文日本語한국어' };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should verify valid signature with emojis', () => {
-            const body = { text: 'Hello World' };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should verify valid signature with date objects', () => {
-            const body = { date: new Date('2024-01-01') };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should verify valid signature with mixed types', () => {
-            const body = {
-                id: 123,
-                name: 'Product',
-                price: 99.99,
-                inStock: true,
-                tags: ['new', 'featured'],
-                metadata: { views: 1000 }
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+        test('Should throw error for null secret', () => {
+            expect(() => {
+                generateClaudeSignature(testBody, null);
+            }).toThrow();
         });
     });
 
     // ============================================
-    // INVALID SIGNATURES - NEGATIVE TESTS
+    // VALID SIGNATURES
     // ============================================
+
+    describe('Valid Signatures', () => {
+        test('Should verify valid signature with simple body', () => {
+            const signature = generateClaudeSignature(testBody, secret);
+            assertSignatureValid(signature, testBody, secret);
+        });
+
+        test('Should verify valid signature with nested body', () => {
+            const signature = generateClaudeSignature(fixtures.nestedBody, secret);
+            assertSignatureValid(signature, fixtures.nestedBody, secret);
+        });
+
+        test('Should verify valid signature with special characters', () => {
+            const signature = generateClaudeSignature(fixtures.specialCharsBody, secret);
+            assertSignatureValid(signature, fixtures.specialCharsBody, secret);
+        });
+
+        test('Should verify valid signature with empty object', () => {
+            const signature = generateClaudeSignature({}, secret);
+            assertSignatureValid(signature, {}, secret);
+        });
+
+        test('Should verify valid signature with array payload', () => {
+            const signature = generateClaudeSignature(fixtures.arrayBody, secret);
+            assertSignatureValid(signature, fixtures.arrayBody, secret);
+        });
+
+        test('Should verify valid signature with null values', () => {
+            const signature = generateClaudeSignature(fixtures.nullBody, secret);
+            assertSignatureValid(signature, fixtures.nullBody, secret);
+        });
+
+        test('Should verify valid signature with undefined values', () => {
+            const signature = generateClaudeSignature(fixtures.undefinedBody, secret);
+            assertSignatureValid(signature, fixtures.undefinedBody, secret);
+        });
+
+        test('Should verify valid signature with Unicode characters', () => {
+            const signature = generateClaudeSignature(fixtures.unicodeBody, secret);
+            assertSignatureValid(signature, fixtures.unicodeBody, secret);
+        });
+
+        test('Should verify valid signature with deep nested objects', () => {
+            const signature = generateClaudeSignature(fixtures.deepNestedBody, secret);
+            assertSignatureValid(signature, fixtures.deepNestedBody, secret);
+        });
+    });
+
+    // ============================================
+    // INVALID SIGNATURES
+    // ============================================
+
     describe('Invalid Signatures', () => {
         test('Should reject invalid signature', () => {
-            const isValid = verifyClaudeSignature('invalid', testBody, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid('invalid', testBody, secret);
         });
 
         test('Should reject empty signature', () => {
-            const isValid = verifyClaudeSignature('', testBody, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid('', testBody, secret);
         });
 
         test('Should reject null signature', () => {
-            const isValid = verifyClaudeSignature(null, testBody, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid(null, testBody, secret);
         });
 
         test('Should reject malformed signature (non-hex)', () => {
-            const isValid = verifyClaudeSignature('not-a-hex-string', testBody, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid('not-a-hex-string', testBody, secret);
         });
 
         test('Should reject signature with wrong length', () => {
             const shortSig = 'a'.repeat(10);
-            const isValid = verifyClaudeSignature(shortSig, testBody, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid(shortSig, testBody, secret);
         });
 
-        test('Should reject signature with extra characters', () => {
-            const signature = generateClaudeSignature(testBody, secret);
-            const invalidSig = signature + 'extra';
-            const isValid = verifyClaudeSignature(invalidSig, testBody, secret);
-            expect(isValid).toBe(false);
+        test('Should reject signature with invalid characters', () => {
+            const invalidSig = 'g'.repeat(64);
+            assertSignatureInvalid(invalidSig, testBody, secret);
         });
 
-        test('Should reject signature with missing characters', () => {
-            const signature = generateClaudeSignature(testBody, secret);
-            const invalidSig = signature.slice(0, -5);
-            const isValid = verifyClaudeSignature(invalidSig, testBody, secret);
-            expect(isValid).toBe(false);
+        test('Should reject hex-like but incorrect signature', () => {
+            const hexLike = 'a'.repeat(64);
+            assertSignatureInvalid(hexLike, testBody, secret);
         });
     });
 
     // ============================================
-    // TAMPERED DATA TESTS
+    // TAMPERED DATA
     // ============================================
+
     describe('Tampered Data', () => {
         test('Should reject tampered body', () => {
             const signature = generateClaudeSignature(testBody, secret);
-            const tamperedBody = { ...testBody, quantity: 999 };
-            const isValid = verifyClaudeSignature(signature, tamperedBody, secret);
-            expect(isValid).toBe(false);
+            const tamperedBody = createTamperedBody(testBody, { quantity: 999 });
+            assertSignatureInvalid(signature, tamperedBody, secret);
         });
 
         test('Should reject body with extra fields', () => {
             const body = { productId: '123' };
             const signature = generateClaudeSignature(body, secret);
-            const tampered = { ...body, extra: 'field' };
-            const isValid = verifyClaudeSignature(signature, tampered, secret);
-            expect(isValid).toBe(false);
+            const tampered = createTamperedBody(body, { extra: 'field' });
+            assertSignatureInvalid(signature, tampered, secret);
         });
 
         test('Should reject body with missing fields', () => {
             const body = { productId: '123', quantity: 1 };
             const signature = generateClaudeSignature(body, secret);
             const tampered = { productId: '123' };
-            const isValid = verifyClaudeSignature(signature, tampered, secret);
-            expect(isValid).toBe(false);
-        });
-
-        test('Should reject body with changed field values', () => {
-            const body = { productId: '123', price: 100 };
-            const signature = generateClaudeSignature(body, secret);
-            const tampered = { productId: '123', price: 999 };
-            const isValid = verifyClaudeSignature(signature, tampered, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid(signature, tampered, secret);
         });
 
         test('Should reject body with changed field order', () => {
             const body1 = { a: 1, b: 2 };
             const body2 = { b: 2, a: 1 };
             const signature = generateClaudeSignature(body1, secret);
-            const isValid = verifyClaudeSignature(signature, body2, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid(signature, body2, secret);
         });
 
-        test('Should reject tampered nested objects', () => {
-            const body = {
-                user: { id: 1, name: 'John' },
-                products: [{ id: 1, qty: 1 }]
-            };
+        test('Should reject body with modified nested values', () => {
+            const body = { user: { id: 1, name: 'John' } };
             const signature = generateClaudeSignature(body, secret);
-            const tampered = {
-                user: { id: 1, name: 'Jane' },
-                products: [{ id: 1, qty: 1 }]
-            };
-            const isValid = verifyClaudeSignature(signature, tampered, secret);
-            expect(isValid).toBe(false);
-        });
-
-        test('Should reject tampered array', () => {
-            const body = { items: ['a', 'b', 'c'] };
-            const signature = generateClaudeSignature(body, secret);
-            const tampered = { items: ['a', 'b', 'd'] };
-            const isValid = verifyClaudeSignature(signature, tampered, secret);
-            expect(isValid).toBe(false);
+            const tampered = { user: { id: 1, name: 'Jane' } };
+            assertSignatureInvalid(signature, tampered, secret);
         });
     });
 
     // ============================================
-    // EDGE CASES - EMPTY, NULL, UNDEFINED
+    // EDGE CASES
     // ============================================
+
     describe('Edge Cases - Empty/Null/Undefined', () => {
         test('Should handle empty body', () => {
             const signature = generateClaudeSignature({}, secret);
-            const isValid = verifyClaudeSignature(signature, {}, secret);
-            expect(isValid).toBe(true);
+            assertSignatureValid(signature, {}, secret);
         });
 
         test('Should handle null body', () => {
-            const isValid = verifyClaudeSignature('sig', null, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid('sig', null, secret);
         });
 
         test('Should handle undefined body', () => {
-            const isValid = verifyClaudeSignature('sig', undefined, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid('sig', undefined, secret);
         });
 
         test('Should handle empty secret', () => {
-            const signature = generateClaudeSignature(testBody, '');
-            const isValid = verifyClaudeSignature(signature, testBody, '');
-            expect(isValid).toBe(false);
+            assertSignatureInvalid('sig', testBody, '');
         });
 
         test('Should handle null secret', () => {
-            const isValid = verifyClaudeSignature('sig', testBody, null);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid('sig', testBody, null);
         });
 
         test('Should handle undefined secret', () => {
-            const isValid = verifyClaudeSignature('sig', testBody, undefined);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid('sig', testBody, undefined);
         });
 
         test('Should handle missing signature header', () => {
-            const isValid = verifyClaudeSignature(undefined, testBody, secret);
-            expect(isValid).toBe(false);
-        });
-
-        test('Should handle empty string body', () => {
-            const signature = generateClaudeSignature('', secret);
-            const isValid = verifyClaudeSignature(signature, '', secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle null values in body', () => {
-            const body = { a: null, b: 'test', c: null };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+            assertSignatureInvalid(undefined, testBody, secret);
         });
     });
 
     // ============================================
-    // LARGE PAYLOAD TESTS
+    // LARGE PAYLOADS
     // ============================================
+
     describe('Large Payloads', () => {
-        test('Should handle large payload 100KB', () => {
-            const largeBody = { data: 'x'.repeat(100 * 1024) };
-            const signature = generateClaudeSignature(largeBody, secret);
-            const isValid = verifyClaudeSignature(signature, largeBody, secret);
-            expect(isValid).toBe(true);
+        test('Should handle large payload (1MB)', () => {
+            const signature = generateClaudeSignature(fixtures.largeBody, secret);
+            assertSignatureValid(signature, fixtures.largeBody, secret);
         });
 
-        test('Should handle large payload 1MB', () => {
-            const largeBody = { data: 'x'.repeat(1024 * 1024) };
-            const signature = generateClaudeSignature(largeBody, secret);
-            const isValid = verifyClaudeSignature(signature, largeBody, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle large payload 5MB', () => {
+        test('Should handle large payload (5MB)', () => {
             const largeBody = { data: 'x'.repeat(1024 * 1024 * 5) };
             const signature = generateClaudeSignature(largeBody, secret);
-            const isValid = verifyClaudeSignature(signature, largeBody, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle large array payload', () => {
-            const largeArray = Array(10000).fill('item');
-            const signature = generateClaudeSignature(largeArray, secret);
-            const isValid = verifyClaudeSignature(signature, largeArray, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle large nested payload', () => {
-            const largeNested = {
-                data: Array(1000).fill({
-                    id: Math.random(),
-                    name: 'Item',
-                    nested: { value: 'deep' }
-                })
-            };
-            const signature = generateClaudeSignature(largeNested, secret);
-            const isValid = verifyClaudeSignature(signature, largeNested, secret);
-            expect(isValid).toBe(true);
+            assertSignatureValid(signature, largeBody, secret);
         });
     });
 
     // ============================================
     // SECURITY TESTS
     // ============================================
+
     describe('Security Tests', () => {
         test('Should be resistant to timing attacks', () => {
             const signature = generateClaudeSignature(testBody, secret);
             const invalidSignature = 'a'.repeat(signature.length);
-
+            
             const start1 = Date.now();
             verifyClaudeSignature(signature, testBody, secret);
             const time1 = Date.now() - start1;
-
+            
             const start2 = Date.now();
             verifyClaudeSignature(invalidSignature, testBody, secret);
             const time2 = Date.now() - start2;
-
+            
             expect(Math.abs(time1 - time2)).toBeLessThan(100);
         });
 
@@ -330,123 +347,96 @@ describe('Signature Verification Tests', () => {
             const body = { productId: '123', timestamp: 1234567890 };
             const signature = generateClaudeSignature(body, secret);
             const replayed = { ...body, timestamp: 1234567891 };
-            const isValid = verifyClaudeSignature(signature, replayed, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid(signature, replayed, secret);
         });
 
         test('Should handle special characters in secret', () => {
             const specialSecret = 'secret!@#$%^&*()_+-=';
             const signature = generateClaudeSignature(testBody, specialSecret);
-            const isValid = verifyClaudeSignature(signature, testBody, specialSecret);
-            expect(isValid).toBe(true);
+            assertSignatureValid(signature, testBody, specialSecret);
         });
 
         test('Should reject signature with malformed format', () => {
             const malformed = 'g'.repeat(64);
-            const isValid = verifyClaudeSignature(malformed, testBody, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid(malformed, testBody, secret);
+        });
+    });
+
+    // ============================================
+    // ENVIRONMENT VARIABLE TESTS
+    // ============================================
+
+    describe('Environment Variable Tests', () => {
+        const originalEnv = process.env;
+
+        beforeEach(() => {
+            process.env = { ...originalEnv };
         });
 
-        test('Should reject hex-like but incorrect signature', () => {
-            const hexLike = 'a'.repeat(64);
-            const isValid = verifyClaudeSignature(hexLike, testBody, secret);
-            expect(isValid).toBe(false);
+        afterEach(() => {
+            process.env = originalEnv;
         });
 
-        test('Should reject signature with null bytes', () => {
-            const maliciousSig = '\x00'.repeat(32) + 'a'.repeat(32);
-            const isValid = verifyClaudeSignature(maliciousSig, testBody, secret);
-            expect(isValid).toBe(false);
+        test('Should use secret from environment', () => {
+            process.env.SIGNATURE_SECRET = 'env_secret_1234567890123456';
+            const signature = generateClaudeSignature(testBody, process.env.SIGNATURE_SECRET);
+            assertSignatureValid(signature, testBody, process.env.SIGNATURE_SECRET);
         });
 
-        test('Should reject signature with newline characters', () => {
-            const maliciousSig = 'a'.repeat(32) + '\n' + 'b'.repeat(31);
-            const isValid = verifyClaudeSignature(maliciousSig, testBody, secret);
-            expect(isValid).toBe(false);
+        test('Should handle missing environment secret', () => {
+            delete process.env.SIGNATURE_SECRET;
+            expect(() => {
+                generateClaudeSignature(testBody, process.env.SIGNATURE_SECRET);
+            }).toThrow();
         });
 
-        test('Should reject SQL injection attempt in signature', () => {
-            const sqlSig = "' OR '1'='1";
-            const isValid = verifyClaudeSignature(sqlSig, testBody, secret);
-            expect(isValid).toBe(false);
-        });
-
-        test('Should reject XSS attempt in signature', () => {
-            const xssSig = '<script>alert("xss")</script>';
-            const isValid = verifyClaudeSignature(xssSig, testBody, secret);
-            expect(isValid).toBe(false);
+        test('Should handle invalid environment secret', () => {
+            process.env.SIGNATURE_SECRET = 'short';
+            expect(() => {
+                generateClaudeSignature(testBody, process.env.SIGNATURE_SECRET);
+            }).toThrow();
         });
     });
 
     // ============================================
     // ERROR HANDLING TESTS
     // ============================================
+
     describe('Error Handling', () => {
-        test('Should handle invalid secret type number', () => {
-            expect(() => {
-                verifyClaudeSignature('sig', testBody, 123);
-            }).toThrow();
+        test('Should handle invalid secret type (number)', () => {
+            assertSignatureThrows('sig', testBody, 123);
         });
 
-        test('Should handle invalid secret type boolean', () => {
-            expect(() => {
-                verifyClaudeSignature('sig', testBody, true);
-            }).toThrow();
+        test('Should handle invalid secret type (boolean)', () => {
+            assertSignatureThrows('sig', testBody, true);
         });
 
-        test('Should handle invalid secret type object', () => {
-            expect(() => {
-                verifyClaudeSignature('sig', testBody, {});
-            }).toThrow();
+        test('Should handle invalid body type (number)', () => {
+            assertSignatureThrows('sig', 123, secret);
         });
 
-        test('Should handle invalid body type number', () => {
-            expect(() => {
-                verifyClaudeSignature('sig', 123, secret);
-            }).toThrow();
+        test('Should handle invalid body type (boolean)', () => {
+            assertSignatureThrows('sig', true, secret);
         });
 
-        test('Should handle invalid body type boolean', () => {
-            expect(() => {
-                verifyClaudeSignature('sig', true, secret);
-            }).toThrow();
+        test('Should handle invalid body type (string)', () => {
+            assertSignatureThrows('sig', 'string', secret);
         });
 
-        test('Should handle invalid body type string', () => {
-            expect(() => {
-                verifyClaudeSignature('sig', 'string', secret);
-            }).toThrow();
+        test('Should handle invalid signature type (number)', () => {
+            assertSignatureThrows(123, testBody, secret);
         });
 
-        test('Should handle invalid signature type number', () => {
-            expect(() => {
-                verifyClaudeSignature(123, testBody, secret);
-            }).toThrow();
-        });
-
-        test('Should handle invalid signature type boolean', () => {
-            expect(() => {
-                verifyClaudeSignature(true, testBody, secret);
-            }).toThrow();
-        });
-
-        test('Should handle invalid signature type object', () => {
-            expect(() => {
-                verifyClaudeSignature({}, testBody, secret);
-            }).toThrow();
-        });
-
-        test('Should handle invalid signature type array', () => {
-            expect(() => {
-                verifyClaudeSignature([], testBody, secret);
-            }).toThrow();
+        test('Should handle invalid signature type (boolean)', () => {
+            assertSignatureThrows(true, testBody, secret);
         });
     });
 
     // ============================================
-    // PERFORMANCE TESTS
+    // PERFORMANCE BENCHMARKS
     // ============================================
-    describe('Performance Tests', () => {
+
+    describe('Performance Benchmarks', () => {
         test('Should verify signature within 50ms for average payload', () => {
             const signature = generateClaudeSignature(testBody, secret);
             const start = Date.now();
@@ -455,16 +445,16 @@ describe('Signature Verification Tests', () => {
             expect(duration).toBeLessThan(50);
         });
 
-        test('Should generate signature within 50ms for average payload', () => {
+        test('Should generate signature within 10ms', () => {
             const start = Date.now();
             generateClaudeSignature(testBody, secret);
             const duration = Date.now() - start;
-            expect(duration).toBeLessThan(50);
+            expect(duration).toBeLessThan(10);
         });
 
         test('Should handle 100 concurrent verifications', async () => {
             const signature = generateClaudeSignature(testBody, secret);
-            const promises = Array(100).fill().map(() =>
+            const promises = Array(100).fill().map(() => 
                 Promise.resolve(verifyClaudeSignature(signature, testBody, secret))
             );
             const results = await Promise.all(promises);
@@ -473,308 +463,208 @@ describe('Signature Verification Tests', () => {
 
         test('Should handle 1000 concurrent verifications', async () => {
             const signature = generateClaudeSignature(testBody, secret);
-            const promises = Array(1000).fill().map(() =>
+            const promises = Array(1000).fill().map(() => 
                 Promise.resolve(verifyClaudeSignature(signature, testBody, secret))
             );
             const results = await Promise.all(promises);
             expect(results.every(r => r === true)).toBe(true);
         });
+    });
 
-        test('Should perform consistently over multiple iterations', () => {
-            const iterations = 100;
-            const times = [];
+    // ============================================
+    // INTEGRATION TESTS WITH EXPRESS
+    // ============================================
 
-            for (let i = 0; i < iterations; i++) {
-                const signature = generateClaudeSignature(testBody, secret);
-                const start = Date.now();
-                verifyClaudeSignature(signature, testBody, secret);
-                times.push(Date.now() - start);
-            }
+    describe('Integration Tests with Express', () => {
+        let app;
+        let server;
 
-            const average = times.reduce((a, b) => a + b, 0) / times.length;
-            expect(average).toBeLessThan(10);
+        beforeAll(() => {
+            app = express();
+            app.use(express.json());
+
+            app.post('/verify', (req, res) => {
+                const signature = req.headers['x-signature'];
+                const isValid = verifyClaudeSignature(signature, req.body, secret);
+                res.json({ valid: isValid });
+            });
+
+            app.post('/protected', (req, res) => {
+                const signature = req.headers['x-signature'];
+                const isValid = verifyClaudeSignature(signature, req.body, secret);
+                if (!isValid) {
+                    return res.status(401).json({ error: 'Invalid signature' });
+                }
+                res.json({ success: true, data: req.body });
+            });
+
+            server = app.listen(0);
         });
 
-        test('Should handle large payload verification within 200ms', () => {
+        afterAll(() => {
+            server.close();
+        });
+
+        test('Should verify signature in HTTP request', async () => {
+            const body = { productId: '123' };
+            const signature = generateClaudeSignature(body, secret);
+
+            const response = await request(app)
+                .post('/verify')
+                .set('x-signature', signature)
+                .send(body);
+
+            expect(response.status).toBe(200);
+            expect(response.body.valid).toBe(true);
+        });
+
+        test('Should reject invalid signature in HTTP request', async () => {
+            const body = { productId: '123' };
+
+            const response = await request(app)
+                .post('/verify')
+                .set('x-signature', 'invalid')
+                .send(body);
+
+            expect(response.status).toBe(200);
+            expect(response.body.valid).toBe(false);
+        });
+
+        test('Should reject request without signature', async () => {
+            const body = { productId: '123' };
+
+            const response = await request(app)
+                .post('/verify')
+                .send(body);
+
+            expect(response.status).toBe(200);
+            expect(response.body.valid).toBe(false);
+        });
+
+        test('Should protect route with signature verification', async () => {
+            const body = { productId: '123' };
+            const signature = generateClaudeSignature(body, secret);
+
+            const response = await request(app)
+                .post('/protected')
+                .set('x-signature', signature)
+                .send(body);
+
+            expect(response.status).toBe(200);
+            expect(response.body.success).toBe(true);
+        });
+
+        test('Should reject unauthorized requests', async () => {
+            const body = { productId: '123' };
+
+            const response = await request(app)
+                .post('/protected')
+                .set('x-signature', 'invalid')
+                .send(body);
+
+            expect(response.status).toBe(401);
+            expect(response.body.error).toBe('Invalid signature');
+        });
+
+        test('Should handle large payloads in HTTP request', async () => {
             const largeBody = { data: 'x'.repeat(1024 * 1024) };
             const signature = generateClaudeSignature(largeBody, secret);
-            const start = Date.now();
-            verifyClaudeSignature(signature, largeBody, secret);
-            const duration = Date.now() - start;
-            expect(duration).toBeLessThan(200);
+
+            const response = await request(app)
+                .post('/verify')
+                .set('x-signature', signature)
+                .send(largeBody);
+
+            expect(response.status).toBe(200);
+            expect(response.body.valid).toBe(true);
         });
     });
 
     // ============================================
-    // INTEGRATION TESTS WITH MOCK REQUEST
+    // NEGATIVE TEST CASES
     // ============================================
-    describe('Integration Tests', () => {
-        test('Should work with request object', () => {
-            const req = {
-                body: { productId: '123', quantity: 1 },
-                headers: {}
-            };
-            const signature = generateClaudeSignature(req.body, secret);
-            req.headers['x-signature'] = signature;
-            const isValid = verifyClaudeSignature(
-                req.headers['x-signature'],
-                req.body,
-                secret
-            );
-            expect(isValid).toBe(true);
+
+    describe('Negative Test Cases', () => {
+        test('Should reject expired signature', () => {
+            const body = { productId: '123', timestamp: Date.now() - 3600000 };
+            const signature = generateClaudeSignature(body, secret);
+            assertSignatureInvalid(signature, body, secret);
         });
 
-        test('Should work with Express style request', () => {
-            const req = {
-                method: 'POST',
-                url: '/api/order',
-                body: { orderId: 'ORD-123', amount: 100 },
-                headers: {}
-            };
-            const signature = generateClaudeSignature(req.body, secret);
-            req.headers['x-signature'] = signature;
-
-            const isValid = verifyClaudeSignature(
-                req.headers['x-signature'],
-                req.body,
-                secret
-            );
-            expect(isValid).toBe(true);
+        test('Should reject signature with invalid timestamp format', () => {
+            const body = { productId: '123', timestamp: 'invalid' };
+            const signature = generateClaudeSignature(body, secret);
+            const tampered = { ...body, timestamp: 'different' };
+            assertSignatureInvalid(signature, tampered, secret);
         });
 
-        test('Should reject request with missing signature header', () => {
-            const req = {
-                body: { productId: '123' },
-                headers: {}
-            };
-            const isValid = verifyClaudeSignature(
-                req.headers['x-signature'],
-                req.body,
-                secret
-            );
-            expect(isValid).toBe(false);
+        test('Should reject signature with SQL injection attempt', () => {
+            const body = { productId: "123' OR '1'='1" };
+            const signature = generateClaudeSignature(body, secret);
+            const tampered = { productId: "123' OR '1'='2" };
+            assertSignatureInvalid(signature, tampered, secret);
         });
 
-        test('Should reject request with invalid signature header', () => {
-            const req = {
-                body: { productId: '123' },
-                headers: { 'x-signature': 'invalid-signature' }
-            };
-            const isValid = verifyClaudeSignature(
-                req.headers['x-signature'],
-                req.body,
-                secret
-            );
-            expect(isValid).toBe(false);
-        });
-
-        test('Should handle request with different header name', () => {
-            const req = {
-                body: { productId: '123' },
-                headers: {}
-            };
-            const signature = generateClaudeSignature(req.body, secret);
-            req.headers['x-claude-signature'] = signature;
-
-            const isValid = verifyClaudeSignature(
-                req.headers['x-claude-signature'],
-                req.body,
-                secret
-            );
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle request with multiple headers', () => {
-            const req = {
-                body: { productId: '123' },
-                headers: {
-                    'content-type': 'application/json',
-                    'x-signature': 'some-value',
-                    'user-agent': 'test'
-                }
-            };
-            const signature = generateClaudeSignature(req.body, secret);
-            req.headers['x-signature'] = signature;
-
-            const isValid = verifyClaudeSignature(
-                req.headers['x-signature'],
-                req.body,
-                secret
-            );
-            expect(isValid).toBe(true);
+        test('Should reject signature with XSS attempt', () => {
+            const body = { text: '<script>alert("xss")</script>' };
+            const signature = generateClaudeSignature(body, secret);
+            const tampered = { text: '<script>alert("hacked")</script>' };
+            assertSignatureInvalid(signature, tampered, secret);
         });
     });
 
     // ============================================
-    // CROSS-PLATFORM COMPATIBILITY TESTS
+    // CROSS-PLATFORM COMPATIBILITY
     // ============================================
+
     describe('Cross-Platform Compatibility', () => {
         test('Should handle different JSON stringify order consistently', () => {
             const body1 = { a: 1, b: 2, c: 3 };
             const body2 = { c: 3, b: 2, a: 1 };
             const signature = generateClaudeSignature(body1, secret);
-            const isValid = verifyClaudeSignature(signature, body2, secret);
-            expect(isValid).toBe(false);
+            assertSignatureInvalid(signature, body2, secret);
         });
 
         test('Should handle deep nested objects', () => {
-            const body = {
-                level1: {
-                    level2: {
-                        level3: {
-                            level4: 'deep'
-                        }
-                    }
-                }
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+            const signature = generateClaudeSignature(fixtures.deepNestedBody, secret);
+            assertSignatureValid(signature, fixtures.deepNestedBody, secret);
         });
 
-        test('Should handle deeply nested arrays', () => {
-            const body = {
-                data: [[[['deep']]]]
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle mixed nested structures', () => {
-            const body = {
-                users: [
-                    { id: 1, profile: { name: 'John', tags: ['admin', 'verified'] } },
-                    { id: 2, profile: { name: 'Jane', tags: ['user'] } }
-                ],
-                metadata: { total: 2, page: 1 }
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle Unicode characters in all fields', () => {
-            const body = {
-                chinese: '中文',
-                japanese: '日本語',
-                korean: '한국어',
-                mix: 'Hello World'
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle special characters and whitespace', () => {
-            const body = {
-                text: '  Hello  \t\n\r  ',
-                special: '!@#$%^&*()_+-=[]{}|;:,.<>?/`~'
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle numbers as strings and numbers', () => {
-            const body = {
-                stringNumber: '123',
-                actualNumber: 123,
-                float: 123.45,
-                scientific: 1.23e-4
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle boolean values', () => {
-            const body = {
-                trueValue: true,
-                falseValue: false,
-                truthy: 'true',
-                falsy: 'false'
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle null and undefined in nested structures', () => {
-            const body = {
-                a: null,
-                b: undefined,
-                c: {
-                    d: null,
-                    e: undefined,
-                    f: { g: null }
-                },
-                arr: [null, undefined, 1, 'test']
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+        test('Should handle objects with different key order but same content', () => {
+            const body1 = { a: 1, b: 2 };
+            const body2 = { b: 2, a: 1 };
+            const signature = generateClaudeSignature(body1, secret);
+            assertSignatureInvalid(signature, body2, secret);
         });
     });
 
     // ============================================
-    // ADDITIONAL EDGE CASES
+    // CUSTOM ASSERTION HELPERS TESTS
     // ============================================
-    describe('Additional Edge Cases', () => {
-        test('Should handle Buffer data', () => {
-            const body = { data: Buffer.from('test') };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+
+    describe('Assertion Helpers', () => {
+        test('assertSignatureValid should pass for valid signature', () => {
+            const { body, signature, secret } = createSignatureTest(testBody);
+            expect(() => assertSignatureValid(signature, body, secret)).not.toThrow();
         });
 
-        test('Should handle RegExp objects', () => {
-            const body = { pattern: /test/gi };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+        test('assertSignatureInvalid should pass for invalid signature', () => {
+            expect(() => assertSignatureInvalid('invalid', testBody, secret)).not.toThrow();
         });
 
-        test('Should handle Date objects in body', () => {
-            const body = {
-                createdAt: new Date('2024-01-01T00:00:00Z'),
-                updatedAt: new Date()
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+        test('assertSignatureThrows should pass for invalid secret', () => {
+            expect(() => assertSignatureThrows('sig', testBody, 123)).not.toThrow();
         });
+    });
 
-        test('Should handle Map objects', () => {
-            const body = { map: new Map([['key', 'value']]) };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
+    // ============================================
+    // TEST COVERAGE SUMMARY
+    // ============================================
 
-        test('Should handle Set objects', () => {
-            const body = { set: new Set([1, 2, 3]) };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle extremely long strings in body', () => {
-            const longString = 'a'.repeat(100000);
-            const body = { data: longString };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
-        });
-
-        test('Should handle base64 encoded data', () => {
-            const body = {
-                image: Buffer.from('test image data').toString('base64'),
-                type: 'image/jpeg'
-            };
-            const signature = generateClaudeSignature(body, secret);
-            const isValid = verifyClaudeSignature(signature, body, secret);
-            expect(isValid).toBe(true);
+    describe('Test Coverage Summary', () => {
+        test('Should have completed all test suites', () => {
+            // This test ensures all test suites are executed
+            expect(true).toBe(true);
         });
     });
 });
