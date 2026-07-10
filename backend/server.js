@@ -69,6 +69,12 @@ app.use('/api/correlation', correlationRoutes);
 
 // Add with other route imports
 
+
+const ruleRoutes = require('./routes/ruleRoutes');
+
+// Add rule routes
+app.use('/api/rules', ruleRoutes);
+
 const pluginRoutes = require('./routes/pluginRoutes');
 const { pluginSystem } = require('./services/pluginSystemService');
 
@@ -77,6 +83,7 @@ await pluginSystem.initialize();
 
 // Add plugin routes
 app.use('/api/plugins', pluginRoutes);
+
 
 const eventRoutes = require('./routes/eventRoutes');
 const { setupAllSubscribers } = require('./services/eventSubscribers');
