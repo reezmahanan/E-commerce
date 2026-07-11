@@ -9,7 +9,7 @@ const morgan = require("morgan");
 const timeout = require("connect-timeout");
 const fs = require("fs");
 const path = require("path");
-const setupGracefulShutdown = require('./src/utils/gracefulShutdown');
+const setupGracefulShutdown = require('./utils/gracefulShutdown');
 
 const { apiLimiter, adminLimiter, mcpLimiter } = require('./config/rateLimiters');
 const dotenv = require("dotenv");
@@ -61,7 +61,7 @@ const { outboxService } = require('./services/outboxService');
 
 
 // Initialize outbox service
-await outboxService.initialize();
+outboxService.initialize().catch(err => console.error('Outbox initialization failed:', err));
 
 // Add outbox routes
 app.use('/api/outbox', outboxRoutes);
@@ -82,7 +82,7 @@ const flagRoutes = require('./routes/flagRoutes');
 const { featureFlagService } = require('./services/featureFlagService');
 
 // Initialize feature flag service
-await featureFlagService.initialize();
+featureFlagService.initialize().catch(err => console.error('Feature flag initialization failed:', err));
 
 // Add flag routes
 app.use('/api/flags', flagRoutes);
@@ -117,7 +117,7 @@ const pluginRoutes = require('./routes/pluginRoutes');
 const { pluginSystem } = require('./services/pluginSystemService');
 
 // Initialize plugin system
-await pluginSystem.initialize();
+pluginSystem.initialize().catch(err => console.error('Plugin system initialization failed:', err));
 
 // Add plugin routes
 app.use('/api/plugins', pluginRoutes);
