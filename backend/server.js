@@ -59,6 +59,12 @@ const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 
 
 // Add with other imports
+const { evaluateRisk } = require('./middleware/riskMiddleware');
+
+
+// Add risk evaluation middleware after authentication
+app.use(evaluateRisk);
+
 const tracingRoutes = require('./routes/tracingRoutes');
 const { traceRequest } = require('./middleware/tracingMiddleware');
 const { tracingService } = require('./services/tracingService');
@@ -81,6 +87,7 @@ process.on('SIGTERM', async () => {
 process.on('SIGINT', async () => {
     await tracingService.shutdown();
 });
+
 
 const policyRoutes = require('./routes/policyRoutes');
 const { policyEngine } = require('./services/policyEngineService');
