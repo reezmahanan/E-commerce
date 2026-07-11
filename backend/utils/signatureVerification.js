@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const config = {
     secret: process.env.CLAUDE_WEBHOOK_SECRET,
     signatureHeader: process.env.SIGNATURE_HEADER || 'x-claude-signature',
-    maxBodySize: parseInt(process.env.MAX_SIGNATURE_BODY_SIZE) || 1024 * 1024,
+    maxBodySize: parseInt(process.env.MAX_SIGNATURE_BODY_SIZE) || 10 * 1024 * 1024,
     signatureExpiry: parseInt(process.env.SIGNATURE_EXPIRY_SECONDS) || 300,
     algorithm: process.env.SIGNATURE_ALGORITHM || 'sha256',
     supportOldSecrets: process.env.SUPPORT_OLD_SECRETS === 'true' || false,
@@ -46,15 +46,26 @@ function validateSignature(signature) {
 }
 
 function generateSignature(body, secret, options = {}) {
+    validateSecret(secret);
     const algorithm = options.algorithm || config.algorithm;
-    const timestamp = options.timestamp || Math.floor(Date.now() / 1000);
-    const nonce = options.nonce || crypto.randomBytes(16).toString('hex');
+    const hasTimestamp = options.timestamp !== undefined || (body && typeof body === 'object' && body.timestamp !== undefined);
+    const hasNonce = options.nonce !== undefined || (body && typeof body === 'object' && body.nonce !== undefined);
 
-    const payload = {
-        body: body,
-        timestamp: timestamp,
-        nonce: nonce
-    };
+    let payload;
+    let timestamp = options.timestamp || (body && typeof body === 'object' && body.timestamp);
+    let nonce = options.nonce || (body && typeof body === 'object' && body.nonce);
+
+    if (hasTimestamp || hasNonce) {
+        timestamp = timestamp || Math.floor(Date.now() / 1000);
+        nonce = nonce || crypto.randomBytes(16).toString('hex');
+        payload = {
+            body: body,
+            timestamp: timestamp,
+            nonce: nonce
+        };
+    } else {
+        payload = body;
+    }
 
     const signature = crypto
         .createHmac(algorithm, secret)
@@ -69,42 +80,65 @@ function generateSignature(body, secret, options = {}) {
 }
 
 function verifyClaudeSignature(signature, body, secret, options = {}) {
+    // 1. Parameter type validation (must throw)
+    if (secret !== undefined && secret !== null && typeof secret !== 'string') {
+        throw new Error('Secret must be a string');
+    }
+    if (body !== undefined && body !== null && typeof body !== 'object') {
+        throw new Error('Body must be an object or array');
+    }
+    if (signature !== undefined && signature !== null && typeof signature !== 'string') {
+        throw new Error('Signature must be a string');
+    }
+
+    // 2. Return false validation checks (missing or empty values)
+    if (!secret || secret.length === 0) return false;
+    if (!body) return false;
+    if (!signature || signature.length === 0) return false;
+
+    // 3. Size validation (throws if body exceeds max size)
+    validateBody(body);
+
+    // 4. Format validation
+    if (!validateSignature(signature)) {
+        console.warn('Invalid signature format', {
+            signature: signature.substring(0, 10)
+        });
+        return false;
+    }
+
     try {
-        validateSecret(secret);
-        validateBody(body);
+        const hasTimestamp = options.timestamp !== undefined || (body && typeof body === 'object' && body.timestamp !== undefined);
+        const hasNonce = options.nonce !== undefined || (body && typeof body === 'object' && body.nonce !== undefined);
 
-        if (!validateSignature(signature)) {
-            console.warn('Invalid signature format', {
-                signature: typeof signature === 'string'
-                    ? signature.substring(0, 10)
-                    : 'invalid'
-            });
-            return false;
-        }
+        let payload;
+        if (hasTimestamp || hasNonce) {
+            const timestamp = options.timestamp || (body && typeof body === 'object' && body.timestamp);
+            const nonce = options.nonce || (body && typeof body === 'object' && body.nonce) || 'legacy';
 
-        const timestamp = body.timestamp || options.timestamp;
-        const nonce = body.nonce || options.nonce;
+            if (timestamp) {
+                const currentTime = Math.floor(Date.now() / 1000);
+                const age = currentTime - timestamp;
 
-        if (timestamp) {
-            const currentTime = Math.floor(Date.now() / 1000);
-            const age = currentTime - timestamp;
+                if (age > config.signatureExpiry) {
+                    console.warn('Signature expired', { age, expiry: config.signatureExpiry });
+                    return false;
+                }
 
-            if (age > config.signatureExpiry) {
-                console.warn('Signature expired', { age, expiry: config.signatureExpiry });
-                return false;
+                if (age < 0) {
+                    console.warn('Signature from future', { age });
+                    return false;
+                }
             }
 
-            if (age < 0) {
-                console.warn('Signature from future', { age });
-                return false;
-            }
+            payload = {
+                body: body,
+                timestamp: timestamp,
+                nonce: nonce
+            };
+        } else {
+            payload = body;
         }
-
-        const payload = {
-            body: body,
-            timestamp: timestamp || Date.now(),
-            nonce: nonce || 'legacy'
-        };
 
         const expectedSignature = crypto
             .createHmac(config.algorithm, secret)

@@ -119,8 +119,8 @@ describe('Signature Verification Tests', () => {
         });
 
         test('Should generate different signatures for different secrets', () => {
-            const sig1 = generateClaudeSignature(testBody, 'secret1');
-            const sig2 = generateClaudeSignature(testBody, 'secret2');
+            const sig1 = generateClaudeSignature(testBody, 'secret_1234567890123456_1');
+            const sig2 = generateClaudeSignature(testBody, 'secret_1234567890123456_2');
             expect(sig1).not.toBe(sig2);
         });
 
@@ -481,7 +481,7 @@ describe('Signature Verification Tests', () => {
 
         beforeAll(() => {
             app = express();
-            app.use(express.json());
+            app.use(express.json({ limit: '10mb' }));
 
             app.post('/verify', (req, res) => {
                 const signature = req.headers['x-signature'];
