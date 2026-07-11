@@ -59,6 +59,29 @@ const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 
 
 // Add with other imports
+const tracingRoutes = require('./routes/tracingRoutes');
+const { traceRequest } = require('./middleware/tracingMiddleware');
+const { tracingService } = require('./services/tracingService');
+
+
+// Initialize tracing service
+await tracingService.initialize();
+
+// Add tracing middleware BEFORE any routes
+app.use(traceRequest);
+
+// Add tracing routes
+app.use('/api/tracing', tracingRoutes);
+
+// Add shutdown handler for tracing
+process.on('SIGTERM', async () => {
+    await tracingService.shutdown();
+});
+
+process.on('SIGINT', async () => {
+    await tracingService.shutdown();
+});
+
 const policyRoutes = require('./routes/policyRoutes');
 const { policyEngine } = require('./services/policyEngineService');
 
@@ -68,6 +91,7 @@ await policyEngine.initialize();
 
 // Add policy routes
 app.use('/api/policies', policyRoutes);
+
 
 // Add with other imports
 const outboxRoutes = require('./routes/outboxRoutes');
