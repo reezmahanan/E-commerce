@@ -24,6 +24,8 @@
 
     // product state
     let currentProductData = null;
+    window.currentProductData = null;
+    
 
     // loading state
     let isLoading = false;
@@ -185,16 +187,19 @@
 
             if (response && response.success && response.product) {
                 currentProductData = response.product;
+                window.currentProductData = currentProductData;
                 if (typeof saveRecentlyViewed === "function") {
                     saveRecentlyViewed(currentProductData);
                 }
                 cacheProduct(currentProductData);
             } else {
                 currentProductData = getCachedProduct() || getFallbackProduct();
+                window.currentProductData = currentProductData;
             }
         } catch (error) {
             console.error("PRODUCT FETCH ERROR:", error);
             currentProductData = getCachedProduct() || getFallbackProduct();
+            window.currentProductData = currentProductData;
         } finally {
             initializeProductPage(currentProductData);
             hideLoadingState();
