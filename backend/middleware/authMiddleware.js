@@ -1,98 +1,110 @@
-// backend/utils/signatureVerification.js
-const crypto = require('crypto');
+// backend/middleware/authMiddleware.js
+const jwt = require('jsonwebtoken');
 
 /**
- * Verify ClaudeBot signature using HMAC-SHA256
+ * Verify JWT token from Authorization header
  */
-function verifyClaudeSignature(signature, body, secret) {
-    if (!signature || !body) {
-        console.warn('⚠️ Missing signature or body for verification');
-        return false;
+function authMiddleware(req, res, next) {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET environment variable is required');
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authorization header required'
+        });
+    }
+
+    const token = authHeader.slice(7);
+
+    if (!token || token.trim().length === 0) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authorization header required'
+        });
+    }
+
+    // Security check: excessively long token
+    if (token.length > 8000) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authorization header required'
+        });
+    }
+
+    // Security check: XSS attempt
+    if (/<script>/i.test(token)) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authorization header required'
+        });
+    }
+
+    // Security check: SQL injection attempt
+    if (/'\s*OR\s*'/i.test(token) || /--/.test(token)) {
+        return res.status(401).json({
+            success: false,
+            message: 'Authorization header required'
+        });
     }
 
     try {
-        const expectedSignature = crypto
-            .createHmac('sha256', secret)
-            .update(JSON.stringify(body))
-            .digest('hex');
+        const decoded = jwt.verify(token, secret);
+        
+        if (!decoded || (decoded.userId === undefined && decoded.id === undefined)) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authorization header required'
+            });
+        }
 
-        return crypto.timingSafeEqual(
-            Buffer.from(signature, 'utf8'),
-            Buffer.from(expectedSignature, 'utf8')
-        );
+        req.user = decoded;
+        next();
     } catch (error) {
-        console.error('❌ Signature verification error:', error);
-        return false;
+        return res.status(401).json({
+            success: false,
+            message: 'Invalid or expired token'
+        });
     }
 }
 
 /**
- * Generate signature for outgoing requests (for testing)
+ * Optional auth - doesn't fail if no token
  */
-function generateClaudeSignature(body, secret) {
-    return crypto
-        .createHmac('sha256', secret)
-        .update(JSON.stringify(body))
-        .digest('hex');
-}
-
-/**
- * Check if request is from a trusted agent
- */
-function isTrustedAgent(req) {
-    // First check: Cryptographic signature
-    const signature = req.headers['x-claude-signature'];
-    if (signature) {
-        const secret = process.env.CLAUDE_WEBHOOK_SECRET;
-        if (secret && verifyClaudeSignature(signature, req.body, secret)) {
-            return {
-                isTrusted: true,
-                verificationMethod: 'signature'
-            };
-        }
+function optionalAuth(req, res, next) {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET environment variable is required');
     }
 
-    // Second check: User-Agent with additional validation
-    const userAgent = req.headers['user-agent'] || '';
-    if (userAgent.includes('ClaudeBot')) {
-        const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-        const timestamp = req.headers['x-request-timestamp'];
-        const nonce = req.headers['x-request-nonce'];
+    const authHeader = req.headers.authorization;
 
-        // Verify timestamp is within 5 minutes
-        if (timestamp) {
-            const requestTime = parseInt(timestamp);
-            const currentTime = Date.now();
-            if (Math.abs(currentTime - requestTime) > 300000) {
-                console.warn('⚠️ Request timestamp expired');
-                return { 
-                    isTrusted: false, 
-                    reason: 'timestamp_expired',
-                    verificationMethod: 'user-agent-failed'
-                };
-            }
-        }
-
-        // Log suspicious activity
-        if (!signature && userAgent.includes('ClaudeBot')) {
-            console.warn(`⚠️ ClaudeBot User-Agent without signature from IP: ${ip}`);
-        }
-
-        return {
-            isTrusted: true,
-            verificationMethod: 'user-agent-with-checks'
-        };
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return next();
     }
 
-    return { 
-        isTrusted: false, 
-        reason: 'not_verified',
-        verificationMethod: 'none'
-    };
+    const token = authHeader.slice(7);
+
+    if (!token || token.trim().length === 0) {
+        return next();
+    }
+
+    if (token.length > 8000 || /<script>/i.test(token) || /'\s*OR\s*'/i.test(token) || /--/.test(token)) {
+        return next();
+    }
+
+    try {
+        const decoded = jwt.verify(token, secret);
+        req.user = decoded;
+    } catch (error) {
+        // Ignore invalid tokens for optional auth
+    }
+
+    next();
 }
 
-module.exports = {
-    verifyClaudeSignature,
-    generateClaudeSignature,
-    isTrustedAgent
-};
+module.exports = { authMiddleware, optionalAuth };
