@@ -1,7 +1,7 @@
 // backend/services/aiCrawlerVerificationService.js
 const crypto = require('crypto');
 const db = require('../config/db').promise;
-const axios = require('axios');
+
 
 // ============================================
 // CONFIGURATION

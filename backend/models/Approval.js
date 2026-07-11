@@ -1,5 +1,42 @@
 const mongoose = require('mongoose');
 
+// Helper function to validate metadata
+const validateMetadata = (metadata) => {
+  if (!metadata) return true;
+  
+  if (typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return false; // metadata must be an object
+  }
+  
+  const keys = Object.keys(metadata);
+  if (keys.length > 10) {
+    return false; // max 10 keys
+  }
+  
+  const totalChars = JSON.stringify(metadata).length;
+  if (totalChars > 1000) {
+    return false; // max 1000 characters
+  }
+  
+  return true;
+};
+
+// Helper function to validate checkpoint metadata
+const validateCheckpointMetadata = (metadata) => {
+  if (!metadata) return true;
+  
+  if (typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return false;
+  }
+  
+  const totalChars = JSON.stringify(metadata).length;
+  if (totalChars > 500) {
+    return false; // max 500 characters for checkpoint metadata
+  }
+  
+  return true;
+};
+
 const approvalSchema = new mongoose.Schema({
     transactionId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -73,7 +110,13 @@ const approvalSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
         },
-        metadata: mongoose.Schema.Types.Mixed
+        metadata: {
+            type: mongoose.Schema.Types.Mixed,
+            validate: {
+                validator: validateCheckpointMetadata,
+                message: 'Checkpoint metadata must be an object with max 500 characters'
+            }
+        }
     }],
     riskScore: {
         type: Number,
@@ -84,11 +127,25 @@ const approvalSchema = new mongoose.Schema({
     context: {
         agentId: {
             type: String,
-            trim: true
+            trim: true,
+            validate: {
+                validator: function(v) {
+                    if (!v) return true;
+                    return v.length >= 1 && v.length <= 100;
+                },
+                message: 'agentId must be between 1 and 100 characters'
+            }
         },
         sessionId: {
             type: String,
-            trim: true
+            trim: true,
+            validate: {
+                validator: function(v) {
+                    if (!v) return true;
+                    return v.length >= 1 && v.length <= 100;
+                },
+                message: 'sessionId must be between 1 and 100 characters'
+            }
         },
         reason: {
             type: String,
@@ -117,17 +174,34 @@ const approvalSchema = new mongoose.Schema({
         trim: true,
         maxlength: [500, 'Escalation reason cannot exceed 500 characters']
     },
-    metadata: mongoose.Schema.Types.Mixed
+    metadata: {
+        type: mongoose.Schema.Types.Mixed,
+        validate: {
+            validator: validateMetadata,
+            message: 'Metadata must be an object with max 10 keys and 1000 characters total'
+        }
+    }
 }, {
     timestamps: true
 });
 
-// Indexes (Bilkul waisa hi)
+
 approvalSchema.index({ transactionId: 1, status: 1 });
 approvalSchema.index({ status: 1, expiresAt: 1 });
 approvalSchema.index({ 'approvals.userId': 1 });
 
-// Methods (Bilkul waisa hi)
+
+approvalSchema.index({ expiresAt: 1 });
+
+
+approvalSchema.index({ type: 1 });
+
+
+approvalSchema.index({ riskScore: -1 });
+
+approvalSchema.index({ status: 1, type: 1, createdAt: -1 });
+
+// ===== METHODS (Unchanged) =====
 approvalSchema.methods.addApproval = function (userId, action, comment = '') {
     this.approvals.push({
         userId,

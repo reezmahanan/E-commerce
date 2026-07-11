@@ -54,7 +54,7 @@ describe('Product Search Input Sanitization', () => {
 
         test('should escape multiple special chars', () => {
             const result = sanitizeSearchInput('%_\\%_');
-            expect(result).toBe('%\\%\\_\\\\%_');
+            expect(result).toBe('%\\%\\_\\\\\\%\\_%');
         });
     });
 });
