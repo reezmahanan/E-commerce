@@ -56,6 +56,19 @@ app.use('/api/ai-feed', aiFeedRoutes);
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+
+
+// Add with other imports
+const policyRoutes = require('./routes/policyRoutes');
+const { policyEngine } = require('./services/policyEngineService');
+
+
+// Initialize policy engine
+await policyEngine.initialize();
+
+// Add policy routes
+app.use('/api/policies', policyRoutes);
+
 // Add with other imports
 const outboxRoutes = require('./routes/outboxRoutes');
 const { outboxService } = require('./services/outboxService');
@@ -66,6 +79,7 @@ await outboxService.initialize();
 
 // Add outbox routes
 app.use('/api/outbox', outboxRoutes);
+
 
 // Add with other route imports
 const cqrsRoutes = require('./routes/cqrsRoutes');
