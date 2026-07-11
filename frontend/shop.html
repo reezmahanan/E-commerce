@@ -115,39 +115,38 @@
 
     </section>
 
+
     <section class="fashion-categories">
 
     <div class="category-grid">
 
-        <div class="fashion-card">
-            <img src="assets/images/tshirt.png" alt="T-Shirts">
-            <div class="fashion-overlay">
-                <h3>T-SHIRTS</h3>
-            </div>
-        </div>
-
-        <div class="fashion-card">
-            <img src="assets/images/hoodie.png" alt="Hoodies">
-            <div class="fashion-overlay">
-                <h3>HOODIES</h3>
-            </div>
-        </div>
-
-        <div class="fashion-card">
-            <img src="assets/images/jacket.png" alt="Jackets">
-            <div class="fashion-overlay">
-                <h3>JACKETS</h3>
-            </div>
-        </div>
-
-        <div class="fashion-card">
-            <img src="assets/images/denim.png" alt="Denim">
-            <div class="fashion-overlay">
-                <h3>DENIM</h3>
-            </div>
-        </div>
-
+    <div class="fashion-card" data-category="T-Shirts" style="cursor:pointer;">
+    <img src="assets/images/tshirt.png" alt="T-Shirts">
+    <div class="fashion-overlay">
+        <h3>T-SHIRTS</h3>
     </div>
+</div>
+
+<div class="fashion-card" data-category="Hoodies" style="cursor:pointer;">
+    <img src="assets/images/hoodie.png" alt="Hoodies">
+    <div class="fashion-overlay">
+        <h3>HOODIES</h3>
+    </div>
+</div>
+
+<div class="fashion-card" data-category="Jackets" style="cursor:pointer;">
+    <img src="assets/images/jacket.png" alt="Jackets">
+    <div class="fashion-overlay">
+        <h3>JACKETS</h3>
+    </div>
+</div>
+
+<div class="fashion-card" data-category="Denim" style="cursor:pointer;">
+    <img src="assets/images/denim.png" alt="Denim">
+    <div class="fashion-overlay">
+        <h3>DENIM</h3>
+    </div>
+</div>
 
 </section>
 
@@ -211,11 +210,10 @@
 
             <div class="sort-box">
 
-                <label for="sort-select">
-                    Sort
-                </label>
-
-                <select id="sort-select" name="sort">
+                <label for="product-sort">
+    Sort:
+</label>
+<select id="product-sort" name="sort">
                     <option value="newest">Newest</option>
                     <option value="price-low-high">Price Low → High</option>
                     <option value="price-high-low">Price High → Low</option>
@@ -368,7 +366,6 @@
             <section
                 id="pagination"
                 class="section-p1"
-                aria-label="Product pagination"
             ></section>
 
         </div>
@@ -417,16 +414,28 @@
     ></script>
 
     <!-- Shop Scripts -->
+<script
+    defer
+    src="scripts/shop-filter-utils.js"
+></script>
 
-    <script
-        defer
-        src="scripts/shop-filter-utils.js"
-    ></script>
+<script
+    defer
+    src="scripts/shop-controls.js"
+></script>
+<script
+    defer
+    src="scripts/product-cards-home.js"
+></script>
 
-    <script
-        defer
-        src="scripts/shop.js"
-    ></script>
+<script
+    defer
+    src="scripts/product-actions-home.js"
+></script>
+<script
+    defer
+    src="scripts/shop.js"
+></script>
 
     <script defer src="scripts/ui.js"></script>
 

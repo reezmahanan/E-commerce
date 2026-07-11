@@ -15,6 +15,211 @@
     const getProductBrand = (product) =>
         product?.brand || product?.manufacturer || "";
 
+    const normalizeKey = (value) =>
+        normalizeText(value)
+            .replace(/&/g, "and")
+            .replace(/[^a-z0-9]+/g, "");
+
+    const megaCategoryMap = {
+        fashion: [
+            "Fashion",
+            "T-Shirts",
+            "T-Shirt",
+            "tshirt",
+            "Hoodies",
+            "Jackets",
+            "Jacket",
+            "Denim",
+            "shirt",
+            "Shirts",
+            "jeans",
+            "Jeans",
+            "tops",
+            "Tops",
+            "traditionalWear",
+            "Traditional Wear",
+            "skirt-top",
+            "Dress",
+            "dress",
+            "women",
+            "Women",
+            "men",
+            "Men"
+        ],
+        electronics: [
+            "Electronics",
+            "Mobiles",
+            "Laptops",
+            "Tablets",
+            "Smart Watches",
+            "Headphones",
+            "Cameras",
+            "Gaming"
+        ],
+        grocery: [
+            "Grocery",
+            "Fruits & Vegetables",
+            "Dairy",
+            "Snacks",
+            "Beverages",
+            "Cooking Essentials",
+            "Household Supplies"
+        ],
+        toys: [
+            "Toys",
+            "Educational Toys",
+            "Building Blocks",
+            "Dolls",
+            "RC Toys",
+            "Outdoor Toys"
+        ],
+        stationery: [
+            "Stationery",
+            "Notebooks",
+            "Pens",
+            "Pencils",
+            "School Bags",
+            "Office Supplies",
+            "Art Supplies"
+        ],
+        homeandkitchen: [
+            "Home & Kitchen",
+            "Furniture",
+            "Cookware",
+            "Storage",
+            "Home Decor",
+            "Bedding",
+            "Kitchen Appliances"
+        ],
+        beauty: [
+            "Beauty",
+            "Skincare",
+            "Haircare",
+            "Makeup",
+            "Fragrances",
+            "Personal Care"
+        ],
+        sports: [
+            "Sports",
+            "Cricket",
+            "Football",
+            "Gym Equipment",
+            "Cycling",
+            "Outdoor Sports"
+        ],
+        petsupplies: [
+            "Pet Supplies",
+            "Dog Food",
+            "Cat Food",
+            "Pet Toys",
+            "Grooming",
+            "Accessories"
+        ],
+        automotive: [
+            "Automotive",
+            "Car Accessories",
+            "Bike Accessories",
+            "Helmets",
+            "Engine Oil",
+            "Cleaning Kits"
+        ]
+    };
+
+    const megaSubcategoryMap = {
+        mensclothing: [
+            "Men's Clothing",
+            "T-Shirts",
+            "T-Shirt",
+            "tshirt",
+            "Hoodies",
+            "Jackets",
+            "Jacket",
+            "shirt",
+            "Shirts",
+            "jeans",
+            "Jeans",
+            "men",
+            "Men"
+        ],
+        womensclothing: [
+            "Women's Clothing",
+            "T-Shirts",
+            "T-Shirt",
+            "tshirt",
+            "Hoodies",
+            "Jackets",
+            "Jacket",
+            "tops",
+            "Tops",
+            "jeans",
+            "Jeans",
+            "traditionalWear",
+            "Traditional Wear",
+            "skirt-top",
+            "dress",
+            "Dress",
+            "women",
+            "Women"
+        ],
+        kidswear: [
+            "Kids Wear"
+        ],
+        footwear: [
+            "Footwear"
+        ],
+        watches: [
+            "Watches"
+        ],
+        bags: [
+            "Bags"
+        ],
+        accessories: [
+            "Accessories"
+        ],
+        educationaltoys: [
+            "Educational Toys"
+        ],
+        buildingblocks: [
+            "Building Blocks"
+        ],
+        dolls: [
+            "Dolls"
+        ],
+        rctoys: [
+            "RC Toys"
+        ],
+        outdoortoys: [
+            "Outdoor Toys"
+        ]
+    };
+
+    const toKeySet = (values = []) =>
+        new Set(values.map(normalizeKey).filter(Boolean));
+
+    const getMappedCategoryKeys = (value, sourceMap = megaCategoryMap) => {
+        const key = normalizeKey(value);
+        const mappedValues = sourceMap[key] || (value ? [value] : []);
+
+        return toKeySet(mappedValues);
+    };
+
+    const productMatchesMappedKeys = (product, mappedKeys) => {
+        if (!mappedKeys.size) {
+            return true;
+        }
+
+        const productKeys = toKeySet([
+            getProductCategory(product),
+            product?.subcategory,
+            product?.sub_category,
+            product?.subCategory,
+            getProductBrand(product),
+            ...(Array.isArray(product?.tags) ? product.tags : [])
+        ]);
+
+        return Array.from(productKeys).some((key) => mappedKeys.has(key));
+    };
+
     const getProductPrice = (product) => {
         const price = Number(product?.price);
         return Number.isFinite(price) ? price : 0;
@@ -92,12 +297,17 @@
     const filterProducts = (products, filters) => {
         const query = normalizeText(filters.search);
         const selectedCategories = new Set(filters.categories || []);
+        const selectedMegaCategoryKeys = getMappedCategoryKeys(filters.megaCategory);
+        const selectedMegaSubcategoryKeys = getMappedCategoryKeys(
+            filters.megaSubcategory,
+            megaSubcategoryMap
+        );
         const minPrice = Number(filters.minPrice);
         const maxPrice = Number(filters.maxPrice);
         const minimumRating = Number(filters.rating || 0);
         const availability = new Set(filters.availability || []);
 
-        return products.filter((product) => {
+        return (Array.isArray(products) ? products : []).filter((product) => {
             const price = getProductPrice(product);
             const stock = getProductStock(product);
             const category = getProductCategory(product);
@@ -107,6 +317,14 @@
             }
 
             if (selectedCategories.size && !selectedCategories.has(category)) {
+                return false;
+            }
+
+            if (!productMatchesMappedKeys(product, selectedMegaCategoryKeys)) {
+                return false;
+            }
+
+            if (!productMatchesMappedKeys(product, selectedMegaSubcategoryKeys)) {
                 return false;
             }
 
@@ -177,6 +395,7 @@
         getProductStock,
         getProductTitle,
         getSuggestions,
+        getMappedCategoryKeys,
         normalizeText,
         sortProducts,
         uniqueCategories
