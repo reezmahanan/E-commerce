@@ -27,10 +27,6 @@ const adminLimiter = rateLimit({
         success: false,
         errorCode: "ADMIN_RATE_LIMIT_EXCEEDED",
         message: "Too many requests. Please try again after 15 minutes."
-    },
-    skip: (req) => {
-        // Skip rate limiting for localhost in development
-        return process.env.NODE_ENV === "development" && req.ip === "::1";
     }
 });
 

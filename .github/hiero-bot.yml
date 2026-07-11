@@ -11,7 +11,7 @@ workflows:
     enabled: true
     quality_gates:
       require_dco: false
-      require_linked_issue: false
+      require_linked_issue: true
       require_tests: false
     ai_review:
       enabled: false
@@ -30,3 +30,16 @@ workflows:
     stale_issue_days: 30
     close_stale_after_days: 7
     auto_unassign_inactive_days: 14
+
+permissions:
+  global:
+    label_command:
+      allow:
+        - maintainers
+        - committers
+        - collaborators
+        - write_access
+        - org_members
+
+  fallback_policy:
+    default_command_access: write_access
