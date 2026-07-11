@@ -1,20 +1,16 @@
-import {
-    getJSON,
-    $,
-    defaultImage
-} from "./utils.js";
+
 
 // LOAD RECENTLY VIEWED PRODUCTS
 const recentlyViewed =
-    getJSON("recentlyViewed") || [];
+    AppUtils.getJSON("recentlyViewed") || [];
 
 // ELEMENTS
 const elements = {
     recentContainer:
-        $("#recently-viewed-container"),
+       AppUtils.$("#recently-viewed-count"),
 
     recentCount:
-        $("#recently-viewed-count")
+        AppUtils.$("#recently-viewed-count")
 };
 
 // EMPTY STATE HELPER
@@ -56,7 +52,7 @@ if (elements.recentContainer) {
             );
             div.innerHTML = `
                 <img
-                    src="${defaultImage(product.image)}"
+                    src="${AppUtils.defaultImage(product.image)}"
                     alt="${AppUtils.escapeHTML(product.name || "Product")}"
                 >
                 <h4>
