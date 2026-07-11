@@ -9,7 +9,14 @@ const {
     deleteProduct,
     getProductSuggestions
 } = require("../controllers/productController");
+// Add at top
+const { validateProductReview } = require('../middleware/promptInjectionMiddleware');
 
+// Update POST /api/products/review
+router.post('/products/review', authMiddleware, validateProductReview, async (req, res) => {
+    // Your existing review handler
+    // req.body.review is now sanitized
+});
 const {
     getProductReviews,
     createProductReview,

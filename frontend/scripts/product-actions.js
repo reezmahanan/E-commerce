@@ -277,9 +277,9 @@ async function toggleProductWishlist() {
             );
 
         AppUtils.notify(
-            "Removed from wishlist",
-            "info"
-        );
+          "Added to wishlist ❤️",
+            "success"
+                        );
         
         if (token) {
             try {
@@ -311,7 +311,7 @@ async function toggleProductWishlist() {
         });
 
         AppUtils.notify(
-            "Added to wishlist",
+            "Added to wishlist ❤️",
             "success"
         );
         
