@@ -53,6 +53,12 @@ app.use('/api/ai-feed', aiFeedRoutes);
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other imports
+const workflowRoutes = require('./routes/workflowRoutes');
+
+
+// Add workflow routes
+app.use('/api/workflows', workflowRoutes);
 
 
 // Add with other imports
@@ -203,6 +209,7 @@ app.use('/api/ai/financial', aiFinancialRoutes);
 
 // Add performance routes
 app.use('/api/performance', performanceRoutes);
+
 
 
 // Add with other route imports
