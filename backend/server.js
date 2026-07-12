@@ -54,6 +54,7 @@ const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
+
 const discoveryRoutes = require('./routes/discoveryRoutes');
 const { capabilityDiscoveryService } = require('./services/capabilityDiscoveryService');
 
@@ -62,6 +63,16 @@ await capabilityDiscoveryService.initialize();
 
 // Add discovery routes
 app.use('/api/discovery', discoveryRoutes);
+
+const metricsRoutes = require('./routes/metricsRoutes');
+const { metricsAggregationService } = require('./services/metricsAggregationService');
+
+// Initialize metrics service
+await metricsAggregationService.initialize();
+
+// Add metrics routes
+app.use('/api/metrics', metricsRoutes);
+
 
 const notificationBrokerRoutes = require('./routes/notificationBrokerRoutes');
 const { 
