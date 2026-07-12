@@ -7,7 +7,63 @@ const { authorizeRoles } = require("../middleware/rbacMiddleware");
 const wishlistController = require("../controllers/wishlistController");
 const { safeNumber, safeInteger } = require("../utils/helpers");
 
+
 // ==================== VALIDATION MIDDLEWARE ====================
+// ==================== SYNC VALIDATION MIDDLEWARE ====================
+const validateSyncPayload = (req, res, next) => {
+  const { productIds } = req.body;
+
+  // 1. Array hona chahiye
+  if (!Array.isArray(productIds)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid payload format. 'productIds' must be an array.",
+    });
+  }
+
+  // 2. Non-empty check
+  if (productIds.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Product IDs array cannot be empty for synchronization.",
+    });
+  }
+
+  // 3. Max limit check (Sync operation heavy hoti hai, isliye 200 limit rakhi hai)
+  const MAX_SYNC_LIMIT = 200;
+  if (productIds.length > MAX_SYNC_LIMIT) {
+    return res.status(400).json({
+      success: false,
+      message: `Maximum ${MAX_SYNC_LIMIT} products allowed in a single synchronization request.`,
+    });
+  }
+
+  // 4. Validate individual IDs aur duplicates check
+  const seenIds = new Set();
+  for (const id of productIds) {
+    const validId = safeNumber(id);
+    if (!validId || validId < 1) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid product ID provided: ${id}. All IDs must be positive integers.`,
+      });
+    }
+
+    // Duplicate check
+    if (seenIds.has(validId)) {
+      return res.status(400).json({
+        success: false,
+        message: `Duplicate product ID found: ${id}. Synchronization payload must contain unique IDs.`,
+      });
+    }
+    seenIds.add(validId);
+  }
+
+  // 5. Validated data ko request mein attach karein (Controller ise use kar sakta hai)
+  req.validatedProductIds = Array.from(seenIds);
+
+  next();
+};
 const validateProductId = (req, res, next) => {
   const productId = safeNumber(req.params.productId || req.body.productId);
   if (!productId || productId < 1) {
@@ -95,7 +151,7 @@ router.post(
 router.post("/share", authMiddleware, wishlistController.generateShareLink);
 
 // Sync wishlist (replace entire wishlist)
-router.post("/sync", authMiddleware, wishlistController.syncWishlist);
+router.post("/sync", authMiddleware,validateSyncPayload, wishlistController.syncWishlist);
 
 // Remove from wishlist (using body)
 router.post(
