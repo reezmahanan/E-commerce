@@ -22,26 +22,44 @@ const validateProductId = (req, res, next) => {
 
 const validateBatchProducts = (req, res, next) => {
   const { productIds } = req.body;
+
+  // 1. Check if array exists and is not empty
   if (!Array.isArray(productIds) || productIds.length === 0) {
     return res.status(400).json({
       success: false,
       message: "Product IDs array is required",
     });
   }
+
+  // 2. Check maximum limit
   if (productIds.length > 50) {
     return res.status(400).json({
       success: false,
       message: "Maximum 50 products per batch operation",
     });
   }
+
+  // 3. Validate individual IDs and check for DUPLICATES
+  const seenIds = new Set(); // Duplicate check ke liye Set use kiya
   for (const id of productIds) {
-    if (!safeNumber(id) || id < 1) {
+    const validId = safeNumber(id);
+    if (!validId || validId < 1) {
       return res.status(400).json({
         success: false,
         message: `Invalid product ID: ${id}`,
       });
     }
+
+    // 🔥 NEW: Agar ID pehle se Set mein hai, toh duplicate error return karo
+    if (seenIds.has(validId)) {
+      return res.status(400).json({
+        success: false,
+        message: `Duplicate product ID found: ${id}. Batch operations require unique IDs.`,
+      });
+    }
+    seenIds.add(validId);
   }
+
   next();
 };
 
