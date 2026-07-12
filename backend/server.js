@@ -1,5 +1,5 @@
 const express = require("express");
-const helmetMiddleware = require("./middleware/helmetMiddleware");
+const { helmetMiddleware } = require("./middleware/helmetMiddleware");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
@@ -17,6 +17,9 @@ const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
 
 // Add with other imports
+// init app early so route and middleware registration can safely use it
+const app = express();
+
 const responseExampleRoutes = require('./routes/responseExampleRoutes');
 const { standardizeResponse } = require('./middleware/responseStandardizer');
 
@@ -29,9 +32,6 @@ app.use('/api/response-example', responseExampleRoutes);
 const { buildHealthResponse } = require("./utils/healthResponseBuilder");
 const { logServerStartup } = require("./utils/serverStartupLogger");
 const { errorLogStream } = require("./utils/logstreams");
-
-// init app early so route and middleware registration can safely use it
-const app = express();
 
 const logDir = path.join(process.cwd(), "logs");
 // Add with other route imports
@@ -53,7 +53,7 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/ai-feed', aiFeedRoutes);
 
 const routes = require("./routes/index");
-const authLimiter = require("./middleware/authLimiter");
+const { authLimiter } = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
 const outboxRoutes = require('./routes/outboxRoutes');
@@ -310,7 +310,7 @@ app.use(
 );
 
 // ✅ Security headers for MCP endpoints
-app.use('/api/mcp/*', (req, res, next) => {
+app.use('/api/mcp', (req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -424,9 +424,6 @@ process.on("uncaughtException", (error) => {
 
 // Initialize graceful shutdown logic
 setupGracefulShutdown(server);
-
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
 
 // start server
 // start server
