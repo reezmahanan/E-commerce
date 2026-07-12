@@ -55,6 +55,50 @@ app.use('/api/ai-feed', aiFeedRoutes);
 const routes = require("./routes/index");
 const { authLimiter } = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+
+
+// Add with other imports
+const { evaluateRisk } = require('./middleware/riskMiddleware');
+
+
+// Add risk evaluation middleware after authentication
+app.use(evaluateRisk);
+
+const tracingRoutes = require('./routes/tracingRoutes');
+const { traceRequest } = require('./middleware/tracingMiddleware');
+const { tracingService } = require('./services/tracingService');
+
+
+// Initialize tracing service
+await tracingService.initialize();
+
+// Add tracing middleware BEFORE any routes
+app.use(traceRequest);
+
+// Add tracing routes
+app.use('/api/tracing', tracingRoutes);
+
+// Add shutdown handler for tracing
+process.on('SIGTERM', async () => {
+    await tracingService.shutdown();
+});
+
+process.on('SIGINT', async () => {
+    await tracingService.shutdown();
+});
+
+
+const policyRoutes = require('./routes/policyRoutes');
+const { policyEngine } = require('./services/policyEngineService');
+
+
+// Initialize policy engine
+await policyEngine.initialize();
+
+// Add policy routes
+app.use('/api/policies', policyRoutes);
+
+
 // Add with other imports
 const outboxRoutes = require('./routes/outboxRoutes');
 const { outboxService } = require('./services/outboxService');
@@ -65,6 +109,7 @@ outboxService.initialize().catch(err => console.error('Outbox initialization fai
 
 // Add outbox routes
 app.use('/api/outbox', outboxRoutes);
+
 
 // Add with other route imports
 const cqrsRoutes = require('./routes/cqrsRoutes');
@@ -78,6 +123,21 @@ readModelSynchronizer.start();
 app.use('/api/cqrs', cqrsRoutes);
 // Add with other imports
 
+
+const jobRoutes = require('./routes/jobRoutes');
+const { jobQueue, jobHandlers, JOB_TYPES } = require('./services/jobQueueService');
+
+// Register job handlers
+for (const [type, handler] of Object.entries(jobHandlers)) {
+    jobQueue.registerHandler(type, handler);
+}
+
+// Initialize job queue
+await jobQueue.initialize();
+
+// Add job routes
+app.use('/api/jobs', jobRoutes);
+
 const flagRoutes = require('./routes/flagRoutes');
 const { featureFlagService } = require('./services/featureFlagService');
 
@@ -86,6 +146,7 @@ featureFlagService.initialize().catch(err => console.error('Feature flag initial
 
 // Add flag routes
 app.use('/api/flags', flagRoutes);
+
 
 const correlationRoutes = require('./routes/correlationRoutes');
 const { correlationIdMiddleware, logCompletionMiddleware } = require('./middleware/correlationIdMiddleware');
@@ -394,33 +455,7 @@ app.use((req, res) => {
 // Register the extracted global error handler
 app.use(globalErrorHandler(errorLogStream));
 
-// unhandled rejection
-process.on("unhandledRejection", (reason) => {
-    console.error("UNHANDLED REJECTION:", reason);
-    errorLogStream.write(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        type: "UNHANDLED_REJECTION",
-        reason: reason?.message || reason,
-        stack: reason?.stack,
-    }) + "\n");
-    setTimeout(() => {
-        process.exit(1);
-    }, 1000);
-});
-
-// uncaught exception
-process.on("uncaughtException", (error) => {
-    console.error("UNCAUGHT EXCEPTION:", error);
-    errorLogStream.write(JSON.stringify({
-        timestamp: new Date().toISOString(),
-        type: "UNCAUGHT_EXCEPTION",
-        error: error.message,
-        stack: error.stack,
-    }) + "\n");
-    setTimeout(() => {
-        process.exit(1);
-    }, 1000);
-});
+setupProcessEventHandlers(errorLogStream);
 
 // Initialize graceful shutdown logic
 setupGracefulShutdown(server);
