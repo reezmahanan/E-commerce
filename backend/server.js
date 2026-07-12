@@ -73,6 +73,8 @@ await notificationBroker.initialize();
 // Add notification routes
 app.use('/api/notifications', notificationBrokerRoutes);
 
+// Add config routes
+app.use('/api/config', configRoutes);
 
 // Add with other imports
 const { evaluateRisk } = require('./middleware/riskMiddleware');
