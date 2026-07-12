@@ -54,11 +54,24 @@ const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
-const workflowRoutes = require('./routes/workflowRoutes');
+const notificationBrokerRoutes = require('./routes/notificationBrokerRoutes');
+const { 
+    notificationBroker, 
+    inAppChannel, 
+    emailChannel, 
+    webhookChannel 
+} = require('./services/notificationBrokerService');
 
+// Register channels
+notificationBroker.registerChannel('in_app', inAppChannel.handler);
+notificationBroker.registerChannel('email', emailChannel.handler);
+notificationBroker.registerChannel('webhook', webhookChannel.handler);
 
-// Add workflow routes
-app.use('/api/workflows', workflowRoutes);
+// Initialize notification broker
+await notificationBroker.initialize();
+
+// Add notification routes
+app.use('/api/notifications', notificationBrokerRoutes);
 
 
 // Add with other imports
