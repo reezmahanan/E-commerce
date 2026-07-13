@@ -89,6 +89,33 @@ function renderStars(
     return stars;
 }
 
+function getProductReviewCount(
+    product
+) {
+
+    return Number(
+        product?.num_reviews
+        ?? product?.numReviews
+        ?? product?.reviewCount
+        ?? 0
+    );
+}
+
+function formatRatingText(
+    rating,
+    count
+) {
+
+    if (
+        !count
+    ) {
+
+        return "No reviews yet";
+    }
+
+    return `${safeNumber(rating, 0).toFixed(1)} (${count} review${count === 1 ? "" : "s"})`;
+}
+
 // create product card html
 function createProductCardHTML(
     product
@@ -141,6 +168,18 @@ function createProductCardHTML(
                         product.rating || 4
                     )
                 }
+                <span class="rating-count">
+                    ${
+                        escapeHTML(
+                            formatRatingText(
+                                product.rating || 0,
+                                getProductReviewCount(
+                                    product
+                                )
+                            )
+                        )
+                    }
+                </span>
             </div>
 
             <h4>
@@ -153,18 +192,6 @@ function createProductCardHTML(
         </div>
 
         <div class="product-actions">
-
-            <a
-                href="product.html?id=${
-                    encodeURIComponent(
-                        product.id
-                    )
-                }"
-
-                class="view-btn"
-            >
-                View
-            </a>
 
             <button
                 type="button"
@@ -179,13 +206,6 @@ function createProductCardHTML(
             >
                 Add Cart
             </button>
-            <button
-    type="button"
-    class="compare-btn"
-    data-id="${encodeURIComponent(product.id)}"
->
-    Compare
-</button>
         </div>
     `;
 }
@@ -330,7 +350,12 @@ function renderProductRating(
     const rating =
         safeNumber(
             product.rating,
-            4.5
+            0
+        );
+
+    const reviewCount =
+        getProductReviewCount(
+            product
         );
 
     ratingContainer.innerHTML =
@@ -342,10 +367,14 @@ function renderProductRating(
             }
 
             <span id="product-rating-text">
-                (
-                    ${rating}
-                    Ratings
-                )
+                ${
+                    escapeHTML(
+                        formatRatingText(
+                            rating,
+                            reviewCount
+                        )
+                    )
+                }
             </span>
         `;
 }

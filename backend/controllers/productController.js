@@ -5,25 +5,44 @@ const {
     safeNumber,
     safeInteger,
     sanitizeString,
-    getPagination,
     buildPaginationMeta,
     safeArray
 } = require("../utils/helpers");
 
-// get all products
+const MAX_PRODUCT_LIMIT = 50;
+const NORMALIZED_CATEGORY_SQL =
+    "LOWER(REPLACE(REPLACE(category, '-', ''), ' ', ''))";
+const TOYS_CATEGORY_VALUES = [
+    "Toys",
+    "Educational Toys",
+    "Building Blocks",
+    "Dolls",
+    "RC Toys",
+    "Outdoor Toys"
+];
+
+function parsePaginationValue(value, defaultValue, fieldName) {
+    if (value === undefined || value === null || value === "") {
+        return defaultValue;
+    }
+
+    const normalizedValue = String(value).trim();
+    const parsedValue = Number(normalizedValue);
+
+    if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+        throw new Error(`Invalid ${fieldName}`);
+    }
+
+    return parsedValue;
+}
+
+// ---------- Get all products ----------
 const getProducts = async (req, res) => {
-
     try {
-
-        const {
-            page,
-            limit,
-            offset
-        } = getPagination(
-            req.query.page,
-            req.query.limit,
-            50
-        );
+        const page = parsePaginationValue(req.query.page, 1, "page");
+        const requestedLimit = parsePaginationValue(req.query.limit, 10, "limit");
+        const limit = Math.min(requestedLimit, MAX_PRODUCT_LIMIT);
+        const offset = (page - 1) * limit;
 
         const search =
             req.query.search
@@ -41,24 +60,33 @@ const getProducts = async (req, res) => {
 
         // category filter (case/format-insensitive)
         if (req.query.category) {
-
-            // normalize by removing hyphens/spaces and comparing lowercase
-            conditions.push(
-                "LOWER(REPLACE(REPLACE(category, '-', ''), ' ', '')) = LOWER(REPLACE(REPLACE(?, '-', ''), ' ', ''))"
+            const sanitizedCategory = sanitizeString(
+                req.query.category
             );
+            const isToysCategory =
+                sanitizedCategory
+                    .toLowerCase()
+                    .replace(/[-\s]+/g, "") === "toys";
 
-            params.push(
-                sanitizeString(
-                    req.query.category
-                )
-            );
+            if (isToysCategory) {
+                conditions.push(
+                    `${NORMALIZED_CATEGORY_SQL} IN (${TOYS_CATEGORY_VALUES.map(
+                        () => "LOWER(REPLACE(REPLACE(?, '-', ''), ' ', ''))"
+                    ).join(", ")})`
+                );
+                params.push(...TOYS_CATEGORY_VALUES);
+            } else {
+                conditions.push(
+                    `${NORMALIZED_CATEGORY_SQL} = LOWER(REPLACE(REPLACE(?, '-', ''), ' ', ''))`
+                );
+                params.push(sanitizedCategory);
+            }
         }
 
         // featured filter
         if (
             req.query.featured === "true"
         ) {
-
             conditions.push(
                 "featured = 1"
             );
@@ -66,17 +94,14 @@ const getProducts = async (req, res) => {
 
         // search filter
         if (search) {
-
             conditions.push(
                 "name LIKE ?"
             );
-
             params.push(search);
         }
 
         // build where clause
         if (conditions.length) {
-
             baseQuery += `
                 WHERE ${conditions.join(" AND ")}
             `;
@@ -98,7 +123,9 @@ const getProducts = async (req, res) => {
                 image,
                 category,
                 stock,
-                featured
+                featured,
+                rating,
+                num_reviews
             ${baseQuery}
             ORDER BY id DESC
             LIMIT ?
@@ -156,19 +183,22 @@ const getProducts = async (req, res) => {
             });
 
     } catch (error) {
+        if (error.message === "Invalid page" || error.message === "Invalid limit") {
+            return res.status(400).json({
+                success: false,
+                message: error.message
+            });
+        }
 
         console.error(
             "GET PRODUCTS ERROR:"
         );
-
         console.error(
             error
         );
-
         console.error(
             "STACK:"
         );
-
         console.error(
             error.stack
         );
@@ -176,13 +206,12 @@ const getProducts = async (req, res) => {
         return res.status(500)
             .json({
                 success: false,
-                message:
-                    error.message || "Failed to fetch products"
+                message: "Failed to fetch products"
             });
     }
 };
 
-// get single product
+// ---------- Get single product ----------
 const getSingleProduct = async (req, res) => {
     const id =
         safeInteger(
@@ -207,7 +236,9 @@ const getSingleProduct = async (req, res) => {
             image,
             category,
             stock,
-            featured
+            featured,
+            rating,
+            num_reviews
         FROM products
         WHERE id = ?
     `;
@@ -236,7 +267,7 @@ const getSingleProduct = async (req, res) => {
     }
 };
 
-// create product
+// ---------- Create product ----------
 const createProduct = async (req, res) => {
     const {
         name,
@@ -256,12 +287,14 @@ const createProduct = async (req, res) => {
         });
     }
 
+    const normalizedName = sanitizeString(name).trim();
+
     if (
         safeNumber(price) <= 0
     ) {
         return res.status(400).json({
             success: false,
-            message: "Invalid product price"
+            message: "Price must be greater than zero"
         });
     }
 
@@ -272,10 +305,28 @@ const createProduct = async (req, res) => {
     `;
 
     try {
+    // Prevent duplicate product names (case-insensitive)
+        const [existingProducts] = await db.query(
+            `
+        SELECT id
+        FROM products
+        WHERE LOWER(TRIM(name)) = LOWER(TRIM(?))
+        LIMIT 1
+    `,
+            [normalizedName]
+        );
+
+        if (safeArray(existingProducts).length) {
+            return res.status(409).json({
+                success: false,
+                message: "A product with this name already exists."
+            });
+        }
+        
         const [result] = await db.query(
             query,
             [
-                sanitizeString(name),
+                normalizedName,
                 description || "",
                 safeNumber(price),
                 sanitizeString(image),
@@ -285,8 +336,8 @@ const createProduct = async (req, res) => {
                     safeInteger(stock)
                 ),
                 featured === true
-                || featured === 1
-                || featured === "1"
+                    || featured === 1
+                    || featured === "1"
                     ? 1
                     : 0
             ]
@@ -307,7 +358,7 @@ const createProduct = async (req, res) => {
     }
 };
 
-// update product
+// ---------- Update product ----------
 const updateProduct = async (req, res) => {
     const id =
         safeInteger(
@@ -377,8 +428,8 @@ const updateProduct = async (req, res) => {
                     safeInteger(stock)
                 ),
                 featured === true
-                || featured === 1
-                || featured === "1"
+                    || featured === 1
+                    || featured === "1"
                     ? 1
                     : 0,
                 id
@@ -406,8 +457,8 @@ const updateProduct = async (req, res) => {
     }
 };
 
-// Deletee product
-const DeleteeProduct = async (req, res) => {
+// Delete product
+const deleteProduct = async (req, res) => {
     const id =
         safeInteger(
             req.params.id
@@ -422,7 +473,7 @@ const DeleteeProduct = async (req, res) => {
             });
     }
 
-    const query = "DeleteE FROM products WHERE id = ?";
+    const query = "DELETE FROM products WHERE id = ?";
 
     try {
         const [result] = await db.query(query, [id]);
@@ -436,7 +487,7 @@ const DeleteeProduct = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            message: "Product Deleteed successfully"
+            message: "Product deleted successfully"
         });
     } catch (error) {
         console.error(error);
@@ -448,10 +499,31 @@ const DeleteeProduct = async (req, res) => {
     }
 };
 
+// ---------- Get product suggestions for autocomplete (Issue #165) ----------
+const getProductSuggestions = async (req, res) => {
+    const keyword = req.query.q;
+    if (!keyword || keyword.trim() === '') {
+        return res.json([]);
+    }
+    // Sanitize: trim, limit length, escape special LIKE characters
+    const sanitized = keyword.trim().slice(0, 100).replace(/[%_\\]/g, String.raw`\$&`);
+    const searchTerm = `%${sanitized}%`;
+    const query = `SELECT id, name FROM products WHERE name LIKE ? LIMIT 10`;
+    try {
+        const [results] = await db.query(query, [searchTerm]);
+        res.json(results);
+    } catch (err) {
+        console.error("Suggestions error:", err);
+        res.status(500).json({ success: false, message: "Database error" });
+    }
+};
+
+
 module.exports = {
     getProducts,
     getSingleProduct,
     createProduct,
     updateProduct,
-    DeleteeProduct
+    deleteProduct,
+    getProductSuggestions
 };

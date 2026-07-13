@@ -177,87 +177,9 @@ function updateCartCount() {
         AppUtils.getCart();
 
     const total =
-        cart.reduce(
-            (
-                sum,
-                item
-            ) => {
-                return (
-                    sum +
-                    (
-                        parseInt(
-                            item.qty
-                        ) || 0
-                    )
-                );
-            },
-            0
+        AppUtils.getCartCount(
+            cart
         );
-
-    let badge =
-        document.getElementById(
-            "cart-count"
-        );
-
-    const cartIcon =
-        document.querySelector(
-            ".fa-shopping-bag"
-        )?.parentElement;
-
-    if (
-        !cartIcon
-    ) {
-        return;
-    }
-
-    if (
-        !badge
-    ) {
-        badge =
-            document.createElement(
-                "span"
-            );
-
-        badge.id =
-            "cart-count";
-
-        badge.style.cssText =
-            `
-                position:absolute;
-                top:-8px;
-                right:-10px;
-                background:red;
-                color:white;
-                font-size:12px;
-                padding:2px 6px;
-                border-radius:50%;
-                min-width:20px;
-                text-align:center;
-            `;
-
-        if (
-            getComputedStyle(
-                cartIcon
-            ).position ===
-            "static"
-        ) {
-
-            cartIcon.style.position =
-                "relative";
-        }
-
-        cartIcon.appendChild(
-            badge
-        );
-    }
-
-    badge.innerText =
-        total;
-
-    badge.style.display =
-        total > 0
-            ? "block"
-            : "none";
 
     // Update mobile cart badge
     const mobileBadge = document.getElementById('mobile-cart-badge');
@@ -274,6 +196,29 @@ function updateCartCount() {
     }
 }
 
+// wishlist count badge
+function updateWishlistCount() {
+    const total =
+        AppUtils.getWishlist().length;
+
+    const badge =
+        document.getElementById(
+            "wishlist-badge"
+        );
+
+    if (!badge) {
+        return;
+    }
+
+    badge.innerText =
+        total;
+
+    badge.style.display =
+        total > 0
+            ? "inline-block"
+            : "none";
+}
+
 let uiInitialized = false;
 
 // initialize ui
@@ -284,6 +229,7 @@ function initializeUI() {
     initializeStickyHeader();
     initializeRippleEffect();
     updateCartCount();
+    updateWishlistCount();
     initializeThemeToggle();
     uiInitialized = true;
 }
@@ -297,9 +243,17 @@ document.addEventListener(
     }
 );
 
+window.addEventListener(
+    AppUtils.CART_UPDATED_EVENT,
+    updateCartCount
+);
+
 // expose globally
 window.updateCartCount =
     updateCartCount;
+
+window.updateWishlistCount =
+    updateWishlistCount;
 
 // Theme Toggle
 function initializeThemeToggle() {

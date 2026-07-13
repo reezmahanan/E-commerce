@@ -1,0 +1,145 @@
+const promisePool = require("../config/db");
+const { safeNumber } = require("../utils/helpers");
+
+function normalizeCartQuantities(items) {
+    const quantities = new Map();
+
+    for (const item of items) {
+        if (!item) continue;
+
+        const productId = safeNumber(item.productId ?? item.id);
+        let qty = safeNumber(item.qty ?? item.quantity);
+
+        if (productId < 1) continue;
+        if (qty < 1) qty = 1;
+
+        quantities.set(productId, qty);
+    }
+
+    return quantities;
+}
+
+const cartController = {
+    // Get the logged-in user's cart (joined with product data)
+    getUserCart: async (req, res) => {
+        try {
+            const userId = req.user.id;
+
+            const [rows] = await promisePool.query(`
+                SELECT
+                    p.id,
+                    p.name,
+                    p.price,
+                    p.image,
+                    p.brand,
+                    p.stock,
+                    c.quantity AS qty,
+                    c.created_at AS added_at
+                FROM cart_items c
+                JOIN products p ON c.product_id = p.id
+                WHERE c.user_id = ?
+                ORDER BY c.created_at DESC
+            `, [userId]);
+
+            return res.status(200).json({
+                success: true,
+                cart: rows
+            });
+
+        } catch (error) {
+            console.error("GET CART ERROR:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Failed to fetch cart"
+            });
+        }
+    },
+
+    // Replace the user's entire cart with the posted items
+    syncCart: async (req, res) => {
+        let connection;
+
+        try {
+            connection = await promisePool.getConnection();
+
+            const userId = req.user.id;
+            const items = Array.isArray(req.body.items)
+                ? req.body.items
+                : [];
+            const quantities = normalizeCartQuantities(items);
+
+            await connection.beginTransaction();
+
+            let placeholders = [];
+            let values = [];
+
+            if (quantities.size) {
+                const ids = [...quantities.keys()];
+
+                const [products] = await connection.query(
+                    `SELECT id, stock FROM products WHERE id IN (${ids.map(() => "?").join(",")})`,
+                    ids
+                );
+
+                const productMap = new Map(
+                    products.map((product) => [
+                        safeNumber(product.id),
+                        safeNumber(product.stock)
+                    ])
+                );
+
+                for (const [productId, qty] of quantities) {
+                    if (!productMap.has(productId)) continue;
+
+                    const availableStock = productMap.get(productId);
+
+                    if (qty > availableStock) {
+                        await connection.rollback();
+
+                        return res.status(400).json({
+                            success: false,
+                            message: `Requested quantity exceeds available stock for product ${productId}`
+                        });
+                    }
+
+                    placeholders.push("(?, ?, ?)");
+                    values.push(userId, productId, qty);
+                }
+            }
+
+            // clear existing cart only after validation succeeds
+            await connection.query(
+                "DELETE FROM cart_items WHERE user_id = ?",
+                [userId]
+            );
+
+            if (placeholders.length) {
+                await connection.query(
+                    `INSERT INTO cart_items (user_id, product_id, quantity) VALUES ${placeholders.join(",")}`,
+                    values
+                );
+            }
+
+            await connection.commit();
+
+            return res.status(200).json({
+                success: true,
+                message: "Cart synced"
+            });
+
+        } catch (error) {
+            await connection.rollback();
+            console.error("SYNC CART ERROR:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Failed to sync cart"
+            });
+        } finally {
+            if (connection) {
+                connection.release();
+            }
+        }
+    }
+};
+
+module.exports = cartController;

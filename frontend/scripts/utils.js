@@ -698,22 +698,442 @@ const throttle = (
 };
 
 // cart helpers
+const CART_UPDATED_EVENT =
+    "cartUpdated";
+
+const normalizeCartItem = (
+    item
+) => {
+
+    if (
+        !item
+        ||
+        typeof item !== "object"
+        ||
+        item.id === undefined
+        ||
+        item.id === null
+    ) {
+
+        return null;
+    }
+
+    const price =
+        safeNumber(
+            item.price,
+            0
+        );
+
+    const qty =
+        Math.max(
+            1,
+            safeInteger(
+                item.qty,
+                1
+            )
+        );
+
+    return {
+        ...item,
+        id: item.id,
+        name:
+            item.name || "Product",
+        price,
+        img:
+            item.img ||
+            item.image ||
+            "",
+        image:
+            item.image ||
+            item.img ||
+            "",
+        color:
+            item.color || null,
+        size:
+            item.size || null,
+        qty
+    };
+};
+
 const getCart = () => {
 
-    return getJSON(
-        CONFIG.STORAGE_KEYS.CART,
-        []
-    );
+    let storedCart = [];
+
+    try {
+
+        const value =
+            localStorage.getItem(
+                CONFIG.STORAGE_KEYS.CART
+            );
+
+        storedCart =
+            value
+                ? JSON.parse(value)
+                : [];
+
+    } catch (error) {
+
+        console.warn(
+            `getCart error for key "${CONFIG.STORAGE_KEYS.CART}":`,
+            error
+        );
+
+        removeStorage(
+            CONFIG.STORAGE_KEYS.CART
+        );
+
+        return [];
+    }
+
+    if (
+        !Array.isArray(
+            storedCart
+        )
+    ) {
+
+        removeStorage(
+            CONFIG.STORAGE_KEYS.CART
+        );
+
+        return [];
+    }
+
+    const cart =
+        storedCart
+            .map(
+                normalizeCartItem
+            )
+            .filter(
+                Boolean
+            );
+
+    if (
+        cart.length !==
+        storedCart.length
+    ) {
+
+        setJSON(
+            CONFIG.STORAGE_KEYS.CART,
+            cart
+        );
+    }
+
+    return cart;
 };
 
 const saveCart = (
     cart
 ) => {
 
-    setJSON(
-        CONFIG.STORAGE_KEYS.CART,
+    const normalizedCart =
         safeArray(cart)
+            .map(
+                normalizeCartItem
+            )
+            .filter(
+                Boolean
+            );
+
+    const saved =
+        setJSON(
+            CONFIG.STORAGE_KEYS.CART,
+            normalizedCart
+        );
+
+    if (
+        saved
+    ) {
+
+        window.dispatchEvent(
+            new CustomEvent(
+                CART_UPDATED_EVENT,
+                {
+                    detail: {
+                        cart:
+                            normalizedCart
+                    }
+                }
+            )
+        );
+    }
+
+    return normalizedCart;
+};
+
+const getCartItemKey = (
+    item
+) => {
+
+    return [
+        String(
+            item?.id
+        ),
+        item?.color || "",
+        item?.size || ""
+    ].join("|");
+};
+
+const addCartItem = (
+    product
+) => {
+
+    const item =
+        normalizeCartItem({
+            ...product,
+            qty:
+                product?.qty || 1
+        });
+
+    if (
+        !item
+    ) {
+
+        return getCart();
+    }
+
+    const cart =
+        getCart();
+
+    const existing =
+        cart.find(
+            (cartItem) =>
+                getCartItemKey(
+                    cartItem
+                ) ===
+                getCartItemKey(
+                    item
+                )
+        );
+
+    if (
+        existing
+    ) {
+
+        existing.qty +=
+            item.qty;
+
+    } else {
+
+        cart.push(
+            item
+        );
+    }
+
+    return saveCart(
+        cart
     );
+};
+
+const updateCartItemQty = (
+    index,
+    qty
+) => {
+
+    const cart =
+        getCart();
+
+    if (
+        !cart[index]
+    ) {
+
+        return cart;
+    }
+
+    cart[index].qty =
+        Math.max(
+            1,
+            safeInteger(
+                qty,
+                1
+            )
+        );
+
+    return saveCart(
+        cart
+    );
+};
+
+const removeCartItem = (
+    index
+) => {
+
+    const cart =
+        getCart();
+
+    if (
+        cart[index]
+    ) {
+
+        cart.splice(
+            index,
+            1
+        );
+    }
+
+    return saveCart(
+        cart
+    );
+};
+
+const clearCart = () => {
+
+    return saveCart(
+        []
+    );
+};
+
+const getCartCount = (
+    cart = getCart()
+) => {
+
+    return safeArray(
+        cart
+    ).reduce(
+        (
+            sum,
+            item
+        ) =>
+            sum +
+            Math.max(
+                1,
+                safeInteger(
+                    item.qty,
+                    1
+                )
+            ),
+        0
+    );
+};
+
+const validateCoupon = (
+    code
+) => {
+
+    const normalizedCode =
+        String(
+            code || ""
+        )
+            .trim()
+            .toUpperCase();
+
+    const coupons = {
+        SAVE10: 10,
+        SAVE20: 20
+    };
+
+    if (
+        !normalizedCode
+    ) {
+
+        return {
+            valid: false,
+            code: "",
+            percent: 0,
+            message:
+                "Enter a coupon code."
+        };
+    }
+
+    if (
+        !coupons[normalizedCode]
+    ) {
+
+        return {
+            valid: false,
+            code:
+                normalizedCode,
+            percent: 0,
+            message:
+                "Invalid coupon code."
+        };
+    }
+
+    return {
+        valid: true,
+        code:
+            normalizedCode,
+        percent:
+            coupons[normalizedCode],
+        message:
+            `${normalizedCode} applied successfully.`
+    };
+};
+
+const calculateCartTotals = (
+    cart = getCart(),
+    couponCode = ""
+) => {
+
+    const subtotal =
+        safeArray(
+            cart
+        ).reduce(
+            (
+                sum,
+                item
+            ) =>
+                sum +
+                (
+                    safeNumber(
+                        item.price,
+                        0
+                    ) *
+                    Math.max(
+                        1,
+                        safeInteger(
+                            item.qty,
+                            1
+                        )
+                    )
+                ),
+            0
+        );
+
+    const coupon =
+        validateCoupon(
+            couponCode
+        );
+
+    const discount =
+        coupon.valid
+            ? subtotal *
+                (
+                    coupon.percent / 100
+                )
+            : 0;
+
+    const discountedSubtotal =
+        Math.max(
+            0,
+            subtotal - discount
+        );
+
+    const tax =
+        discountedSubtotal * 0.18;
+
+    const shipping =
+        discountedSubtotal > 0
+        &&
+        discountedSubtotal < 999
+            ? 49
+            : 0;
+
+    const total =
+        discountedSubtotal +
+        tax +
+        shipping;
+
+    return {
+        subtotal,
+        coupon:
+            coupon.valid
+                ? coupon
+                : null,
+        discount,
+        tax,
+        shipping,
+        total
+    };
 };
 
 const getWishlist = () => {
@@ -760,8 +1180,18 @@ window.AppUtils = {
     safeMap,
     debounce,
     throttle,
+    CART_UPDATED_EVENT,
+    normalizeCartItem,
     getCart,
     saveCart,
+    getCartItemKey,
+    addCartItem,
+    updateCartItemQty,
+    removeCartItem,
+    clearCart,
+    getCartCount,
+    validateCoupon,
+    calculateCartTotals,
     getWishlist,
     saveWishlist
 };

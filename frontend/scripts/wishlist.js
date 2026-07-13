@@ -78,16 +78,16 @@ function renderWishlist() {
             card.innerHTML =
                 `
                     <img
-                        src="${AppUtils.defaultImage(product?.image || product?.img)}"
-                        alt="${product?.name || "Product"}"
+                        src="${AppUtils.escapeHTML(AppUtils.defaultImage(product?.image || product?.img))}"
+                        alt="${AppUtils.escapeHTML(product?.name || "Product")}"
                         loading="lazy"
                     >
                     <div class="wishlist-content">
                         <span>
-                            ${product?.brand || "Brand"}
+                            ${AppUtils.escapeHTML(product?.brand || "Brand")}
                         </span>
                         <h4>
-                            ${product?.name || "Product"}
+                            ${AppUtils.escapeHTML(product?.name || "Product")}
                         </h4>
                         <p class="wishlist-price">
                             ${AppUtils.formatPrice(product?.price || 0)}
@@ -296,29 +296,10 @@ async function addToCartFromWishlist(
         qty: 1
     };
 
-    // prevent duplicates
-    const existingIndex =
-        cart.findIndex(
-            (p) =>
-                p.id === item.id
-        );
-
-    if (
-        existingIndex >= 0
-    ) {
-        cart[
-            existingIndex
-        ].qty += 1;
-
-    } else {
-        cart.push(
+    cart =
+        AppUtils.addCartItem(
             item
         );
-    }
-
-    AppUtils.saveCart(
-        cart
-    );
 
     AppUtils.notify(
         "Added to cart 🛍️",

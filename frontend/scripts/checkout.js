@@ -2,6 +2,12 @@
 const cart =
     AppUtils.getCart();
 
+const appliedCoupon =
+    AppUtils.getJSON(
+        "appliedCoupon",
+        ""
+    );
+
 // require authentication
 const currentUser =
     AppUtils.requireAuth();
@@ -119,11 +125,72 @@ const elements = {
             "address"
         ),
 
+    addressCounter:
+        document.getElementById(
+            "address-char-count"
+        ),
+
     placeOrderBtn:
         document.querySelector(
             '#checkout-form button[type="submit"]'
         )
 };
+
+const ADDRESS_LIMIT = 250;
+
+function updateAddressCharacterCount() {
+
+    if (
+        !elements.address ||
+        !elements.addressCounter
+    ) {
+        return;
+    }
+
+    const length =
+        elements.address.value.length;
+
+    elements.addressCounter.textContent =
+        length;
+
+    const counter =
+        elements.addressCounter.parentElement;
+
+    if (
+        length >= (ADDRESS_LIMIT - 20)
+    ) {
+
+        counter.classList.add(
+            "limit-reached"
+        );
+
+        elements.address.classList.add(
+            "limit-reached"
+        );
+
+    } else {
+
+        counter.classList.remove(
+            "limit-reached"
+        );
+
+        elements.address.classList.remove(
+            "limit-reached"
+        );
+    }
+}
+
+if (
+    elements.address
+) {
+
+    updateAddressCharacterCount();
+
+    elements.address.addEventListener(
+        "input",
+        updateAddressCharacterCount
+    );
+}
 
 // escape html
 function escapeHTML(
@@ -196,49 +263,10 @@ function safeQty(
 // CALCULATE TOTALS
 function calculateTotals() {
 
-    const subtotal =
-        cart.reduce(
-            (
-                sum,
-                item
-            ) => {
-
-                return (
-                    sum +
-                    (
-                        safePrice(
-                            item.price
-                        ) *
-                        safeQty(
-                            item.qty
-                        )
-                    )
-                );
-            },
-            0
-        );
-
-    const tax =
-        subtotal * 0.18;
-
-    const shipping =
-        subtotal > 0
-        &&
-        subtotal < 999
-            ? 49
-            : 0;
-
-    const total =
-        subtotal +
-        tax +
-        shipping;
-
-    return {
-        subtotal,
-        tax,
-        shipping,
-        total
-    };
+    return AppUtils.calculateCartTotals(
+        cart,
+        appliedCoupon
+    );
 }
 
 // RENDER CHECKOUT
@@ -392,108 +420,78 @@ elements.paymentMethods.forEach(
     }
 );
 
-// VALIDATION
 function validateCheckoutForm() {
 
-    if (
-        !elements.fullName.value.trim()
-        ||
-        !elements.email.value.trim()
-        ||
-        !elements.phone.value.trim()
-        ||
-        !elements.city.value.trim()
-        ||
-        !elements.state.value.trim()
-        ||
-        !elements.zip.value.trim()
-        ||
-        !elements.address.value.trim()
-    ) {
+    let isValid = true;
 
-        AppUtils.notify(
-            "Please fill all required fields.",
-            "error"
-        );
+    // helper to show/clear inline errors
+    function showError(fieldId, errorId, message) {
+        const field = document.getElementById(fieldId);
+        const error = document.getElementById(errorId);
+        if (!field.value.trim()) {
+            if (error) error.textContent = message;
+            field.style.border = "1px solid red";
+            isValid = false;
+        } else {
+            if (error) error.textContent = "";
+            field.style.border = "";
+        }
+    }
 
+    // validate each field
+    showError("full-name", "full-name-error", "Full name is required.");
+    showError("email", "email-error", "Email address is required.");
+    showError("phone", "phone-error", "Phone number is required.");
+    showError("city", "city-error", "City is required.");
+    showError("state", "state-error", "State is required.");
+    showError("zip", "zip-error", "ZIP code is required.");
+    showError("address", "address-error", "Address is required.");
+
+    if (!isValid) {
+        AppUtils.notify("Please fill all required fields.", "error");
         return false;
     }
 
     // email validation
-    const emailRegex =
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (
-        !emailRegex.test(
-            elements.email.value.trim()
-        )
-    ) {
-
-        AppUtils.notify(
-            "Enter a valid email address.",
-            "error"
-        );
-
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(elements.email.value.trim())) {
+        document.getElementById("email-error").textContent =
+            "Enter a valid email address.";
+        elements.email.style.border = "1px solid red";
+        AppUtils.notify("Enter a valid email address.", "error");
         return false;
     }
 
     // phone validation
-    const phoneRegex =
-        /^[6-9]\d{9}$/;
-
-    if (
-        !phoneRegex.test(
-            elements.phone.value.trim()
-        )
-    ) {
-
-        AppUtils.notify(
-            "Enter a valid 10-digit phone number.",
-            "error"
-        );
-
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(elements.phone.value.trim())) {
+        document.getElementById("phone-error").textContent =
+            "Enter a valid 10-digit phone number.";
+        elements.phone.style.border = "1px solid red";
+        AppUtils.notify("Enter a valid 10-digit phone number.", "error");
         return false;
     }
 
     // zip validation
-    const zipRegex =
-        /^\d{5,6}$/;
-
-    if (
-        !zipRegex.test(
-            elements.zip.value.trim()
-        )
-    ) {
-
-        AppUtils.notify(
-            "Enter a valid ZIP / PIN code.",
-            "error"
-        );
-
+    const zipRegex = /^\d{5,6}$/;
+    if (!zipRegex.test(elements.zip.value.trim())) {
+        document.getElementById("zip-error").textContent =
+            "Enter a valid ZIP / PIN code.";
+        elements.zip.style.border = "1px solid red";
+        AppUtils.notify("Enter a valid ZIP / PIN code.", "error");
         return false;
     }
 
     // payment method
     const selectedPayment =
-        document.querySelector(
-            'input[name="payment"]:checked'
-        );
-
-    if (
-        !selectedPayment
-    ) {
-
-        AppUtils.notify(
-            "Select a payment method.",
-            "error"
-        );
-
+        document.querySelector('input[name="payment"]:checked');
+    if (!selectedPayment) {
+        AppUtils.notify("Select a payment method.", "error");
         return false;
     }
 
     return true;
 }
-
 // CREATE ORDER PAYLOAD
 function createOrderPayload() {
 
@@ -637,8 +635,10 @@ if (
                     );
 
                     // clear cart
-                    AppUtils.saveCart(
-                        []
+                    AppUtils.clearCart();
+
+                    AppUtils.removeStorage(
+                        "appliedCoupon"
                     );
 
                     // update ui
@@ -711,3 +711,5 @@ if (
         }
     );
 }
+
+

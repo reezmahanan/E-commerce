@@ -40,32 +40,27 @@ function addToCart(
         return;
     }
 
-    const existing =
-        cart.find(
-            (item) =>
-                String(item.id)
-                === String(product.id)
-        );
-
-    if (
-        existing
-    ) {
-        existing.qty =
-            Math.max(
-                1,
-                Number(
-                    existing.qty || 1
-                ) + 1
-            );
-
-    } else {
-        cart.push({
+    cart =
+        AppUtils.addCartItem({
             ...product,
             qty: 1
         });
-    }
 
     saveHomeCart();
+
+    if (
+        typeof renderCartDrawer ===
+        "function"
+    ) {
+        renderCartDrawer();
+    }
+
+    if (
+        typeof openCartDrawer ===
+        "function"
+    ) {
+        openCartDrawer();
+    }
 
     AppUtils.notify(
         `${product.name} added to cart`,
@@ -125,7 +120,7 @@ async function toggleWishlist(
         );
 
         AppUtils.notify(
-            "Added to wishlist",
+            "Added to wishlist ❤️",
             "success"
         );
         

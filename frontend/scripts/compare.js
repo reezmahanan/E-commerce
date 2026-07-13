@@ -45,10 +45,10 @@ async function renderCompare() {
                         padding:15px;
                         margin:10px;
                     ">
-                        <h3>${product.name}</h3>
-                        <p><b>Price:</b> ₹${product.price}</p>
-                        <p><b>Rating:</b> ${product.rating}</p>
-                        <p><b>Category:</b> ${product.category}</p>
+                        <h3>${AppUtils.escapeHTML(product.name)}</h3>
+                        <p><b>Price:</b> ₹${AppUtils.escapeHTML(product.price)}</p>
+                        <p><b>Rating:</b> ${AppUtils.escapeHTML(product.rating)}</p>
+                        <p><b>Category:</b> ${AppUtils.escapeHTML(product.category)}</p>
                     </div>
                 `
             ).join("");

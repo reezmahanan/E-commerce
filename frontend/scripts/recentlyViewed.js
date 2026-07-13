@@ -1,30 +1,31 @@
-import {
-    getJSON,
-    $,
-    defaultImage
-} from "./utils.js";
+
 
 // LOAD RECENTLY VIEWED PRODUCTS
 const recentlyViewed =
-    getJSON("recentlyViewed") || [];
+    AppUtils.getJSON("recentlyViewed") || [];
 
 // ELEMENTS
 const elements = {
     recentContainer:
-        $("#recently-viewed-container"),
+       AppUtils.$("#recently-viewed-count"),
 
     recentCount:
-        $("#recently-viewed-count")
+        AppUtils.$("#recently-viewed-count")
 };
 
 // EMPTY STATE HELPER
-const renderEmptyState = (
-    container,
-    message
-) => {
-    if(container){
-        container.innerHTML =
-            `<p>${message}</p>`;
+const renderEmptyState = (container, message) => {
+    if (container) {
+        container.innerHTML = `
+            <div class="empty-state-card recent-empty">
+                <div class="empty-icon">👁</div>
+                <h3>No Recently Viewed Products</h3>
+                <p>${message}</p>
+                <a href="shop.html" class="empty-state-btn">
+                    Start Shopping
+                </a>
+            </div>
+        `;
     }
 };
 
@@ -51,11 +52,11 @@ if (elements.recentContainer) {
             );
             div.innerHTML = `
                 <img
-                    src="${defaultImage(product.image)}"
-                    alt="${product.name || "Product"}"
+                    src="${AppUtils.defaultImage(product.image)}"
+                    alt="${AppUtils.escapeHTML(product.name || "Product")}"
                 >
                 <h4>
-                    ${product.name || "Product"}
+                    ${AppUtils.escapeHTML(product.name || "Product")}
                 </h4>
                 <p>
                     ₹${(
