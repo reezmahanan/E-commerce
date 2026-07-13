@@ -11,7 +11,7 @@ workflows:
     enabled: true
     quality_gates:
       require_dco: false
-      require_linked_issue: false
+      require_linked_issue: true
       require_tests: false
     ai_review:
       enabled: false
