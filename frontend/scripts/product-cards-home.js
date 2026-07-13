@@ -16,8 +16,10 @@ function safePrice(value) {
 }
 
 // render product card
-function createProductCard(product, wishlistIds = null) {
+function createProductCard(product, wishlistIds = null, options = {}) {
   const rating = Math.min(5, Math.max(0, Number(product.rating || 4)));
+  const showActions = options.showActions !== false;
+  const compactClass = options.compact ? " product-card-compact" : "";
 
   const stars = Array.from(
     {
@@ -35,7 +37,7 @@ function createProductCard(product, wishlistIds = null) {
     : AppUtils.getWishlist().some((item) => String(item.id) === String(product.id));
 
   return `
-        <div class="pro fade-in" data-id="${product.id}">
+        <div class="pro fade-in${compactClass}" data-id="${product.id}">
             ${
               product.featured
                 ? `
@@ -54,7 +56,7 @@ function createProductCard(product, wishlistIds = null) {
 
             <div class="des">
                 <span>
-                    ${safeText(product.category, "Fashion")}
+                    ${safeText(product.brand || product.category, "Fashion")}
                 </span>
 
                 <h5>
@@ -69,6 +71,9 @@ function createProductCard(product, wishlistIds = null) {
                     ${formatPrice(safePrice(product.price))}
                 </h4>
 
+                ${
+                  showActions
+                    ? `
                 <div class="product-actions">
                     <button
                         type="button"
@@ -101,6 +106,9 @@ function createProductCard(product, wishlistIds = null) {
                         Wishlist
                     </button>
                 </div>
+                    `
+                    : ""
+                }
             </div>
         </div>`;
 }
