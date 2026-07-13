@@ -17,19 +17,36 @@
 
 .search-box input{
     width: 100%;
-    padding: 15px 50px 15px 18px;
+    padding: 15px 18px 15px 50px;
     border: 1px solid #ddd;
     border-radius: 10px;
     outline: none;
     font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.search-box input:hover {
+    border-color: #088178;
+}
+
+.search-box input:focus {
+    border-color: #088178;
+    box-shadow: 0 0 0 4px rgba(8, 129, 120, 0.1);
 }
 
 .search-box i{
     position: absolute;
-    right: 18px;
+    left: 18px;
     top: 50%;
     transform: translateY(-50%);
-    color: #777;
+    color: #088178;
+    transition: color 0.3s ease;
+    pointer-events: none;
+}
+
+.search-box input:hover + i,
+.search-box input:focus + i {
+    color: #065f57;
 }
 
 .sort-box select{
