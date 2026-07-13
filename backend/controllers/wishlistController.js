@@ -36,6 +36,38 @@ const wishlistController = {
         }
     },
 
+    // Check if product is in user's wishlist (Issue #777)
+    checkWishlistStatus: async (req, res) => {
+        try {
+            const userId = req.user.id;
+            const productId = safeNumber(req.params.productId);
+
+            if (!productId || productId < 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Valid product ID is required"
+                });
+            }
+
+            const [rows] = await promisePool.query(
+                "SELECT id FROM wishlist_items WHERE user_id = ? AND product_id = ?",
+                [userId, productId]
+            );
+
+            return res.status(200).json({
+                success: true,
+                inWishlist: rows.length > 0
+            });
+
+        } catch (error) {
+            console.error("CHECK WISHLIST STATUS ERROR:", error);
+            return res.status(500).json({
+                success: false,
+                message: "Failed to check wishlist status"
+            });
+        }
+    },
+
     // Add to wishlist
     addToWishlist: async (req, res) => {
         try {
@@ -49,7 +81,6 @@ const wishlistController = {
                 });
             }
 
-            // Check if product exists
             const [products] = await promisePool.query(
                 "SELECT id FROM products WHERE id = ?",
                 [productId]
@@ -62,7 +93,6 @@ const wishlistController = {
                 });
             }
 
-            // Insert, ignore if already exists (unique constraint handles this, but we'll use INSERT IGNORE)
             await promisePool.query(`
                 INSERT IGNORE INTO wishlist_items (user_id, product_id)
                 VALUES (?, ?)
@@ -70,7 +100,8 @@ const wishlistController = {
 
             return res.status(200).json({
                 success: true,
-                message: "Added to wishlist"
+                message: "Added to wishlist",
+                action: "added"
             });
 
         } catch (error) {
@@ -96,7 +127,7 @@ const wishlistController = {
             }
 
             const [result] = await promisePool.query(`
-                DeleteE FROM wishlist_items 
+                DELETE FROM wishlist_items 
                 WHERE user_id = ? AND product_id = ?
             `, [userId, productId]);
 
@@ -109,7 +140,8 @@ const wishlistController = {
 
             return res.status(200).json({
                 success: true,
-                message: "Removed from wishlist"
+                message: "Removed from wishlist",
+                action: "removed"
             });
 
         } catch (error) {
