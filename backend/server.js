@@ -16,7 +16,20 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other imports
+const diRoutes = require('./routes/diRoutes');
+const { container } = require('./core/diContainer');
+const { initializeContainer } = require('./core/serviceRegistration');
+const { createRequestScope } = require('./middleware/diMiddleware');
 
+// Initialize DI container
+initializeContainer();
+
+// Add DI middleware
+app.use(createRequestScope);
+
+// Add DI routes
+app.use('/api/di', diRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
