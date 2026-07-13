@@ -1,5 +1,5 @@
 // backend/services/outboxService.js
-const db = require('../config/db').promise;
+const db = require('../config/db');
 const crypto = require('crypto');
 
 // ============================================
@@ -210,18 +210,36 @@ class OutboxService {
      * Process pending events
      */
     async processPendingEvents() {
+        const connection = await db.getConnection();
         try {
-            // Get pending events
-            const [events] = await db.query(
+            await connection.query('START TRANSACTION');
+
+            // Get pending events using SKIP LOCKED to prevent race conditions
+            const [events] = await connection.query(
                 `SELECT * FROM outbox_events 
                  WHERE status IN (?, ?)
                  AND attempts < max_attempts
                  ORDER BY created_at ASC
-                 LIMIT ?`,
+                 LIMIT ?
+                 FOR UPDATE SKIP LOCKED`,
                 [OUTBOX_STATUS.PENDING, OUTBOX_STATUS.RETRY, OUTBOX_CONFIG.batchSize]
             );
 
-            if (events.length === 0) return;
+            if (events.length === 0) {
+                await connection.query('COMMIT');
+                connection.release();
+                return;
+            }
+
+            // Mark events as processing atomically
+            const eventIds = events.map(e => e.event_id);
+            await connection.query(
+                `UPDATE outbox_events SET status = ? WHERE event_id IN (?)`,
+                [OUTBOX_STATUS.PROCESSING, eventIds]
+            );
+
+            await connection.query('COMMIT');
+            connection.release();
 
             // Process each event
             for (const eventRow of events) {
@@ -230,7 +248,7 @@ class OutboxService {
                     type: eventRow.event_type,
                     data: JSON.parse(eventRow.data),
                     metadata: JSON.parse(eventRow.metadata || '{}'),
-                    status: eventRow.status,
+                    status: OUTBOX_STATUS.PROCESSING,
                     attempts: eventRow.attempts,
                     maxAttempts: eventRow.max_attempts,
                     createdAt: eventRow.created_at,
@@ -241,6 +259,10 @@ class OutboxService {
                 await this.processEvent(event);
             }
         } catch (error) {
+            if (connection) {
+                await connection.query('ROLLBACK');
+                connection.release();
+            }
             console.error('Process pending events error:', error);
         }
     }
