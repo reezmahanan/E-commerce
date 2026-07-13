@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-const cookieOptions = require("../config/cookieOptions");
 // ======================== CONTROLLERS ========================
 const {
     signup,
@@ -52,29 +51,7 @@ if (!process.env.JWT_SECRET) {
 // ❌ `validateRequiredFields` helper removed completely
 // ❌ `sanitizeString` import removed because it's now handled in the middleware
 
-/**
- * Apply behavioral CAPTCHA check (Kept exactly as it was, untouched)
- */
-function applyCaptchaCheck(req, res, next) {
-    if (process.env.ENABLE_BEHAVIORAL_CAPTCHA === 'true') {
-        const captchaResult = verifyHumanChallenge(req);
-
-        if (!captchaResult.passed) {
-            console.warn(`🛡️ CAPTCHA failed for ${req.ip} on ${req.path}: ${captchaResult.reason}`);
-
-            const statusCode = captchaResult.reason === 'rate_limit_exceeded' ? 429 : 403;
-            return res.status(statusCode).json({
-                success: false,
-                message: captchaResult.reason === 'rate_limit_exceeded'
-                    ? 'Too many requests. Please slow down.'
-                    : 'Automated access detected. Please verify you are human.',
-                retryAfter: captchaResult.retryAfter || 60,
-                score: captchaResult.score
-            });
-        }
-    }
-    next();
-}
+// CAPTCHA check is imported from captchaMiddleware
 
 // ======================== ROUTES ========================
 
