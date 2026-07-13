@@ -16,7 +16,15 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other imports
+const driftRoutes = require('./routes/driftRoutes');
+const { architectureDriftService } = require('./services/architectureDriftService');
 
+// Initialize drift service
+await architectureDriftService.initialize();
+
+// Add drift routes
+app.use('/api/drift', driftRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
