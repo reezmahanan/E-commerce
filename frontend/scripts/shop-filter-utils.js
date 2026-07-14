@@ -44,7 +44,12 @@
             "women",
             "Women",
             "men",
-            "Men"
+            "Men",
+            "Footwear",
+            "Kids Wear",
+            "Watches",
+            "Bags",
+            "Accessories"
         ],
         electronics: [
             "Electronics",

@@ -107,4 +107,6 @@ function optionalAuth(req, res, next) {
     next();
 }
 
-module.exports = { authMiddleware, optionalAuth };
+module.exports = authMiddleware;
+module.exports.authMiddleware = authMiddleware;
+module.exports.optionalAuth = optionalAuth;
