@@ -90,6 +90,7 @@ notificationBroker.registerChannel('webhook', webhookChannel.handler);
 // Initialize notification broker
 await notificationBroker.initialize();
 
+
 // Add notification routes
 app.use('/api/notifications', notificationBrokerRoutes);
 
