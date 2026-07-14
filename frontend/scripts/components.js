@@ -232,6 +232,61 @@ navLinks.forEach(link => {
         link.setAttribute('aria-current', 'page');
     }
 });
+// ===== NAVBAR SEARCH =====
+    const navSearchInput = document.getElementById("searchInput");
+    if (navSearchInput) {
+        navSearchInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                const query = navSearchInput.value.trim();
+                if (query) {
+                    window.location.href = `shop.html?search=${encodeURIComponent(query)}`;
+                }
+            }
+        });
+
+        navSearchInput.addEventListener("input", () => {
+            const query = navSearchInput.value.trim();
+            const dropdown = document.getElementById("suggestionsDropdown");
+            if (!dropdown) return;
+
+            if (!query) {
+                dropdown.style.display = "none";
+                dropdown.innerHTML = "";
+                return;
+            }
+
+            const allProducts = window.allProducts || [];
+            const matches = allProducts
+                .filter(p => p.name?.toLowerCase().includes(query.toLowerCase()))
+                .slice(0, 5);
+
+            if (!matches.length) {
+                dropdown.style.display = "none";
+                return;
+            }
+
+            dropdown.innerHTML = matches.map(p => `
+                <div class="suggestion-item" style="padding:8px;cursor:pointer;border-bottom:1px solid #eee;">
+                    ${p.name}
+                </div>
+            `).join("");
+
+            dropdown.style.display = "block";
+
+            dropdown.querySelectorAll(".suggestion-item").forEach((item, i) => {
+                item.addEventListener("click", () => {
+                    window.location.href = `shop.html?search=${encodeURIComponent(matches[i].name)}`;
+                });
+            });
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!e.target.closest(".search-container")) {
+                const dropdown = document.getElementById("suggestionsDropdown");
+                if (dropdown) dropdown.style.display = "none";
+            }
+        });
+    }
 
 const categoryMenuItem = document.querySelector(".category-menu-item");
 const categoryMenuToggle = document.getElementById("category-menu-toggle");

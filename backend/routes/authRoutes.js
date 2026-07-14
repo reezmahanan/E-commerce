@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const cookieOptions = require("../config/cookieOptions");
+const cookieOptions = require("../config/cookieConfig");
 // ======================== CONTROLLERS ========================
 const {
     signup,

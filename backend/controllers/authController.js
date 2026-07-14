@@ -8,7 +8,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const db = require("../config/db");
 const { sanitizeString, safeArray } = require("../utils/helpers");
-const cookieOptions = require("../config/cookieOptions");
+const cookieOptions = require("../config/cookieConfig");
 
 // Appwrite SDK
 const { Client, Account, ID, Databases } = require('node-appwrite');
@@ -672,6 +672,26 @@ const getFraudStatus = async (req, res) => {
     }
 };
 
+const getMe = async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ success: false, message: "Unauthorized" });
+        }
+        return res.status(200).json({
+            success: true,
+            user: {
+                id: req.user.id,
+                name: req.user.name,
+                email: req.user.email,
+                role: req.user.role
+            }
+        });
+    } catch (error) {
+        console.error("GET ME ERROR:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+};
+
 
 // ==================== EXPORTS ====================
 module.exports = {
@@ -686,5 +706,6 @@ module.exports = {
     getStatus,      
     validateToken,  
     getSecurityAudit, 
-    getFraudStatus
+    getFraudStatus,
+    getMe
 };

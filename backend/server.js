@@ -1,5 +1,5 @@
 const express = require("express");
-const helmetMiddleware = require("./middleware/helmetMiddleware");
+const { helmetMiddleware } = require("./middleware/helmetMiddleware");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
@@ -18,6 +18,9 @@ const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
 
 // Add with other imports
+// init app early so route and middleware registration can safely use it
+const app = express();
+
 const responseExampleRoutes = require('./routes/responseExampleRoutes');
 const { standardizeResponse } = require('./middleware/responseStandardizer');
 
@@ -51,9 +54,29 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/ai-feed', aiFeedRoutes);
 
 const routes = require("./routes/index");
-const authLimiter = require("./middleware/authLimiter");
+const { authLimiter } = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
+
+const discoveryRoutes = require('./routes/discoveryRoutes');
+const { capabilityDiscoveryService } = require('./services/capabilityDiscoveryService');
+
+// Initialize capability discovery
+await capabilityDiscoveryService.initialize();
+
+// Add discovery routes
+app.use('/api/discovery', discoveryRoutes);
+
+const metricsRoutes = require('./routes/metricsRoutes');
+const { metricsAggregationService } = require('./services/metricsAggregationService');
+
+// Initialize metrics service
+await metricsAggregationService.initialize();
+
+// Add metrics routes
+app.use('/api/metrics', metricsRoutes);
+
+
 const notificationBrokerRoutes = require('./routes/notificationBrokerRoutes');
 const { 
     notificationBroker, 
@@ -75,6 +98,7 @@ notificationBroker.initialize().catch(err => {
         console.error('Failed to initialize notification broker:', err);
     }
 });
+
 
 // Add notification routes
 app.use('/api/notifications', notificationBrokerRoutes);
