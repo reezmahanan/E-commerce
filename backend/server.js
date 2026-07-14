@@ -55,14 +55,14 @@ const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
 
-const healthRoutes = require('./routes/healthRoutes');
-const { healthScoreService } = require('./services/healthScoreService');
+const discoveryRoutes = require('./routes/discoveryRoutes');
+const { capabilityDiscoveryService } = require('./services/capabilityDiscoveryService');
 
-// Initialize health score service
-await healthScoreService.initialize();
+// Initialize capability discovery
+await capabilityDiscoveryService.initialize();
 
-// Add health routes (BEFORE any other routes)
-app.use('/health', healthRoutes);
+// Add discovery routes
+app.use('/api/discovery', discoveryRoutes);
 
 const metricsRoutes = require('./routes/metricsRoutes');
 const { metricsAggregationService } = require('./services/metricsAggregationService');
