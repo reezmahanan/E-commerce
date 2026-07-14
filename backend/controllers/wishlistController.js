@@ -13,30 +13,38 @@ const SHARE_TOKEN_LENGTH = 32;
 // ==================== CACHE ====================
 const cache = new Map();
 
-function getCacheKey(userId) {
-    return `wishlist:${userId}`;
+function getCacheKey(userId, page, limit) {
+    return `wishlist:${userId}:page:${page}:limit:${limit}`;
 }
 
-function getFromCache(userId) {
-    const key = getCacheKey(userId);
+function getFromCache(userId, page, limit) {
+    const key = getCacheKey(userId, page, limit);
     const cached = cache.get(key);
+
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         return cached.data;
     }
+
     return null;
 }
 
-function setCache(userId, data) {
-    const key = getCacheKey(userId);
+function setCache(userId, page, limit, data) {
+    const key = getCacheKey(userId, page, limit);
+
     cache.set(key, {
-        data: data,
+        data,
         timestamp: Date.now()
     });
 }
 
 function invalidateCache(userId) {
-    const key = getCacheKey(userId);
-    cache.delete(key);
+    // Delete all cache keys that match this user's prefix
+    const prefix = `wishlist:${userId}:`;
+    for (const key of cache.keys()) {
+        if (key.startsWith(prefix)) {
+            cache.delete(key);
+        }
+    }
     logger.debug(`Cache invalidated for user: ${userId}`);
 }
 
@@ -75,7 +83,7 @@ const wishlistController = {
             const offset = (page - 1) * limit;
 
             // Check cache first
-            const cachedData = getFromCache(userId);
+            const cachedData = getFromCache(userId, page, limit);
             if (cachedData) {
                 logger.debug(`Cache hit for wishlist: ${userId}`);
                 return res.status(200).json({
@@ -124,7 +132,7 @@ const wishlistController = {
             };
 
             // Cache the data
-            setCache(userId, wishlistData);
+            setCache(userId, page, limit, wishlistData);
 
             return res.status(200).json({
                 success: true,
@@ -259,12 +267,14 @@ const wishlistController = {
     // ==================== BATCH ADD TO WISHLIST ====================
     batchAddToWishlist: async (req, res) => {
         const connection = await promisePool.getConnection();
+
         try {
             const userId = req.user.id;
             const { productIds } = req.body;
+            const uniqueProductIds = [...new Set(productIds.map((id) => safeNumber(id)))];
 
             // Validate batch
-            const validation = validateBatchOperation(productIds);
+            const validation = validateBatchOperation(uniqueProductIds);
             if (!validation.valid) {
                 return res.status(400).json({
                     success: false,
@@ -274,17 +284,17 @@ const wishlistController = {
 
             await connection.beginTransaction();
 
-            const results = [];
             const added = [];
             const alreadyExist = [];
             const notFound = [];
 
-            for (const productId of productIds) {
+            for (const productId of uniqueProductIds) {
                 // Check if product exists and is active
                 const [product] = await connection.query(
                     'SELECT id FROM products WHERE id = ? AND is_active = 1',
                     [productId]
                 );
+
                 if (!product.length) {
                     notFound.push(productId);
                     continue;
@@ -295,6 +305,7 @@ const wishlistController = {
                     'SELECT id FROM wishlist_items WHERE user_id = ? AND product_id = ?',
                     [userId, productId]
                 );
+
                 if (existing.length) {
                     alreadyExist.push(productId);
                     continue;
@@ -305,6 +316,7 @@ const wishlistController = {
                     'INSERT INTO wishlist_items (user_id, product_id, created_at) VALUES (?, ?, NOW())',
                     [userId, productId]
                 );
+
                 added.push(productId);
             }
 
@@ -313,22 +325,25 @@ const wishlistController = {
             // Invalidate cache
             invalidateCache(userId);
 
-            logger.info(`Batch add: ${added.length} added, ${alreadyExist.length} existing, ${notFound.length} not found`);
+            logger.info(
+                `Batch add: ${added.length} added, ${alreadyExist.length} existing, ${notFound.length} not found`
+            );
 
             return res.status(200).json({
                 success: true,
                 message: `Added ${added.length} products to wishlist`,
                 data: {
-                    added: added,
-                    alreadyExist: alreadyExist,
-                    notFound: notFound,
-                    totalProcessed: productIds.length
+                    added,
+                    alreadyExist,
+                    notFound,
+                    totalProcessed: uniqueProductIds.length
                 }
             });
 
         } catch (error) {
             await connection.rollback();
             logger.error(`BATCH ADD TO WISHLIST ERROR: ${error.message}`);
+
             return res.status(500).json({
                 success: false,
                 message: "Failed to add products to wishlist"
@@ -809,7 +824,7 @@ const wishlistController = {
         try {
             const userId = req.user.id;
             invalidateCache(userId);
-            
+
             return res.status(200).json({
                 success: true,
                 message: 'Wishlist cache cleared'
@@ -821,6 +836,107 @@ const wishlistController = {
                 message: 'Failed to clear cache'
             });
         }
+    }
+};
+
+// 1. Get any user's wishlist (Admin)
+exports.getAdminUserWishlist = async (req, res) => {
+    try {
+        const { safeInteger } = require("../utils/helpers"); // Require helper if not top-level
+        const db = require("../config/db");
+
+        const userId = safeInteger(req.params.userId);
+        if (!userId || userId < 1) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid user ID is required",
+            });
+        }
+
+        const [rows] = await db.query(
+            `
+            SELECT 
+                p.id, 
+                p.name, 
+                p.price, 
+                p.image, 
+                p.brand, 
+                p.stock,
+                w.created_at as added_at,
+                u.name as user_name,
+                u.email as user_email
+            FROM wishlist_items w
+            JOIN products p ON w.product_id = p.id
+            JOIN users u ON w.user_id = u.id
+            WHERE w.user_id = ?
+            ORDER BY w.created_at DESC
+        `,
+            [userId],
+        );
+
+        return res.status(200).json({
+            success: true,
+            data: rows,
+        });
+    } catch (error) {
+        console.error("ADMIN GET WISHLIST ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch user wishlist",
+        });
+    }
+};
+
+// 2. Get wishlist stats (Admin)
+exports.getWishlistStats = async (req, res) => {
+    try {
+        const db = require("../config/db");
+
+        // Get total wishlist items across all users
+        const [totalItems] = await db.query(
+            "SELECT COUNT(*) as total FROM wishlist_items",
+        );
+
+        // Get unique users with wishlist
+        const [uniqueUsers] = await db.query(
+            "SELECT COUNT(DISTINCT user_id) as users FROM wishlist_items",
+        );
+
+        // Get most wishlisted products
+        const [topProducts] = await db.query(`
+            SELECT p.id, p.name, COUNT(*) as wishlist_count
+            FROM wishlist_items w
+            JOIN products p ON w.product_id = p.id
+            GROUP BY p.id
+            ORDER BY wishlist_count DESC
+            LIMIT 10
+        `);
+
+        // Get recent activity
+        const [recentActivity] = await db.query(`
+            SELECT w.*, p.name as product_name, u.name as user_name
+            FROM wishlist_items w
+            JOIN products p ON w.product_id = p.id
+            JOIN users u ON w.user_id = u.id
+            ORDER BY w.created_at DESC
+            LIMIT 20
+        `);
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                totalItems: totalItems[0]?.total || 0,
+                uniqueUsers: uniqueUsers[0]?.users || 0,
+                topProducts: topProducts,
+                recentActivity: recentActivity,
+            },
+        });
+    } catch (error) {
+        console.error("WISHLIST STATS ERROR:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch wishlist stats",
+        });
     }
 };
 
