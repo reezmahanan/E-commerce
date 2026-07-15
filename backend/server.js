@@ -20,6 +20,9 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const app = express();
 
 // Add with other imports
+// init app early so route and middleware registration can safely use it
+const app = express();
+
 const responseExampleRoutes = require('./routes/responseExampleRoutes');
 const { standardizeResponse } = require('./middleware/responseStandardizer');
 

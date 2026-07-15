@@ -477,6 +477,9 @@ const getOrderSummary = async (req, res) => {
             success: false,
             message: "Invalid order ID"
         });
+    } catch (error) {
+        console.error("GET ORDER SUMMARY ERROR:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
 
     let connection;

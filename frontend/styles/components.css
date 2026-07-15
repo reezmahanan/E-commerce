@@ -591,6 +591,89 @@ html, body {
     text-align: center;
 }
 
+/* Grocery Category Card Styles */
+.grocery-category-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    text-decoration: none;
+    background: #ffffff;
+    border: 1px solid rgba(8, 129, 120, 0.08);
+    border-radius: 12px;
+    padding: 12px 6px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.grocery-category-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary-color, #088178);
+    box-shadow: 0 10px 20px rgba(8, 129, 120, 0.1);
+}
+
+.grocery-card-img-wrapper {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 8px;
+    border: 2px solid #f6faf9;
+    transition: all 0.3s ease;
+    background: #f6faf9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.grocery-category-card:hover .grocery-card-img-wrapper {
+    border-color: var(--primary-color, #088178);
+    transform: scale(1.08);
+}
+
+.grocery-card-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.grocery-category-card span {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dark, #222);
+    transition: color 0.3s ease;
+    line-height: 1.2;
+}
+
+.grocery-category-card:hover span {
+    color: var(--primary-color, #088178);
+}
+
+/* Dark Theme overrides */
+body.dark-theme .grocery-category-card {
+    background: #222;
+    border-color: #333;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-theme .grocery-category-card:hover {
+    border-color: #39a4d6;
+    box-shadow: 0 10px 20px rgba(57, 164, 214, 0.15);
+}
+
+body.dark-theme .grocery-card-img-wrapper {
+    border-color: #1a1a1a;
+    background: #1a1a1a;
+}
+
+body.dark-theme .grocery-category-card span {
+    color: #e0e0e0;
+}
+
+body.dark-theme .grocery-category-card:hover span {
+    color: #39a4d6;
+}
+
 .mobile-badge {
     background: var(--primary-color, #088178);
     color: #ffffff;

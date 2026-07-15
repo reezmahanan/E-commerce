@@ -62,7 +62,7 @@ class MetricsAggregationService extends EventEmitter {
      * Get conversion rate
      */
     async getConversionRate(period = TIME_PERIODS.WEEK, filters = {}) {
-        const cacheKey = `conversion_rate:${period}:${JSON.stringify(filters)}`;
+        const cacheKey = `conversion_rate:${period}:${JSON.stringify({ category: filters.category, userSegment: filters.userSegment })}`;
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
@@ -108,7 +108,7 @@ class MetricsAggregationService extends EventEmitter {
      * Get average order value
      */
     async getAverageOrderValue(period = TIME_PERIODS.WEEK, filters = {}) {
-        const cacheKey = `aov:${period}:${JSON.stringify(filters)}`;
+        const cacheKey = `aov:${period}:${JSON.stringify({ category: filters.category, userSegment: filters.userSegment })}`;
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
@@ -154,7 +154,7 @@ class MetricsAggregationService extends EventEmitter {
      * Get abandoned cart rate
      */
     async getAbandonedCartRate(period = TIME_PERIODS.WEEK, filters = {}) {
-        const cacheKey = `abandoned:${period}:${JSON.stringify(filters)}`;
+        const cacheKey = `abandoned:${period}:${JSON.stringify({ category: filters.category, userSegment: filters.userSegment })}`;
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
@@ -202,7 +202,7 @@ class MetricsAggregationService extends EventEmitter {
      * Get recommendation CTR
      */
     async getRecommendationCTR(period = TIME_PERIODS.WEEK, filters = {}) {
-        const cacheKey = `recommendation_ctr:${period}:${JSON.stringify(filters)}`;
+        const cacheKey = `recommendation_ctr:${period}:${JSON.stringify({ category: filters.category, userSegment: filters.userSegment })}`;
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
@@ -249,7 +249,7 @@ class MetricsAggregationService extends EventEmitter {
      * Get coupon effectiveness
      */
     async getCouponEffectiveness(period = TIME_PERIODS.WEEK, filters = {}) {
-        const cacheKey = `coupon:${period}:${JSON.stringify(filters)}`;
+        const cacheKey = `coupon:${period}:${JSON.stringify({ category: filters.category, userSegment: filters.userSegment })}`;
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
@@ -305,7 +305,7 @@ class MetricsAggregationService extends EventEmitter {
      * Get customer lifetime value
      */
     async getCustomerLifetimeValue(period = TIME_PERIODS.MONTH, filters = {}) {
-        const cacheKey = `clv:${period}:${JSON.stringify(filters)}`;
+        const cacheKey = `clv:${period}:${JSON.stringify({ category: filters.category, userSegment: filters.userSegment })}`;
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
@@ -363,7 +363,7 @@ class MetricsAggregationService extends EventEmitter {
      * Get revenue growth
      */
     async getRevenueGrowth(period = TIME_PERIODS.MONTH, filters = {}) {
-        const cacheKey = `revenue_growth:${period}:${JSON.stringify(filters)}`;
+        const cacheKey = `revenue_growth:${period}:${JSON.stringify({ category: filters.category, userSegment: filters.userSegment })}`;
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
@@ -415,7 +415,7 @@ class MetricsAggregationService extends EventEmitter {
      * Get churn rate
      */
     async getChurnRate(period = TIME_PERIODS.MONTH, filters = {}) {
-        const cacheKey = `churn:${period}:${JSON.stringify(filters)}`;
+        const cacheKey = `churn:${period}:${JSON.stringify({ category: filters.category, userSegment: filters.userSegment })}`;
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
@@ -467,7 +467,7 @@ class MetricsAggregationService extends EventEmitter {
      * Get all metrics dashboard
      */
     async getDashboard(period = TIME_PERIODS.WEEK, filters = {}) {
-        const cacheKey = `dashboard:${period}:${JSON.stringify(filters)}`;
+        const cacheKey = `dashboard:${period}:${JSON.stringify({ category: filters.category, userSegment: filters.userSegment })}`;
         const cached = this.getFromCache(cacheKey);
         if (cached) return cached;
 
@@ -589,6 +589,10 @@ class MetricsAggregationService extends EventEmitter {
     }
 
     setCache(key, data) {
+        if (this.metricsCache.size >= 1000) {
+            const firstKey = this.metricsCache.keys().next().value;
+            this.metricsCache.delete(firstKey);
+        }
         this.metricsCache.set(key, {
             data,
             expiresAt: Date.now() + this.cacheTTL * 1000
