@@ -1,5 +1,6 @@
 const promisePool = require("../config/db");
 const { safeNumber, safeUUID } = require("../utils/helpers");
+const inventoryReservationService = require("../services/inventoryReservationService");
 
 function normalizeCartQuantities(items) {
     const quantities = new Map();
@@ -156,21 +157,15 @@ const cartController = {
 
             await connection.beginTransaction();
 
-            const [products] = await connection.query("SELECT id, stock FROM products WHERE id = ? FOR UPDATE", [productId]);
-            if (products.length === 0) {
+            const reserved = await inventoryReservationService.reserveStock(userId, productId, quantity, connection);
+            if (!reserved) {
                 await connection.rollback();
-                return res.status(404).json({ success: false, message: "Product not found" });
+                return res.status(400).json({ success: false, message: "Requested quantity exceeds available stock or could not be reserved" });
             }
-            const stock = products[0].stock;
 
             const [cartItems] = await connection.query("SELECT quantity FROM cart_items WHERE user_id = ? AND product_id = ?", [userId, productId]);
             let currentQty = cartItems.length > 0 ? cartItems[0].quantity : 0;
             let newQty = currentQty + quantity;
-
-            if (newQty > stock) {
-                await connection.rollback();
-                return res.status(400).json({ success: false, message: "Requested quantity exceeds available stock" });
-            }
 
             if (cartItems.length > 0) {
                 await connection.query("UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?", [newQty, userId, productId]);
@@ -179,7 +174,7 @@ const cartController = {
             }
 
             await connection.commit();
-            return res.status(200).json({ success: true, message: "Product added to cart" });
+            return res.status(200).json({ success: true, message: "Product added to cart and reserved for 15 minutes" });
         } catch (error) {
             if (connection) await connection.rollback();
             console.error("ADD TO CART ERROR:", error);
