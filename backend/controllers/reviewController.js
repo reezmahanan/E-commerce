@@ -3,6 +3,7 @@ const Review = require("../models/Review");
 const {
     safeArray,
     safeInteger,
+    safeUUID,
     sanitizeString
 } = require("../utils/helpers");
 
@@ -46,7 +47,7 @@ async function refreshProductReviewStats(productId, connection = db) {
 }
 
 const getProductReviews = async (req, res) => {
-    const productId = safeInteger(req.params.id);
+    const productId = safeUUID(req.params.id);
 
     if (!productId) {
         return res.status(400).json({
@@ -111,8 +112,8 @@ const getProductReviews = async (req, res) => {
 };
 
 const createProductReview = async (req, res) => {
-    const productId = safeInteger(req.params.id);
-    const userId = safeInteger(req.user?.id);
+    const productId = safeUUID(req.params.id);
+    const userId = safeUUID(req.user?.id);
     const rating = safeInteger(req.body.rating);
     const comment = sanitizeString(req.body.comment);
 
@@ -209,7 +210,7 @@ const createProductReview = async (req, res) => {
 };
 
 const deleteProductReview = async (req, res) => {
-    const productId = safeInteger(req.params.id);
+    const productId = safeUUID(req.params.id);
     const reviewId = safeInteger(req.params.reviewId);
     const connection = await db.getConnection();
 
