@@ -55,7 +55,7 @@ if (!process.env.JWT_SECRET) {
 // ❌ `validateRequiredFields` helper removed completely
 // ❌ `sanitizeString` import removed because it's now handled in the middleware
 
-// CAPTCHA check is imported from captchaMiddleware
+
 
 // ======================== ROUTES ========================
 

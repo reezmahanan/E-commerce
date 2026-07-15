@@ -692,37 +692,43 @@ const getFraudStatus = async (req, res) => {
     }
 };
 
-/**
- * Get current authenticated user details
- */
 const getMe = async (req, res) => {
     try {
-        const userId = req.user?.id;
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                message: "Unauthorized access"
-            });
-        }
-        const [rows] = await db.query(
-            "SELECT id, name, email, role, created_at FROM users WHERE id = ?",
-            [userId]
+        const [users] = await db.query(
+            "SELECT id, name, email, role, is_active FROM users WHERE id = ? LIMIT 1",
+            [req.user.id]
         );
-        if (rows.length === 0) {
+
+        if (!users || !users.length) {
             return res.status(404).json({
                 success: false,
                 message: "User not found"
             });
         }
+
+        const user = users[0];
+
+        if (user.is_active === 0) {
+            return res.status(403).json({
+                success: false,
+                message: "Account has been deactivated"
+            });
+        }
+
         return res.status(200).json({
             success: true,
-            user: rows[0]
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
         });
     } catch (error) {
-        console.error("Error in getMe:", error);
+        console.error("GET ME ERROR:", error);
         return res.status(500).json({
             success: false,
-            message: "Internal server error"
+            message: "Server error"
         });
     }
 };

@@ -36,9 +36,6 @@ app.use(standardizeResponse);
 // Add response example routes (for testing)
 app.use('/api/response-example', responseExampleRoutes);
 
-const { buildHealthResponse } = require("./utils/healthResponseBuilder");
-const { logServerStartup } = require("./utils/serverStartupLogger");
-const { errorLogStream } = require("./utils/logstreams");
 
 const logDir = path.join(process.cwd(), "logs");
 // Add with other route imports
@@ -67,8 +64,10 @@ const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 const discoveryRoutes = require('./routes/discoveryRoutes');
 const { capabilityDiscoveryService } = require('./services/capabilityDiscoveryService');
 
-// Initialize capability discovery
-await capabilityDiscoveryService.initialize();
+// Initialize health score service asynchronously
+healthScoreService.initialize().catch(err => {
+    console.error('Failed to initialize health score service:', err);
+});
 
 // Add discovery routes
 app.use('/api/discovery', discoveryRoutes);
@@ -76,8 +75,10 @@ app.use('/api/discovery', discoveryRoutes);
 const metricsRoutes = require('./routes/metricsRoutes');
 const { metricsAggregationService } = require('./services/metricsAggregationService');
 
-// Initialize metrics service
-await metricsAggregationService.initialize();
+// Initialize metrics service asynchronously
+metricsAggregationService.initialize().catch(err => {
+    console.error('Failed to initialize metrics aggregation service:', err);
+});
 
 // Add metrics routes
 app.use('/api/metrics', metricsRoutes);
@@ -98,11 +99,7 @@ notificationBroker.registerChannel('webhook', webhookChannel.handler);
 
 // Initialize notification broker asynchronously
 notificationBroker.initialize().catch(err => {
-    if (typeof logger !== 'undefined' && logger.error) {
-        logger.error('Failed to initialize notification broker:', err);
-    } else {
-        console.error('Failed to initialize notification broker:', err);
-    }
+    console.error('Failed to initialize notification broker:', err);
 });
 
 
@@ -126,11 +123,7 @@ const { tracingService } = require('./services/tracingService');
 
 // Initialize tracing service asynchronously
 tracingService.initialize().catch(err => {
-    if (typeof logger !== 'undefined' && logger.error) {
-        logger.error('Failed to initialize tracing service:', err);
-    } else {
-        console.error('Failed to initialize tracing service:', err);
-    }
+    console.error('Failed to initialize tracing service:', err);
 });
 
 // Add tracing middleware BEFORE any routes
@@ -155,11 +148,7 @@ const { policyEngine } = require('./services/policyEngineService');
 
 // Initialize policy engine asynchronously
 policyEngine.initialize().catch(err => {
-    if (typeof logger !== 'undefined' && logger.error) {
-        logger.error('Failed to initialize policy engine:', err);
-    } else {
-        console.error('Failed to initialize policy engine:', err);
-    }
+    console.error('Failed to initialize policy engine:', err);
 });
 
 // Add policy routes
@@ -173,11 +162,7 @@ const { outboxService } = require('./services/outboxService');
 
 // Initialize outbox service asynchronously
 outboxService.initialize().catch(err => {
-    if (typeof logger !== 'undefined' && logger.error) {
-        logger.error('Failed to initialize outbox service:', err);
-    } else {
-        console.error('Failed to initialize outbox service:', err);
-    }
+    console.error('Failed to initialize outbox service:', err);
 });
 
 // Add outbox routes
@@ -197,11 +182,7 @@ const { architectureComplexityService } = require('./services/architectureComple
 
 // Initialize job queue asynchronously
 jobQueue.initialize().catch(err => {
-    if (typeof logger !== 'undefined' && logger.error) {
-        logger.error('Failed to initialize job queue:', err);
-    } else {
-        console.error('Failed to initialize job queue:', err);
-    }
+    console.error('Failed to initialize job queue:', err);
 });
 
 
@@ -210,11 +191,7 @@ const { featureFlagService } = require('./services/featureFlagService');
 
 // Initialize feature flag service asynchronously
 featureFlagService.initialize().catch(err => {
-    if (typeof logger !== 'undefined' && logger.error) {
-        logger.error('Failed to initialize feature flag service:', err);
-    } else {
-        console.error('Failed to initialize feature flag service:', err);
-    }
+    console.error('Failed to initialize feature flag service:', err);
 });
 
 // Add flag routes
@@ -251,11 +228,7 @@ const { pluginSystem } = require('./services/pluginSystemService');
 
 // Initialize plugin system asynchronously
 pluginSystem.initialize().catch(err => {
-    if (typeof logger !== 'undefined' && logger.error) {
-        logger.error('Failed to initialize plugin system:', err);
-    } else {
-        console.error('Failed to initialize plugin system:', err);
-    }
+    console.error('Failed to initialize plugin system:', err);
 });
 
 // Add plugin routes
@@ -574,6 +547,8 @@ process.on("uncaughtException", (error) => {
 
 // Initialize graceful shutdown logic
 setupGracefulShutdown(server);
+
+// Graceful shutdown event listeners are already setup inside setupGracefulShutdown
 
 // Start server
 console.log("Reached end of server.js. Starting server on port:", PORT);
