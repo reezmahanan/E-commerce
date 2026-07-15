@@ -16,7 +16,15 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other imports
+const slaRoutes = require('./routes/slaRoutes');
+const { slaService } = require('./services/businessSLAService');
 
+// Initialize SLA service
+await slaService.initialize();
+
+// Add SLA routes
+app.use('/api/sla', slaRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
