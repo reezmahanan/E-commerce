@@ -3,6 +3,7 @@ const {
     safeArray,
     safeNumber,
     safeInteger,
+    safeUUID,
     sanitizeString,
 } = require("../utils/helpers");
 const logger = require("../utils/logger");
@@ -121,10 +122,10 @@ const createOrderService = async (connection, orderData) => {
 
         // validate each item
         for (const item of safeArray(items)) {
-            const productId = safeInteger(item.id);
+            const productId = safeUUID(item.id);
 
             // invalid product id
-            if (productId <= 0) {
+            if (!productId) {
                 throw new Error("Invalid product ID");
             }
 
@@ -160,7 +161,7 @@ const createOrderService = async (connection, orderData) => {
 
             // save validated item
             validatedItems.push({
-                id: safeInteger(product.id),
+                id: safeUUID(product.id),
                 name: sanitizeString(product.name),
                 image: sanitizeString(product.image),
                 price: realPrice,
@@ -214,7 +215,7 @@ const createOrderService = async (connection, orderData) => {
         `;
 
         const [orderResult] = await connection.query(orderQuery, [
-            safeInteger(user_id),
+            safeUUID(user_id),
             customer_name,
             customer_email,
             customer_phone,
