@@ -186,6 +186,9 @@ jobQueue.initialize().catch(err => {
 });
 
 
+const processRenewals = require('./jobs/subscriptionRenewalJob');
+setInterval(processRenewals, 24 * 60 * 60 * 1000); // run daily
+
 const flagRoutes = require('./routes/flagRoutes');
 const { featureFlagService } = require('./services/featureFlagService');
 

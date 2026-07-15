@@ -7,6 +7,8 @@ const {
     "../services/order.service"
 );
 
+const inventoryReservationService = require("../services/inventoryReservationService");
+
 const {
     safeNumber,
     safeInteger,
@@ -137,6 +139,16 @@ const createOrder =
                         promo_code: promoCode ? sanitizeString(promoCode) : null
                     }
                 );
+            
+            // Validate inventory locks
+            const locksValid = await inventoryReservationService.validateCartLocks(req.user.id, items, connection);
+            if (!locksValid) {
+                await connection.rollback();
+                return res.status(400).json({ success: false, message: "Inventory locks expired or insufficient stock" });
+            }
+            
+            // Consume inventory locks
+            await inventoryReservationService.consumeLocks(req.user.id, items, connection);
 
             // commit transaction
             await connection.commit();
