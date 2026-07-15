@@ -591,6 +591,89 @@ html, body {
     text-align: center;
 }
 
+/* Grocery Category Card Styles */
+.grocery-category-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    text-decoration: none;
+    background: #ffffff;
+    border: 1px solid rgba(8, 129, 120, 0.08);
+    border-radius: 12px;
+    padding: 12px 6px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.grocery-category-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary-color, #088178);
+    box-shadow: 0 10px 20px rgba(8, 129, 120, 0.1);
+}
+
+.grocery-card-img-wrapper {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 8px;
+    border: 2px solid #f6faf9;
+    transition: all 0.3s ease;
+    background: #f6faf9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.grocery-category-card:hover .grocery-card-img-wrapper {
+    border-color: var(--primary-color, #088178);
+    transform: scale(1.08);
+}
+
+.grocery-card-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.grocery-category-card span {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dark, #222);
+    transition: color 0.3s ease;
+    line-height: 1.2;
+}
+
+.grocery-category-card:hover span {
+    color: var(--primary-color, #088178);
+}
+
+/* Dark Theme overrides */
+body.dark-theme .grocery-category-card {
+    background: #222;
+    border-color: #333;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-theme .grocery-category-card:hover {
+    border-color: #39a4d6;
+    box-shadow: 0 10px 20px rgba(57, 164, 214, 0.15);
+}
+
+body.dark-theme .grocery-card-img-wrapper {
+    border-color: #1a1a1a;
+    background: #1a1a1a;
+}
+
+body.dark-theme .grocery-category-card span {
+    color: #e0e0e0;
+}
+
+body.dark-theme .grocery-category-card:hover span {
+    color: #39a4d6;
+}
+
 .mobile-badge {
     background: var(--primary-color, #088178);
     color: #ffffff;
@@ -1690,4 +1773,134 @@ body.dark-theme .cart-drawer-subtotal {
     .cart-drawer-panel {
         width: 100%;
     }
+}
+
+/* ==========================================================================
+   HOME & KITCHEN MEGA MENU STYLES
+   ========================================================================== */
+
+/* Home & Kitchen Mega Menu Grid Styles */
+.home-kitchen-mega-menu-grid {
+    grid-template-columns: minmax(260px, 1.2fr) minmax(220px, 0.8fr) !important;
+    align-items: start;
+    gap: 15px !important;
+}
+
+.home-kitchen-subcategory-list {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+}
+
+/* Home & Kitchen Category Card Styles */
+.home-kitchen-category-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    text-decoration: none;
+    background: #ffffff;
+    border: 1px solid rgba(8, 129, 120, 0.08);
+    border-radius: 12px;
+    padding: 12px 6px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.home-kitchen-category-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary-color, #088178);
+    box-shadow: 0 10px 20px rgba(8, 129, 120, 0.1);
+}
+
+.home-kitchen-card-img-wrapper {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 8px;
+    border: 2px solid #f6faf9;
+    transition: all 0.3s ease;
+    background: #f6faf9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.home-kitchen-category-card:hover .home-kitchen-card-img-wrapper {
+    border-color: var(--primary-color, #088178);
+    transform: scale(1.08);
+}
+
+.home-kitchen-card-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.home-kitchen-category-card span {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dark, #222);
+    transition: color 0.3s ease;
+    line-height: 1.2;
+}
+
+.home-kitchen-category-card:hover span {
+    color: var(--primary-color, #088178);
+}
+
+/* Active State for Home & Kitchen Cards */
+.home-kitchen-category-card.home-kitchen-subcategory-link.is-active {
+    border-color: var(--primary-color, #088178);
+    background: rgba(8, 129, 120, 0.03);
+    box-shadow: 0 4px 12px rgba(8, 129, 120, 0.08);
+    transform: translateY(-2px);
+}
+
+.home-kitchen-category-card.home-kitchen-subcategory-link.is-active .home-kitchen-card-img-wrapper {
+    border-color: var(--primary-color, #088178);
+}
+
+.home-kitchen-category-card.home-kitchen-subcategory-link.is-active span {
+    color: var(--primary-color, #088178);
+}
+
+/* Dark Theme overrides */
+body.dark-theme .home-kitchen-category-card {
+    background: #222;
+    border-color: #333;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-theme .home-kitchen-category-card:hover {
+    border-color: #39a4d6;
+    box-shadow: 0 10px 20px rgba(57, 164, 214, 0.15);
+}
+
+body.dark-theme .home-kitchen-card-img-wrapper {
+    border-color: #1a1a1a;
+    background: #1a1a1a;
+}
+
+body.dark-theme .home-kitchen-category-card span {
+    color: #e0e0e0;
+}
+
+body.dark-theme .home-kitchen-category-card:hover span {
+    color: #39a4d6;
+}
+
+body.dark-theme .home-kitchen-category-card.home-kitchen-subcategory-link.is-active {
+    border-color: #39a4d6;
+    background: rgba(57, 164, 214, 0.05);
+    box-shadow: 0 4px 12px rgba(57, 164, 214, 0.1);
+}
+
+body.dark-theme .home-kitchen-category-card.home-kitchen-subcategory-link.is-active .home-kitchen-card-img-wrapper {
+    border-color: #39a4d6;
+}
+
+body.dark-theme .home-kitchen-category-card.home-kitchen-subcategory-link.is-active span {
+    color: #39a4d6;
 }

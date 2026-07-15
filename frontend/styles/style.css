@@ -44,8 +44,8 @@
     margin-top: 20px;
     border: 1px solid rgba(255, 255, 255, .3);
     background: rgba(255, 255, 255, .08);
-    backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px);
     border-radius: 14px;
     overflow: hidden;
     cursor: pointer;
@@ -54,7 +54,7 @@
     box-shadow: 0 8px 25px rgba(0, 0, 0, .15);
 }
 
-.banner-btn a {
+.banner-btn, .banner-btn a {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -176,7 +176,7 @@
 
 @media(max-width:768px) {
 
-    .banner-btn a {
+    .banner-btn, .banner-btn a {
         padding: 14px 24px;
         font-size: 14px;
     }
@@ -185,7 +185,7 @@
 
 @media(max-width:480px) {
 
-    .banner-btn a {
+    .banner-btn, .banner-btn a {
         padding: 12px 20px;
         font-size: 13px;
     }
