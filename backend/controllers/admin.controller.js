@@ -2,6 +2,7 @@ const adminService = require("../services/admin.service");
 const {
     safeArray,
     safeNumber,
+    safeUUID,
     sanitizeString,
     getPagination,
     buildPaginationMeta
@@ -89,7 +90,7 @@ const getUsers = async (req, res) => {
 // =====================
 const updateUserStatus = async (req, res) => {
     try {
-        const targetId = safeNumber(req.params.id);
+        const targetId = safeUUID(req.params.id);
         const status = sanitizeString(req.body.status);
 
         // validation
@@ -152,8 +153,8 @@ const updateUserStatus = async (req, res) => {
 const bulkUpdateUserStatus = async (req, res) => {
     try {
         const targetIds = safeArray(req.body.userIds)
-            .map(id => safeNumber(id))
-            .filter(id => id > 0 && id !== req.user.id);
+            .map(id => safeUUID(id))
+            .filter(id => id && id !== req.user.id);
 
         const status = sanitizeString(req.body.status);
 
@@ -218,7 +219,7 @@ const bulkUpdateUserStatus = async (req, res) => {
 // =====================
 const updateUserRole = async (req, res) => {
     try {
-        const targetId = safeNumber(req.params.id);
+        const targetId = safeUUID(req.params.id);
         const role = sanitizeString(req.body.role);
 
         if (!targetId || !["user", "admin", "moderator"].includes(role)) {
@@ -279,8 +280,8 @@ const updateUserRole = async (req, res) => {
 const bulkUpdateUserRole = async (req, res) => {
     try {
         const targetIds = safeArray(req.body.userIds)
-            .map(id => safeNumber(id))
-            .filter(id => id > 0 && id !== req.user.id);
+            .map(id => safeUUID(id))
+            .filter(id => id && id !== req.user.id);
 
         const role = sanitizeString(req.body.role);
 
@@ -332,7 +333,7 @@ const bulkUpdateUserRole = async (req, res) => {
 // =====================
 const deleteUser = async (req, res) => {
     try {
-        const targetId = safeNumber(req.params.id);
+        const targetId = safeUUID(req.params.id);
         const permanent = req.body.permanent === true;
         const reason = sanitizeString(req.body.reason) || "No reason provided";
 
@@ -404,7 +405,7 @@ const verifyUserEmail = async (req, res) => {
 
         const result = await adminService.verifyUserEmail(
             req.user.id,
-            { email: sanitizeString(email), userId: userId ? safeNumber(userId) : undefined },
+            { email: sanitizeString(email), userId: userId ? safeUUID(userId) : undefined },
             req.ip,
             req.headers["user-agent"]
         );
@@ -462,7 +463,7 @@ const getAdminLogs = async (req, res) => {
 
         const filters = {
             action: sanitizeString(req.query.action),
-            userId: req.query.userId ? safeNumber(req.query.userId) : undefined,
+            userId: req.query.userId ? safeUUID(req.query.userId) : undefined,
             startDate: startDate, 
             endDate: endDate      
         };

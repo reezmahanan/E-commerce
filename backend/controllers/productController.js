@@ -4,6 +4,7 @@ const db = require("../config/db");
 const {
     safeNumber,
     safeInteger,
+    safeUUID,
     sanitizeString,
     buildPaginationMeta,
     safeArray
@@ -214,7 +215,7 @@ const getProducts = async (req, res) => {
 // ---------- Get single product ----------
 const getSingleProduct = async (req, res) => {
     const id =
-        safeInteger(
+        safeUUID(
             req.params.id
         );
 
@@ -361,7 +362,7 @@ const createProduct = async (req, res) => {
 // ---------- Update product ----------
 const updateProduct = async (req, res) => {
     const id =
-        safeInteger(
+        safeUUID(
             req.params.id
         );
 
@@ -460,7 +461,7 @@ const updateProduct = async (req, res) => {
 // Delete product
 const deleteProduct = async (req, res) => {
     const id =
-        safeInteger(
+        safeUUID(
             req.params.id
         );
 

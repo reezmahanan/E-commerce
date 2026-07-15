@@ -1,6 +1,6 @@
 const db = require("../config/db");
 const logger = require("../utils/logger");
-const { safeArray, safeNumber, sanitizeString } = require("../utils/helpers");
+const { safeArray, safeNumber, sanitizeString, safeUUID } = require("../utils/helpers");
 const NodeCache = require('node-cache');
 
 const conversationCache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
@@ -28,10 +28,11 @@ function validateConversationId(id) {
 }
 
 function validateUserId(id) {
-    if (!id || isNaN(parseInt(id))) {
+    const validId = safeUUID(id);
+    if (!validId) {
         throw new Error('Invalid user ID');
     }
-    return parseInt(id);
+    return validId;
 }
 
 const findOrCreateConversation = async (customerId) => {

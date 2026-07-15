@@ -5,8 +5,7 @@ const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/rbacMiddleware");
 const wishlistController = require("../controllers/wishlistController");
-const { safeNumber, safeInteger } = require("../utils/helpers");
-const { MAX_WISHLIST_SYNC_LIMIT } = require("../config/constants");
+const { safeNumber, safeInteger, safeUUID } = require("../utils/helpers");
 
 // ==================== SYNC VALIDATION MIDDLEWARE ====================
 const validateSyncPayload = (req, res, next) => {
@@ -52,8 +51,8 @@ const { MAX_WISHLIST_SYNC_LIMIT, SUPPORTED_EXPORT_FORMATS } = require("../config
 
 // ==================== VALIDATION MIDDLEWARE ====================
 const validateProductId = (req, res, next) => {
-  const productId = safeNumber(req.params.productId || req.body.productId);
-  if (!productId || productId < 1) {
+  const productId = safeUUID(req.params.productId || req.body.productId);
+  if (!productId) {
     return res.status(400).json({
       success: false,
       message: "Valid product ID is required",
@@ -85,8 +84,7 @@ const validateBatchProducts = (req, res, next) => {
   // 3. Validate individual IDs and check for DUPLICATES
   const seenIds = new Set(); // Duplicate check ke liye Set use kiya
   for (const id of productIds) {
-    const validId = safeNumber(id);
-    if (!validId || validId < 1) {
+    if (!safeUUID(id)) {
       return res.status(400).json({
         success: false,
         message: `Invalid product ID: ${id}`,

@@ -1,7 +1,7 @@
 // backend/controllers/wishlistController.js
 
 const promisePool = require("../config/db");
-const { safeNumber, safeArray, safeInteger } = require("../utils/helpers");
+const { safeNumber, safeArray, safeInteger, safeUUID } = require("../utils/helpers");
 const logger = require("../utils/logger");
 const crypto = require('crypto');
 
@@ -50,8 +50,8 @@ function invalidateCache(userId) {
 
 // ==================== VALIDATION ====================
 function validateProductId(productId) {
-    const id = safeInteger(productId);
-    if (!id || id <= 0) {
+    const id = safeUUID(productId);
+    if (!id) {
         return { valid: false, error: 'Invalid product ID' };
     }
     return { valid: true, id };
@@ -185,7 +185,7 @@ const wishlistController = {
     addToWishlist: async (req, res) => {
         try {
             const userId = req.user.id;
-            const productId = safeNumber(req.body.productId);
+            const productId = safeUUID(req.body.productId);
 
             // Validate product ID
             const validation = validateProductId(productId);
@@ -251,7 +251,7 @@ const wishlistController = {
     removeFromWishlist: async (req, res) => {
         try {
             const userId = req.user.id;
-            const productId = safeNumber(req.params.productId || req.body.productId);
+            const productId = safeUUID(req.params.productId || req.body.productId);
 
             // Validate product ID
             const validation = validateProductId(productId);
@@ -301,7 +301,7 @@ const wishlistController = {
         try {
             const userId = req.user.id;
             const { productIds } = req.body;
-            const uniqueProductIds = [...new Set(productIds.map((id) => safeNumber(id)))];
+            const uniqueProductIds = [...new Set(productIds.map((id) => safeUUID(id)))];
 
             // Validate batch
             const validation = validateBatchOperation(uniqueProductIds);
@@ -473,7 +473,7 @@ const wishlistController = {
     checkWishlist: async (req, res) => {
         try {
             const userId = req.user.id;
-            const productId = safeNumber(req.params.productId);
+            const productId = safeUUID(req.params.productId);
 
             const validation = validateProductId(productId);
             if (!validation.valid) {
@@ -519,11 +519,11 @@ const wishlistController = {
             for (const item of items) {
                 if (!item) continue;
 
-                const productId = safeNumber(
+                const productId = safeUUID(
                     item.productId != null ? item.productId : item.id
                 );
 
-                if (!productId || productId < 1) continue;
+                if (!productId) continue;
 
                 productIds.add(productId);
             }
@@ -872,11 +872,11 @@ const wishlistController = {
 // 1. Get any user's wishlist (Admin)
 exports.getAdminUserWishlist = async (req, res) => {
     try {
-        const { safeInteger } = require("../utils/helpers"); // Require helper if not top-level
+        const { safeUUID } = require("../utils/helpers"); // Require helper if not top-level
         const db = require("../config/db");
 
-        const userId = safeInteger(req.params.userId);
-        if (!userId || userId < 1) {
+        const userId = safeUUID(req.params.userId);
+        if (!userId) {
             return res.status(400).json({
                 success: false,
                 message: "Valid user ID is required",

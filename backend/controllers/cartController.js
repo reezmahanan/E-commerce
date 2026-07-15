@@ -1,5 +1,5 @@
 const promisePool = require("../config/db");
-const { safeNumber } = require("../utils/helpers");
+const { safeNumber, safeUUID } = require("../utils/helpers");
 
 function normalizeCartQuantities(items) {
     const quantities = new Map();
@@ -7,10 +7,10 @@ function normalizeCartQuantities(items) {
     for (const item of items) {
         if (!item) continue;
 
-        const productId = safeNumber(item.productId ?? item.id);
+        const productId = safeUUID(item.productId ?? item.id);
         let qty = safeNumber(item.qty ?? item.quantity);
 
-        if (productId < 1) continue;
+        if (!productId) continue;
         if (qty < 1) qty = 1;
 
         quantities.set(productId, qty);
@@ -83,7 +83,7 @@ const cartController = {
 
                 const productMap = new Map(
                     products.map((product) => [
-                        safeNumber(product.id),
+                        safeUUID(product.id),
                         safeNumber(product.stock)
                     ])
                 );
