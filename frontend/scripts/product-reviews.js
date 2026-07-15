@@ -1,5 +1,15 @@
 (() => {
   let productReviews = [];
+  // render stars HTML for a given rating
+  function renderStars(rating) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        stars += i <= rating
+            ? '<i class="fas fa-star" style="color: gold;"></i>'
+            : '<i class="far fa-star" style="color: #ccc;"></i>';
+    }
+    return stars;
+}
   let activeProductId = null;
   let selectedRating = 0;
 
@@ -11,6 +21,8 @@
   const starButtons = Array.from(
     document.querySelectorAll(".review-star-input button"),
   );
+
+
 
   function getCurrentUser() {
     return AppUtils.getUser ? AppUtils.getUser() : null;
