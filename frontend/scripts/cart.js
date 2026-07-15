@@ -309,8 +309,8 @@ function saveForLater(index) {
     // Check if already saved
     const exists = savedForLater.some(
         saved => String(saved.id) === String(item.id) && 
-                 saved.color === item.color && 
-                 saved.size === item.size
+                saved.color === item.color && 
+                saved.size === item.size
     );
     
     if (exists) {
@@ -508,13 +508,13 @@ function renderCart() {
         cartItem.innerHTML = `
             <div class="cart-item-select-wrapper">
                 <input type="checkbox" class="cart-item-select" 
-                       data-item-id="${item.id}"
-                       ${isSelected ? 'checked' : ''}
-                       onchange="window.toggleSelectItem(${item.id})">
+                    data-item-id="${item.id}"
+                    ${isSelected ? 'checked' : ''}
+                    onchange="window.toggleSelectItem(${item.id})">
             </div>
             <img src="${AppUtils.escapeHTML(AppUtils.defaultImage(item.img || item.image))}"
-                 alt="${AppUtils.escapeHTML(item.name || "Product")}"
-                 loading="lazy">
+                alt="${AppUtils.escapeHTML(item.name || "Product")}"
+                loading="lazy">
             <div class="cart-item-info">
                 <h3>${AppUtils.escapeHTML(item.name || "Product")}</h3>
                 <p>Price: ${AppUtils.formatPrice(price)}</p>
@@ -525,10 +525,10 @@ function renderCart() {
                 
                 <div class="item-notes">
                     <input type="text" class="note-input" 
-                           placeholder="Add a note..." 
-                           value="${AppUtils.escapeHTML(item.note || '')}"
-                           data-index="${index}"
-                           onchange="window.updateItemNote(${index}, this.value)">
+                        placeholder="Add a note..." 
+                        value="${AppUtils.escapeHTML(item.note || '')}"
+                        data-index="${index}"
+                        onchange="window.updateItemNote(${index}, this.value)">
                 </div>
                 
                 <div class="cart-qty-controls" aria-label="Quantity controls">
@@ -537,9 +537,9 @@ function renderCart() {
                         -
                     </button>
                     <input type="number" class="qty-input" 
-                           value="${qty}" min="${CART_CONFIG.MIN_QUANTITY}" max="${CART_CONFIG.MAX_QUANTITY}"
-                           data-index="${index}"
-                           onchange="window.updateQuantity(${index}, parseInt(this.value))">
+                        value="${qty}" min="${CART_CONFIG.MIN_QUANTITY}" max="${CART_CONFIG.MAX_QUANTITY}"
+                        data-index="${index}"
+                        onchange="window.updateQuantity(${index}, parseInt(this.value))">
                     <button type="button" data-index="${index}" class="increase-qty" 
                             aria-label="Increase quantity">
                         +
@@ -577,7 +577,7 @@ function renderCart() {
                 ${savedForLater.map((item, idx) => `
                     <div class="saved-item" data-saved-index="${idx}">
                         <img src="${AppUtils.escapeHTML(AppUtils.defaultImage(item.img || item.image))}" 
-                             alt="${AppUtils.escapeHTML(item.name)}">
+                            alt="${AppUtils.escapeHTML(item.name)}">
                         <div class="saved-item-info">
                             <h4>${AppUtils.escapeHTML(item.name)}</h4>
                             <p>${AppUtils.formatPrice(item.price)}</p>
@@ -650,7 +650,7 @@ function updateItemNote(index, note) {
 document.addEventListener("click", (event) => {
     // Quantity buttons
     const increaseBtn = event.target.closest(".increase-qty");
-    const decreaseBtn = event.target.closest(".decrease-qty");
+    // const decreaseBtn = event.target.closest(".decrease-qty");
     const removeBtn = event.target.closest(".remove-btn");
     const wishlistBtn = event.target.closest(".move-wishlist-btn");
     const saveLaterBtn = event.target.closest(".save-later-btn");
@@ -719,8 +719,8 @@ document.addEventListener("click", (event) => {
         const wishlist = AppUtils.getWishlist();
         const exists = wishlist.some(
             (item) => String(item.id) === String(cart[index].id) &&
-                      item.color === cart[index].color &&
-                      item.size === cart[index].size
+                    item.color === cart[index].color &&
+                    item.size === cart[index].size
         );
         if (!exists) {
             wishlist.push(cart[index]);
