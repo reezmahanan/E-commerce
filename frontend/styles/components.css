@@ -2144,3 +2144,243 @@ body.dark-theme .sports-category-card.sports-subcategory-link.is-active .sports-
 body.dark-theme .sports-category-card.sports-subcategory-link.is-active span {
     color: #39a4d6;
 }
+
+/* Pet Supplies Mega Menu Grid and Category Cards */
+.pet-mega-menu-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 15px !important;
+    align-items: start;
+    padding: 10px 0;
+}
+
+.pet-category-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    text-decoration: none;
+    background: #ffffff;
+    border: 1px solid rgba(8, 129, 120, 0.08);
+    border-radius: 12px;
+    padding: 16px 8px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.pet-category-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary-color, #088178);
+    box-shadow: 0 10px 20px rgba(8, 129, 120, 0.1);
+}
+
+.pet-card-img-wrapper {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 10px;
+    border: 2px solid #f6faf9;
+    transition: all 0.3s ease;
+    background: #f6faf9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pet-category-card:hover .pet-card-img-wrapper {
+    border-color: var(--primary-color, #088178);
+    transform: scale(1.08);
+}
+
+.pet-card-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pet-category-card span {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dark, #222);
+    transition: color 0.3s ease;
+    line-height: 1.2;
+}
+
+.pet-category-card:hover span {
+    color: var(--primary-color, #088178);
+}
+
+/* Active State for Pet Supplies Cards */
+.pet-category-card.pet-subcategory-link.is-active {
+    border-color: var(--primary-color, #088178);
+    background: rgba(8, 129, 120, 0.03);
+    box-shadow: 0 4px 12px rgba(8, 129, 120, 0.08);
+    transform: translateY(-2px);
+}
+
+.pet-category-card.pet-subcategory-link.is-active .pet-card-img-wrapper {
+    border-color: var(--primary-color, #088178);
+}
+
+.pet-category-card.pet-subcategory-link.is-active span {
+    color: var(--primary-color, #088178);
+}
+
+/* Dark Theme overrides for Pet Supplies */
+body.dark-theme .pet-category-card {
+    background: #222;
+    border-color: #333;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-theme .pet-category-card:hover {
+    border-color: #39a4d6;
+    box-shadow: 0 10px 20px rgba(57, 164, 214, 0.15);
+}
+
+body.dark-theme .pet-card-img-wrapper {
+    border-color: #1a1a1a;
+    background: #1a1a1a;
+}
+
+body.dark-theme .pet-category-card span {
+    color: #e0e0e0;
+}
+
+body.dark-theme .pet-category-card:hover span {
+    color: #39a4d6;
+}
+
+body.dark-theme .pet-category-card.pet-subcategory-link.is-active {
+    border-color: #39a4d6;
+    background: rgba(57, 164, 214, 0.05);
+    box-shadow: 0 4px 12px rgba(57, 164, 214, 0.1);
+}
+
+body.dark-theme .pet-category-card.pet-subcategory-link.is-active .pet-card-img-wrapper {
+    border-color: #39a4d6;
+}
+
+body.dark-theme .pet-category-card.pet-subcategory-link.is-active span {
+    color: #39a4d6;
+}
+
+/* Automotive Mega Menu Grid and Category Cards */
+.auto-mega-menu-grid {
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 15px !important;
+    align-items: start;
+    padding: 10px 0;
+}
+
+.auto-category-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    text-decoration: none;
+    background: #ffffff;
+    border: 1px solid rgba(8, 129, 120, 0.08);
+    border-radius: 12px;
+    padding: 16px 8px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.auto-category-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--primary-color, #088178);
+    box-shadow: 0 10px 20px rgba(8, 129, 120, 0.1);
+}
+
+.auto-card-img-wrapper {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 10px;
+    border: 2px solid #f6faf9;
+    transition: all 0.3s ease;
+    background: #f6faf9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.auto-category-card:hover .auto-card-img-wrapper {
+    border-color: var(--primary-color, #088178);
+    transform: scale(1.08);
+}
+
+.auto-card-img-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.auto-category-card span {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-dark, #222);
+    transition: color 0.3s ease;
+    line-height: 1.2;
+}
+
+.auto-category-card:hover span {
+    color: var(--primary-color, #088178);
+}
+
+/* Active State for Automotive Cards */
+.auto-category-card.auto-subcategory-link.is-active {
+    border-color: var(--primary-color, #088178);
+    background: rgba(8, 129, 120, 0.03);
+    box-shadow: 0 4px 12px rgba(8, 129, 120, 0.08);
+    transform: translateY(-2px);
+}
+
+.auto-category-card.auto-subcategory-link.is-active .auto-card-img-wrapper {
+    border-color: var(--primary-color, #088178);
+}
+
+.auto-category-card.auto-subcategory-link.is-active span {
+    color: var(--primary-color, #088178);
+}
+
+/* Dark Theme overrides for Automotive */
+body.dark-theme .auto-category-card {
+    background: #222;
+    border-color: #333;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.dark-theme .auto-category-card:hover {
+    border-color: #39a4d6;
+    box-shadow: 0 10px 20px rgba(57, 164, 214, 0.15);
+}
+
+body.dark-theme .auto-card-img-wrapper {
+    border-color: #1a1a1a;
+    background: #1a1a1a;
+}
+
+body.dark-theme .auto-category-card span {
+    color: #e0e0e0;
+}
+
+body.dark-theme .auto-category-card:hover span {
+    color: #39a4d6;
+}
+
+body.dark-theme .auto-category-card.auto-subcategory-link.is-active {
+    border-color: #39a4d6;
+    background: rgba(57, 164, 214, 0.05);
+    box-shadow: 0 4px 12px rgba(57, 164, 214, 0.1);
+}
+
+body.dark-theme .auto-category-card.auto-subcategory-link.is-active .auto-card-img-wrapper {
+    border-color: #39a4d6;
+}
+
+body.dark-theme .auto-category-card.auto-subcategory-link.is-active span {
+    color: #39a4d6;
+}
