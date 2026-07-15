@@ -16,8 +16,10 @@ function safePrice(value) {
 }
 
 // render product card
-function createProductCard(product, wishlistIds = null) {
+function createProductCard(product, wishlistIds = null, options = {}) {
   const rating = Math.min(5, Math.max(0, Number(product.rating || 4)));
+  const showActions = options.showActions !== false;
+  const compactClass = options.compact ? " product-card-compact" : "";
 
   const stars = Array.from(
     {
@@ -34,27 +36,36 @@ function createProductCard(product, wishlistIds = null) {
     ? wishlistIds.has(String(product.id))
     : AppUtils.getWishlist().some((item) => String(item.id) === String(product.id));
 
-  return `
-        <div class="pro fade-in" data-id="${product.id}">
-            ${
-              product.featured
-                ? `
-                        <span class="product-badge">
-                            Featured
-                        </span>
-                    `
-                : ""
-            }
+  const badgeHtml = product.featured
+    ? `<span class="product-badge">Featured</span>`
+    : product.sale
+    ? `<span class="product-badge badge-sale">Sale</span>`
+    : product.new
+    ? `<span class="product-badge badge-new">New</span>`
+    : product.trending
+    ? `<span class="product-badge badge-trending">Trending</span>`
+    : "";
 
-            <img
-                src="${defaultImage(product.image)}"
-                alt="${safeText(product.name, "Product")}"
-                loading="lazy"
-            >
+  return `
+        <div class="pro fade-in${compactClass}" data-id="${product.id}">
+            ${badgeHtml}
+
+            <div class="product-image-wrapper">
+                <img
+                    src="${defaultImage(product.image)}"
+                    alt="${safeText(product.name, "Product")}"
+                    loading="lazy"
+                >
+                <div class="product-overlay">
+                    <button class="quick-view-btn" data-id="${product.id}">
+                        <i class="far fa-eye"></i> Quick View
+                    </button>
+                </div>
+            </div>
 
             <div class="des">
                 <span>
-                    ${safeText(product.category, "Fashion")}
+                    ${safeText(product.brand || product.category, "Fashion")}
                 </span>
 
                 <h5>
@@ -69,6 +80,9 @@ function createProductCard(product, wishlistIds = null) {
                     ${formatPrice(safePrice(product.price))}
                 </h4>
 
+                ${
+                  showActions
+                    ? `
                 <div class="product-actions">
                     <button
                         type="button"
@@ -101,8 +115,33 @@ function createProductCard(product, wishlistIds = null) {
                         Wishlist
                     </button>
                 </div>
+                    `
+                    : ""
+                }
             </div>
         </div>`;
+}
+
+// render skeleton cards
+function renderSkeletonCards(containerId, count = 4) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let skeletons = "";
+    for (let i = 0; i < count; i++) {
+        skeletons += `
+        <div class="pro skeleton-wrapper">
+            <div class="skeleton skeleton-img"></div>
+            <div class="des">
+                <div class="skeleton skeleton-text short"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text price"></div>
+            </div>
+        </div>
+        `;
+    }
+    container.innerHTML = skeletons;
 }
 
 // render featured products
