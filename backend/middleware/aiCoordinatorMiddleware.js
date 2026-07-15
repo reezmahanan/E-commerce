@@ -64,6 +64,33 @@ function validateData(data) {
     return data;
 }
 
+function validateApprovalId(approvalId) {
+    if (!approvalId || typeof approvalId !== 'string' || approvalId.trim().length === 0) {
+        throw new Error('Approval ID is required and must be a non-empty string');
+    }
+    return approvalId.trim();
+}
+
+function validateDecision(decision) {
+    if (!decision || !['approve', 'reject'].includes(decision)) {
+        throw new Error('Decision must be "approve" or "reject"');
+    }
+    return decision;
+}
+
+function validateNotes(notes) {
+    if (notes !== undefined && notes !== null) {
+        if (typeof notes !== 'string') {
+            throw new Error('Notes must be a string');
+        }
+        if (notes.length > 1000) {
+            throw new Error('Notes cannot exceed 1000 characters');
+        }
+        return sanitizeString(notes.trim());
+    }
+    return null;
+}
+
 function sanitizeData(data) {
     if (typeof data === 'string') {
         return sanitizeString(data);

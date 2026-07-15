@@ -34,9 +34,7 @@ exports.getPendingApprovals = async (req, res) => {
   }
 };
 
-/**
- * Approve or reject discount (Admin only)
- */
+
 exports.decideApproval = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
@@ -56,17 +54,41 @@ exports.decideApproval = async (req, res) => {
       });
     }
 
+  
+    const [existingRequest] = await db.query(
+      `SELECT status FROM admin_approval_requests WHERE id = ?`,
+      [id]
+    );
+
+    if (existingRequest.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Approval request not found'
+      });
+    }
+
+    if (existingRequest[0].status !== 'pending') {
+      // 409 Conflict HTTP status code use karein (Best practice for state conflicts)
+      return res.status(409).json({
+        success: false,
+        error: `Request already ${existingRequest[0].status}. Cannot re-process an already decided request.`
+      });
+    }
+    // ==========================================
+
+    // 2. Abhi status 'pending' hai, toh update karein
     const [result] = await db.query(
       `UPDATE admin_approval_requests 
              SET status = ?, admin_id = ?, admin_notes = ?
-             WHERE id = ?`,
+             WHERE id = ? AND status = 'pending'`, // Extra security: DB level pe bhi check
       [action === 'approve' ? 'approved' : 'rejected', req.user.id, notes, id]
     );
 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
+      // Extra safety check if DB didn't update due to some race condition
+      return res.status(409).json({
         success: false,
-        error: 'Approval request not found'
+        error: 'Request status was modified by another admin. Please refresh and try again.'
       });
     }
 
