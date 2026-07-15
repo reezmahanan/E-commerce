@@ -267,6 +267,118 @@ const getOrderById = async (req, res) => {
             message: "Invalid order ID"
         });
     }
+};
+
+// shared helper for updating order status and managing inventory
+const performOrderStatusUpdate = async (connection, id, currentStatus, newStatus) => {
+    // if cancelling a previously un-cancelled order, restore stock
+    if (newStatus === "cancelled" && currentStatus !== "cancelled") {
+        const [items] = await connection.query(
+            "SELECT product_id, qty FROM order_items WHERE order_id = ?",
+            [id]
+        );
+
+        for (const item of safeArray(items)) {
+            if (item.product_id) {
+                await connection.query(
+                    "UPDATE products SET stock = stock + ? WHERE id = ?",
+                    [item.qty, item.product_id]
+                );
+            }
+        }
+    }
+
+    // update order status
+    await connection.query(
+        "UPDATE orders SET status = ? WHERE id = ?",
+        [newStatus, id]
+    );
+};
+
+// update order status
+const updateOrderStatus =
+    async (req, res) => {
+        const id = safeUUID(req.params.id);
+        const newStatus = sanitizeString(req.body.status).toLowerCase();
+
+        const validStatuses = [
+            "pending",
+            "processing",
+            "shipped",
+            "delivered",
+            "cancelled"
+        ];
+
+        if (!id) {
+            return res.status(400).json({ success: false, message: "Invalid order ID" });
+        }
+
+        if (!validStatuses.includes(newStatus)) {
+            return res.status(400).json({ success: false, message: "Invalid order status" });
+        }
+
+        let connection;
+        try {
+            connection = await db.getConnection();
+            await connection.beginTransaction();
+
+            // fetch current order status
+            const [orders] = await connection.query(
+                "SELECT status FROM orders WHERE id = ? FOR UPDATE",
+                [id]
+            );
+
+            if (!safeArray(orders).length) {
+                await connection.rollback();
+                return res.status(404).json({ success: false, message: "Order not found" });
+            }
+
+            const currentStatus = orders[0].status;
+
+            await performOrderStatusUpdate(connection, id, currentStatus, newStatus);
+
+            await connection.commit();
+
+            return res.status(200).json({ success: true, message: "Order status updated" });
+
+        } catch (error) {
+            if (connection) {
+                await connection.rollback();
+            }
+            console.error("UPDATE ORDER STATUS ERROR:", error);
+            return res.status(500).json({ success: false, message: "Server error" });
+        } finally {
+            if (connection) {
+                connection.release();
+            }
+        }
+    };
+
+// cancel user order
+const cancelUserOrder = async (req, res) => {
+    const id = safeUUID(req.params.id);
+
+    if (!id) {
+        return res.status(400).json({ success: false, message: "Invalid order ID" });
+    }
+
+    let connection;
+    try {
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // fetch current order status and check ownership
+        const [orders] = await connection.query(
+            "SELECT user_id, status FROM orders WHERE id = ? FOR UPDATE",
+            [id]
+        );
+
+        if (!safeArray(orders).length || orders[0].user_id !== req.user.id) {
+            await connection.rollback();
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        const currentStatus = orders[0].status;
 
     let query = `
         SELECT *
@@ -452,6 +564,9 @@ const validateOrder = (req, res) => {
             message: "Validation failed",
             errors: result.errors
         });
+    } catch (error) {
+        console.error("GET ORDER SUMMARY ERROR:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
     return res.status(200).json({
         success: true,
@@ -466,6 +581,10 @@ const getOrderSummary = async (req, res) => {
             success: false,
             message: "Invalid order ID"
         });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
 
     try {

@@ -43,6 +43,7 @@ const RETRY_CONFIG = {
 
 let pool = null;
 let promisePool = null;
+let originalQuery = null;
 let dbConnected = false;
 let isShuttingDown = false;
 let pendingQueries = 0;
@@ -55,6 +56,8 @@ let connectionAttempts = 0;
 function createPool() {
   pool = mysql.createPool(DB_CONFIG);
   promisePool = pool.promise();
+  promisePool.promise = promisePool;
+  originalQuery = promisePool.query.bind(promisePool);
   return { pool, promisePool };
 }
 
@@ -309,7 +312,7 @@ async function query(sql, params = []) {
   pendingQueries++;
   
   try {
-    const [results] = await promisePool.query(sql, params);
+    const [results] = await originalQuery(sql, params);
     logQuery(sql, params, startTime);
     return [results, null];
   } catch (error) {

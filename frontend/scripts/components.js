@@ -147,12 +147,12 @@ async function initializeComponents() {
     const loadTasks = [
         loadComponent(
             "navbar",
-            "./components/navbar.html"
+            "./components/navbar.html?v=" + new Date().getTime()
         ),
 
         loadComponent(
             "footer",
-            "./components/footer.html"
+            "./components/footer.html?v=" + new Date().getTime()
         )
     ];
 
@@ -185,7 +185,7 @@ async function initializeComponents() {
         loadTasks.push(
             loadComponent(
                 "cart-drawer-host",
-                "./components/cart-drawer.html"
+                "./components/cart-drawer.html?v=" + new Date().getTime()
             )
         );
     }
@@ -232,6 +232,61 @@ navLinks.forEach(link => {
         link.setAttribute('aria-current', 'page');
     }
 });
+// ===== NAVBAR SEARCH =====
+    const navSearchInput = document.getElementById("searchInput");
+    if (navSearchInput) {
+        navSearchInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                const query = navSearchInput.value.trim();
+                if (query) {
+                    window.location.href = `shop.html?search=${encodeURIComponent(query)}`;
+                }
+            }
+        });
+
+        navSearchInput.addEventListener("input", () => {
+            const query = navSearchInput.value.trim();
+            const dropdown = document.getElementById("suggestionsDropdown");
+            if (!dropdown) return;
+
+            if (!query) {
+                dropdown.style.display = "none";
+                dropdown.innerHTML = "";
+                return;
+            }
+
+            const allProducts = window.allProducts || [];
+            const matches = allProducts
+                .filter(p => p.name?.toLowerCase().includes(query.toLowerCase()))
+                .slice(0, 5);
+
+            if (!matches.length) {
+                dropdown.style.display = "none";
+                return;
+            }
+
+            dropdown.innerHTML = matches.map(p => `
+                <div class="suggestion-item" style="padding:8px;cursor:pointer;border-bottom:1px solid #eee;">
+                    ${p.name}
+                </div>
+            `).join("");
+
+            dropdown.style.display = "block";
+
+            dropdown.querySelectorAll(".suggestion-item").forEach((item, i) => {
+                item.addEventListener("click", () => {
+                    window.location.href = `shop.html?search=${encodeURIComponent(matches[i].name)}`;
+                });
+            });
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!e.target.closest(".search-container")) {
+                const dropdown = document.getElementById("suggestionsDropdown");
+                if (dropdown) dropdown.style.display = "none";
+            }
+        });
+    }
 
 const categoryMenuItem = document.querySelector(".category-menu-item");
 const categoryMenuToggle = document.getElementById("category-menu-toggle");
@@ -243,7 +298,7 @@ const megaMenuPanels = Array.from(
     document.querySelectorAll(".mega-menu-panel")
 );
 const categoryMenuLinks = document.querySelectorAll(
-    ".category-menu-link, .mega-menu-panel-header a, .mobile-subcategory-panel a"
+    ".category-menu-link, .toy-category-card, .mega-menu-panel-header a, .mobile-subcategory-panel a"
 );
 const mobileCategoryAccordions = Array.from(
     document.querySelectorAll(".mobile-category-accordion")
@@ -263,11 +318,11 @@ const toySubcategoryLinks = Array.from(
 const toyProductPreview = document.getElementById(
     "toy-product-preview"
 );
-const homeKitchenSubcategoryLinks = Array.from(
-    document.querySelectorAll(".home-kitchen-subcategory-link")
+const stationerySubcategoryLinks = Array.from(
+    document.querySelectorAll(".stationery-subcategory-link")
 );
-const homeKitchenProductPreview = document.getElementById(
-    "home-kitchen-product-preview"
+const stationeryProductPreview = document.getElementById(
+    "stationery-product-preview"
 );
 
 const grocerySubcategoryKeywords = {
@@ -392,74 +447,60 @@ const toySubcategoryKeywords = {
     ]
 };
 
-const homeKitchenSubcategoryKeywords = {
-    Furniture: [
-        "furniture",
-        "chair",
-        "sofa",
-        "table",
+const stationerySubcategoryKeywords = {
+    "Notebooks & Planners": [
+        "notebook",
+        "notebooks",
+        "planner",
+        "planners",
+        "diary",
+        "journal",
+        "journals",
+        "pad",
+        "pads"
+    ],
+    "Pens & Writing": [
+        "pen",
+        "pens",
+        "pencil",
+        "pencils",
+        "writing",
+        "marker",
+        "markers",
+        "ink",
+        "eraser",
+        "erasers",
+        "sharpener",
+        "sharpeners"
+    ],
+    "Office Supplies": [
+        "office",
         "desk",
-        "cabinet",
-        "bookshelf",
-        "bed",
-        "stool"
+        "supplies",
+        "clip",
+        "clips",
+        "stapler",
+        "staplers",
+        "tape",
+        "tapes",
+        "folder",
+        "folders",
+        "paperclip",
+        "scissors"
     ],
-    Cookware: [
-        "cookware",
-        "pan",
-        "pot",
-        "saucepan",
-        "skillet",
-        "lid",
-        "dutch",
-        "oven",
-        "bakeware",
-        "spatula"
-    ],
-    Storage: [
-        "storage",
-        "basket",
-        "box",
-        "container",
-        "organizer",
-        "rack",
-        "shelf",
-        "bin",
-        "holder"
-    ],
-    "Home Decor": [
-        "decor",
-        "vase",
-        "lamp",
-        "frame",
-        "mirror",
-        "candle",
-        "rug",
-        "cushion",
+    "Art Supplies": [
         "art",
-        "clock"
-    ],
-    Bedding: [
-        "bedding",
-        "pillow",
-        "sheet",
-        "comforter",
-        "blanket",
-        "duvet",
-        "mattress",
-        "cover"
-    ],
-    "Kitchen Appliances": [
-        "appliance",
-        "appliances",
-        "toaster",
-        "blender",
-        "mixer",
-        "kettle",
-        "juicer",
-        "cooker",
-        "microwave",
-        "coffee"
+        "paint",
+        "paints",
+        "watercolor",
+        "canvas",
+        "brush",
+        "brushes",
+        "sketchbook",
+        "sketchbooks",
+        "crayon",
+        "crayons",
+        "pastel"
     ]
 };
 
@@ -571,7 +612,7 @@ const matchesToySubcategory = (product, subcategory) => {
     );
 };
 
-const matchesHomeKitchenSubcategory = (product, subcategory) => {
+const matchesStationerySubcategory = (product, subcategory) => {
     const normalizedSubcategory = normalizeMenuValue(subcategory);
     const category = normalizeMenuValue(product?.category);
     const productSubcategory = normalizeMenuValue(
@@ -580,7 +621,7 @@ const matchesHomeKitchenSubcategory = (product, subcategory) => {
     const searchText = normalizeMenuValue(
         getProductSearchText(product)
     );
-    const keywords = homeKitchenSubcategoryKeywords[subcategory] || [];
+    const keywords = stationerySubcategoryKeywords[subcategory] || [];
 
     if (productSubcategory) {
         return productSubcategory === normalizedSubcategory;
@@ -591,10 +632,8 @@ const matchesHomeKitchenSubcategory = (product, subcategory) => {
     }
 
     if (
-        category !== "home and kitchen" &&
-        category !== "home & kitchen" &&
-        !searchText.includes("home") &&
-        !searchText.includes("kitchen")
+        category !== "stationery" &&
+        !searchText.includes("stationery")
     ) {
         return false;
     }
@@ -743,8 +782,8 @@ const setActiveToySubcategory = (activeLink) => {
     });
 };
 
-const renderHomeKitchenProducts = (products, subcategory) => {
-    if (!homeKitchenProductPreview) {
+const renderStationeryProducts = (products, subcategory) => {
+    if (!stationeryProductPreview) {
         return;
     }
 
@@ -753,31 +792,31 @@ const renderHomeKitchenProducts = (products, subcategory) => {
         : [];
 
     if (!safeProducts.length) {
-        homeKitchenProductPreview.innerHTML =
-            `<p class="grocery-menu-empty home-kitchen-menu-empty">No products available for ${escapeMenuHTML(subcategory)} yet.</p>`;
+        stationeryProductPreview.innerHTML =
+            `<p class="grocery-menu-empty stationery-menu-empty">No stationery products available for ${escapeMenuHTML(subcategory)} yet.</p>`;
         return;
     }
 
-    homeKitchenProductPreview.innerHTML = safeProducts
+    stationeryProductPreview.innerHTML = safeProducts
         .slice(0, 4)
         .map((product) => {
-            const name = product?.name || "Product";
+            const name = product?.name || "Stationery";
             const escapedName = AppUtils.escapeHTML(name);
             const image = AppUtils.defaultImage(product?.image);
             const price = AppUtils.formatPrice(product?.price || 0);
-            const href = getProductLink(product, "Home & Kitchen", subcategory);
+            const href = getProductLink(product, "Stationery", subcategory);
             const rating = renderMenuRating(product?.rating);
 
             return `
-                <a class="grocery-menu-product toy-menu-product home-kitchen-menu-product" href="${href}">
+                <a class="grocery-menu-product toy-menu-product stationery-menu-product" href="${href}">
                     <img
                         src="${AppUtils.escapeHTML(image)}"
                         alt="${escapedName}"
                         loading="lazy"
                     />
-                    <span class="grocery-menu-product-info toy-menu-product-info home-kitchen-menu-product-info">
-                        <span class="grocery-menu-product-name toy-menu-product-name home-kitchen-menu-product-name">${escapedName}</span>
-                        <span class="grocery-menu-product-price toy-menu-product-price home-kitchen-menu-product-price">${price}</span>
+                    <span class="grocery-menu-product-info toy-menu-product-info stationery-menu-product-info">
+                        <span class="grocery-menu-product-name toy-menu-product-name stationery-menu-product-name">${escapedName}</span>
+                        <span class="grocery-menu-product-price toy-menu-product-price stationery-menu-product-price">${price}</span>
                         ${rating}
                     </span>
                 </a>
@@ -786,8 +825,8 @@ const renderHomeKitchenProducts = (products, subcategory) => {
         .join("");
 };
 
-const setActiveHomeKitchenSubcategory = (activeLink) => {
-    homeKitchenSubcategoryLinks.forEach((link) => {
+const setActiveStationerySubcategory = (activeLink) => {
+    stationerySubcategoryLinks.forEach((link) => {
         const isActive = link === activeLink;
 
         link.classList.toggle("is-active", isActive);
@@ -924,26 +963,26 @@ const initializeToyMegaMenu = async () => {
     showSubcategoryProducts(defaultLink);
 };
 
-const initializeHomeKitchenMegaMenu = async () => {
-    if (!homeKitchenSubcategoryLinks.length || !homeKitchenProductPreview) {
+const initializeStationeryMegaMenu = async () => {
+    if (!stationerySubcategoryLinks.length || !stationeryProductPreview) {
         return;
     }
 
-    let homeKitchenProducts = [];
+    let stationeryProducts = [];
 
     const showSubcategoryProducts = (link) => {
         const subcategory =
-            link.dataset.homeKitchenSubcategory ||
+            link.dataset.stationerySubcategory ||
             link.textContent.trim();
-        const products = homeKitchenProducts.filter((product) =>
-            matchesHomeKitchenSubcategory(product, subcategory)
+        const products = stationeryProducts.filter((product) =>
+            matchesStationerySubcategory(product, subcategory)
         );
 
-        setActiveHomeKitchenSubcategory(link);
-        renderHomeKitchenProducts(products, subcategory);
+        setActiveStationerySubcategory(link);
+        renderStationeryProducts(products, subcategory);
     };
 
-    homeKitchenSubcategoryLinks.forEach((link) => {
+    stationerySubcategoryLinks.forEach((link) => {
         link.addEventListener("mouseenter", () => {
             showSubcategoryProducts(link);
         });
@@ -953,12 +992,12 @@ const initializeHomeKitchenMegaMenu = async () => {
         });
     });
 
-    homeKitchenProducts = await fetchMegaMenuProducts();
+    stationeryProducts = await fetchMegaMenuProducts();
 
     const defaultLink =
-        homeKitchenSubcategoryLinks.find((link) =>
-            link.dataset.homeKitchenSubcategory === currentSubcategory
-        ) || homeKitchenSubcategoryLinks[0];
+        stationerySubcategoryLinks.find((link) =>
+            link.dataset.stationerySubcategory === currentSubcategory
+        ) || stationerySubcategoryLinks[0];
 
     showSubcategoryProducts(defaultLink);
 };
@@ -999,6 +1038,57 @@ const focusMegaCategoryByOffset = (currentCategory, offset) => {
     activateMegaCategory(nextCategory?.dataset.megaCategory);
 };
 
+const ensureProductCardFactory = async () => {
+    if (typeof window.createProductCard === "function") {
+        return;
+    }
+    await loadScript("scripts/product-cards-home.js");
+};
+
+const getFashionProducts = async () => {
+    const products = await fetchMegaMenuProducts();
+    const fashionCategories = ["fashion", "footwear", "watches", "bags", "accessories"];
+    return products.filter((p) => fashionCategories.includes(String(p.category || "").toLowerCase()));
+};
+
+const getProductsForFashionSubcategory = (fashionProducts, subcategory) => {
+    const sub = subcategory.toLowerCase();
+    return fashionProducts.filter((p) => {
+        // If product already has subcategory from API, use it first
+        const pSub = String(p.subcategory || p.sub_category || p.subCategory || "").toLowerCase();
+        if (pSub && pSub.includes(sub)) {
+            return true;
+        }
+
+        const name = String(p.name || "").toLowerCase();
+        const desc = String(p.description || "").toLowerCase();
+        const text = `${name} ${desc}`;
+
+        if (sub.includes("men's clothing") || sub === "men") {
+            return (text.includes("men") || text.includes("boy") || text.includes("shirt") || text.includes("jeans") || text.includes("hoodie")) && !text.includes("women");
+        }
+        if (sub.includes("women's clothing") || sub === "women") {
+            return text.includes("women") || text.includes("girl") || text.includes("dress") || text.includes("kurti") || text.includes("top");
+        }
+        if (sub.includes("kids")) {
+            return text.includes("kid") || text.includes("child") || text.includes("boy") || text.includes("girl") || text.includes("traditional");
+        }
+        if (sub.includes("footwear") || sub.includes("shoes") || sub.includes("sneaker")) {
+            return text.includes("shoe") || text.includes("shoes") || text.includes("sneaker") || text.includes("sneakers") || text.includes("footwear");
+        }
+        if (sub.includes("watches") || sub.includes("watch")) {
+            return text.includes("watch");
+        }
+        if (sub.includes("bags") || sub.includes("bag")) {
+            return text.includes("bag") || text.includes("handbag") || text.includes("backpack");
+        }
+        if (sub.includes("accessories")) {
+            return text.includes("accessory") || text.includes("accessories") || text.includes("sunglasses") || text.includes("belt");
+        }
+        return false;
+    });
+};
+
 const renderFashionMenuProducts = async (link) => {
     const fashionProductsContainer =
         document.querySelector("[data-fashion-products]");
@@ -1026,7 +1116,7 @@ const renderFashionMenuProducts = async (link) => {
         );
 
         document
-            .querySelectorAll("#mega-panel-fashion .category-menu-link")
+            .querySelectorAll("#mega-panel-fashion .category-menu-link, #mega-panel-fashion .fashion-category-card")
             .forEach((categoryLink) => {
                 categoryLink.classList.toggle("is-preview-active", categoryLink === link);
             });
@@ -1150,7 +1240,7 @@ categoryMenuLinks.forEach((link) => {
 });
 
 const fashionSubcategoryLinks = Array.from(
-    document.querySelectorAll("#mega-panel-fashion .category-menu-link")
+    document.querySelectorAll("#mega-panel-fashion .category-menu-link, #mega-panel-fashion .fashion-category-card")
 );
 
 fashionSubcategoryLinks.forEach((link) => {
@@ -1209,7 +1299,7 @@ mobileCategoryAccordions.forEach((accordion) => {
 });
     await initializeGroceryMegaMenu();
     await initializeToyMegaMenu();
-    await initializeHomeKitchenMegaMenu();
+    await initializeStationeryMegaMenu();
     // notify components ready
     document.dispatchEvent(new CustomEvent("componentsLoaded"));
 }

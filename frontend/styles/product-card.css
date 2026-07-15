@@ -27,35 +27,38 @@ product section
 
 #product1 .pro:hover,
 #new-arrivals .pro:hover,
-#recently-viewed .pro:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 18px 35px rgba(0, 0, 0, 0.12);
+#recently-viewed .pro:hover,
+#recommended-products-container .pro:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 22px 45px rgba(0, 0, 0, 0.1);
 }
 
 /* product images */
 .product-image-wrapper {
     width: 100%;
-    height: 260px;
     overflow: hidden;
-    border-radius: 16px;
+    border-radius: 20px;
     background: #f5f5f5;
     flex-shrink: 0;
+    position: relative;
+    aspect-ratio: 1 / 1;
 }
 
 .pro img {
     width: 100%;
-    height: 260px;
+    height: 100%;
     object-fit: cover;
     display: block;
-    border-radius: 16px;
+    border-radius: 20px;
     transition: 0.35s ease-in-out;
     background: #f5f5f5;
 }
 
 #product1 .pro:hover img,
 #new-arrivals .pro:hover img,
-#recently-viewed .pro:hover img {
-    transform: scale(1.03) rotate(0.7deg);
+#recently-viewed .pro:hover img,
+#recommended-products-container .pro:hover img {
+    transform: scale(1.06);
 }
 
 /* product description */
@@ -144,15 +147,18 @@ product section
     display:flex;
     align-items:center;
     justify-content:center;
-    gap:6px;
+    gap:4px;
 
     border-radius:8px;
     cursor:pointer;
 
-    font-size:14px;
+    font-size:13px;
     font-weight:500;
 
     transition:.3s ease;
+    margin: 0;
+    padding: 0 4px;
+    width: 100%;
 }
 
 .product-actions .primary-action{
@@ -189,6 +195,19 @@ product section
     font-size: 12px;
     font-weight: 600;
     z-index: 2;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.product-badge.badge-new {
+    background: #3498db;
+}
+
+.product-badge.badge-sale {
+    background: #e74c3c;
+}
+
+.product-badge.badge-trending {
+    background: #f39c12;
 }
 
 /* recently viewed */
@@ -200,18 +219,184 @@ product section
 .product-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.2);
     opacity: 0;
     visibility: hidden;
-    transition: var(--transition-fast);
+    transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
 }
 
 .pro:hover .product-overlay {
     opacity: 1;
     visibility: visible;
+}
+
+.quick-view-btn {
+    background: var(--white);
+    color: var(--primary-color);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transform: translateY(20px);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.quick-view-btn:hover {
+    background: var(--primary-color);
+    color: var(--white);
+}
+
+.pro:hover .quick-view-btn {
+    transform: translateY(0);
+}
+
+/* Feedback Animations */
+@keyframes heartBeat {
+    0% { transform: scale(1); }
+    14% { transform: scale(1.3); }
+    28% { transform: scale(1); }
+    42% { transform: scale(1.3); }
+    70% { transform: scale(1); }
+}
+
+.wishlisted-feedback i {
+    color: #e74c3c !important;
+    animation: heartBeat 0.8s ease-in-out;
+}
+
+.added-feedback {
+    background: #2ecc71 !important;
+    color: white !important;
+    border-color: #2ecc71 !important;
+}
+
+/* Skeleton Loading */
+.skeleton {
+    background: #e0e0e0;
+    background: linear-gradient(90deg, #e0e0e0 25%, #f0f0f0 50%, #e0e0e0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+body.dark-theme .skeleton {
+    background: #2a2a2a;
+    background: linear-gradient(90deg, #2a2a2a 25%, #3a3a3a 50%, #2a2a2a 75%);
+    background-size: 200% 100%;
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-img {
+    width: 100%;
+    height: 260px;
+    border-radius: 16px;
+    margin-bottom: 15px;
+}
+
+.skeleton-text {
+    height: 14px;
+    margin-bottom: 10px;
+    width: 80%;
+}
+
+.skeleton-text.short {
+    width: 50%;
+}
+
+.skeleton-text.price {
+    height: 18px;
+    width: 40%;
+    margin-top: 15px;
+}
+
+/* Carousel specific styles */
+.carousel-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.product-carousel {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    gap: 1.25rem;
+    padding: 20px 5px;
+    /* scrollbar-width: none; Firefox fallback removed to clear IDE warning */
+    -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.product-carousel::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+
+.product-carousel .pro {
+    scroll-snap-align: start;
+    flex: 0 0 280px; /* Fixed width for carousel items */
+    margin: 0;
+}
+
+.carousel-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--white);
+    border: 1px solid var(--border-light);
+    color: var(--primary-color);
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.carousel-btn:hover {
+    background: var(--primary-color);
+    color: var(--white);
+}
+
+.carousel-btn.prev {
+    left: -20px;
+}
+
+.carousel-btn.next {
+    right: -20px;
+}
+
+body.dark-theme .carousel-btn {
+    background: #1e1e1e;
+    border-color: #333;
+    color: #fff;
+}
+body.dark-theme .carousel-btn:hover {
+    background: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+    .carousel-btn {
+        display: none; /* Hide arrows on mobile, rely on touch scroll */
+    }
 }
 
 /* responsive layout */
@@ -345,6 +530,7 @@ body.dark-theme .pro .rating-count {
     font-weight: 600;
     font-size: 14ox;
     margin: 0 15px;
+    -webkit-user-select: none;
     user-select: none;
 }
 

@@ -1,5 +1,5 @@
 const express = require("express");
-const helmetMiddleware = require("./middleware/helmetMiddleware");
+const { helmetMiddleware } = require("./middleware/helmetMiddleware");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
@@ -21,8 +21,14 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const app = express();
 
 // Add with other imports
+// init app early so route and middleware registration can safely use it
+const app = express();
+
 const responseExampleRoutes = require('./routes/responseExampleRoutes');
 const { standardizeResponse } = require('./middleware/responseStandardizer');
+
+// init app early so route and middleware registration can safely use it
+const app = express();
 
 // Add response standardization middleware BEFORE routes
 app.use(standardizeResponse);
@@ -34,8 +40,11 @@ app.use('/api/response-example', responseExampleRoutes);
 const logDir = path.join(process.cwd(), "logs");
 // Add with other route imports
 const aiFeedRoutes = require('./routes/aiFeedRoutes');
+// Import agent routes
 const agentRoutes = require('./routes/agentRoutes');
+// Import legal routes
 const legalRoutes = require('./routes/legalRoutes');
+// Add with other route imports
 const aiLegalRoutes = require('./routes/aiLegalRoutes');
 
 // Add AI Legal routes
@@ -48,20 +57,20 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/ai-feed', aiFeedRoutes);
 
 const routes = require("./routes/index");
-const authLimiter = require("./middleware/authLimiter");
+const { authLimiter } = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
 
-const healthRoutes = require('./routes/healthRoutes');
-const { healthScoreService } = require('./services/healthScoreService');
+const discoveryRoutes = require('./routes/discoveryRoutes');
+const { capabilityDiscoveryService } = require('./services/capabilityDiscoveryService');
 
 // Initialize health score service asynchronously
 healthScoreService.initialize().catch(err => {
     console.error('Failed to initialize health score service:', err);
 });
 
-// Add health routes (BEFORE any other routes)
-app.use('/health', healthRoutes);
+// Add discovery routes
+app.use('/api/discovery', discoveryRoutes);
 
 const metricsRoutes = require('./routes/metricsRoutes');
 const { metricsAggregationService } = require('./services/metricsAggregationService');
@@ -161,33 +170,21 @@ app.use('/api/outbox', outboxRoutes);
 
 
 // Add with other route imports
-const cqrsRoutes = require('./routes/cqrsRoutes');
-const { readModelSynchronizer } = require('./services/cqrsService');
+const recentlyViewedRoutes = require('./routes/recentlyViewedRoutes');
 
-// Start read model synchronization
-readModelSynchronizer.start();
-
-
-// Add CQRS routes
-app.use('/api/cqrs', cqrsRoutes);
 // Add with other imports
+const complexityRoutes = require('./routes/complexityRoutes');
+const { architectureComplexityService } = require('./services/architectureComplexityService');
 
 
-const jobRoutes = require('./routes/jobRoutes');
-const { jobQueue, jobHandlers, JOB_TYPES } = require('./services/jobQueueService');
 
-// Register job handlers
-for (const [type, handler] of Object.entries(jobHandlers)) {
-    jobQueue.registerHandler(type, handler);
-}
+
 
 // Initialize job queue asynchronously
 jobQueue.initialize().catch(err => {
     console.error('Failed to initialize job queue:', err);
 });
 
-// Add job routes
-app.use('/api/jobs', jobRoutes);
 
 const flagRoutes = require('./routes/flagRoutes');
 const { featureFlagService } = require('./services/featureFlagService');
@@ -199,7 +196,6 @@ featureFlagService.initialize().catch(err => {
 
 // Add flag routes
 app.use('/api/flags', flagRoutes);
-
 
 const correlationRoutes = require('./routes/correlationRoutes');
 const { correlationIdMiddleware, logCompletionMiddleware } = require('./middleware/correlationIdMiddleware');
@@ -249,9 +245,20 @@ app.use('/api/events', eventRoutes);
 setupAllSubscribers();
 // Add with other route imports
 const performanceRoutes = require('./routes/performanceRoutes');
+
+// Import routes
 const approvalRoutes = require('./routes/approvalRoutes');
 const rollbackRoutes = require('./routes/rollbackRoutes');
+// Import security routes
 const securityRoutes = require('./routes/securityRoutes');
+
+// Add routes
+app.use('/api/security', securityRoutes);
+// Add routes
+app.use('/api/approvals', approvalRoutes);
+app.use('/api/rollback', rollbackRoutes);
+// Add with other route imports
+
 const aiFinancialRoutes = require('./routes/aiFinancialRoutes');
 
 // Add AI financial routes
@@ -262,7 +269,18 @@ app.use('/api/ai/financial', aiFinancialRoutes);
 app.use('/api/performance', performanceRoutes);
 
 
+// Initialize capability mapping
+await capabilityMappingService.initialize();
 
+
+
+// Initialize DI container
+initializeContainer();
+
+
+
+// Add recently viewed routes
+app.use('/api/recently-viewed', recentlyViewedRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
@@ -276,78 +294,71 @@ app.use('/api/copywriter', copywriterRoutes);
 // Add with other imports
 
 const { detectAgenticFraud } = require('./middleware/agenticFraudMiddleware');
+
+
 const { detectBot, addBotDetectionHeaders } = require('./middleware/botProtectionMiddleware');
+
+
+// Add after other middleware
+app.use(addBotDetectionHeaders);
+app.use(detectBot);
+
+
 const { verifyAICrawler } = require('./middleware/aiCrawlerMiddleware');
 
-// Create logs directory
-const logsDir = path.join(__dirname, 'logs');
-if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir, { recursive: true });
-}
 
-// Create error log stream
-const errorLogStream = fs.createWriteStream(
-    path.join(logsDir, 'error.log'),
-    { flags: 'a' }
-);
 
-// Build health response
-function buildHealthResponse(data) {
-    return {
-        success: true,
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        ...data
-    };
-}
 
-// Server startup logger
-function logServerStartup(options) {
-    console.log(`
-╔══════════════════════════════════════════════════════════════╗
-║                    SERVER STARTUP INFO                       ║
-╠══════════════════════════════════════════════════════════════╣
-║  Status:        ✅ Running                                   ║
-║  Port:          ${String(options.port).padEnd(45)}║
-║  Environment:   ${String(options.environment).padEnd(45)}║
-║  Health Check:  ${String(options.healthUrl).padEnd(45)}║
-╠══════════════════════════════════════════════════════════════╣
-║                    SECURITY FEATURES                         ║
-╠══════════════════════════════════════════════════════════════╣
-║  Rate Limiting:  ${String(options.rateLimiting ? '✅ Enabled' : '❌ Disabled').padEnd(44)}║
-║  Helmet:         ${String(options.helmet ? '✅ Enabled' : '❌ Disabled').padEnd(44)}║
-║  MCP Security:   ${String(options.mcpSecurity ? '✅ Enabled' : '❌ Disabled').padEnd(44)}║
-╚══════════════════════════════════════════════════════════════╝
-    `);
-}
 
-// Load environment
+
+// Add after other middleware
+app.use(addBotDetectionHeaders);
+app.use(detectBot);
+// Add with other route imports
+const fraudRoutes = require('./routes/fraudRoutes');
+
+// Add fraud routes
+app.use('/api/fraud', fraudRoutes);
+
+
+
+// Add after auth middleware
+app.use(detectAgenticFraud);
+const aiRoutes = require('./routes/aiRoutes');
+
+// Add AI routes
+app.use('/api/ai', aiRoutes);
+
+// load environment
 dotenv.config();
 const { validateEnv } = require('./config/envValidator');
 validateEnv();
 
-// Initialize database
+// database
 require("./config/db");
 
 const http = require("node:http");
 const server = http.createServer(app);
 const { initSocket } = require("./utils/socketManager");
 const { accessLogger, errorLogger, devLogger } = require('./config/morganConfig');
-
-// Constants
+// constants
 const PORT = Number(process.env.PORT) || 5000;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5500";
 
-// Trust proxy
+// create logs directory
+
+
+
+// trust proxy
 app.set("trust proxy", 1);
 
-// Disable x-powered-by header
+// security
 app.disable("x-powered-by");
 
-// Security headers
+// security headers
 app.use(helmetMiddleware);
 
-// Compression
+// compression - gzip/brotli
 app.use(compression({
     level: 6,
     threshold: 1024,
@@ -359,21 +370,21 @@ app.use(compression({
     }
 }));
 
-// Request timeout
+// request timeout
 app.use(timeout("30s"));
 
-// Extend timeout for specific routes
+// extend timeout for specific routes
 app.use((req, res, next) => {
     if (req.path.startsWith("/api/admin") || 
         req.path === "/api/upload" || 
         req.path === "/api/export" ||
-        req.path.startsWith("/api/mcp")) {
+        req.path.startsWith("/api/mcp")) { // ✅ MCP timeout extended
         req.setTimeout(60000);
     }
     next();
 });
 
-// CORS - allowed origins
+// cors - allowed origins
 const allowedOrigins = [
     "http://localhost:5500",
     "http://127.0.0.1:5500",
@@ -390,22 +401,22 @@ const allowedOrigins = [
     "https://e-commerce-production-d546.up.railway.app"
 ];
 
-// Initialize websocket server with CORS
+// initialize websocket server with CORS
 initSocket(server, allowedOrigins);
 
-// CORS middleware
+// cors
 app.use(corsMiddleware);
 app.use(accessLogger);
 
-// Log errors to error.log
+// log errors to error.log
 app.use(errorLogger);
 
-// Console logging in development
+// console logging in development
 if (process.env.NODE_ENV !== "production") {
     app.use(devLogger);
 }
 
-// Body parsers
+// body parsers
 app.use(
     express.json({
         limit: "10mb",
@@ -422,7 +433,7 @@ app.use(
 );
 
 // Security headers for MCP endpoints
-app.use('/api/mcp/*', (req, res, next) => {
+app.use('/api/mcp', (req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -430,7 +441,7 @@ app.use('/api/mcp/*', (req, res, next) => {
     next();
 });
 
-// Request logger
+// request logger
 if (process.env.NODE_ENV !== "production") {
     app.use((req, res, next) => {
         console.log(`${req.method} ${req.originalUrl} - ${req.ip}`);
@@ -438,27 +449,25 @@ if (process.env.NODE_ENV !== "production") {
     });
 }
 
-// Apply rate limiting
+
+// apply rate limiting
 app.use("/api", apiLimiter);
+
+// auth routes rate limiting
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/signup", authLimiter);
 app.use("/api/auth/forgot-password", authLimiter);
 app.use("/api/auth/reset-password", authLimiter);
 app.use("/api/auth/refresh-token", authLimiter);
+
+// admin routes rate limiting
 app.use("/api/admin", adminLimiter);
+
+// ✅ MCP routes rate limiting
 app.use("/api/mcp", mcpLimiter);
 
-// Bot detection middleware (only once, not duplicated)
-app.use(addBotDetectionHeaders);
-app.use(detectBot);
-
-// AI Crawler verification middleware
-app.use(verifyAICrawler);
-
-// Agent fraud detection middleware
-app.use(detectAgenticFraud);
-
-// Health check endpoint
+// health check
+// health check
 app.get("/health", (req, res) => {
     const healthData = buildHealthResponse({
         environment: process.env.NODE_ENV || "development",
@@ -466,9 +475,9 @@ app.get("/health", (req, res) => {
         memoryUsage: process.memoryUsage(),
     });
     return res.status(200).json(healthData);
-});
+});;
 
-// Root route
+// root route
 app.get("/", (req, res) => {
     return res.status(200).json({
         success: true,
@@ -479,31 +488,21 @@ app.get("/", (req, res) => {
             api: "/api",
             auth: "/api/auth",
             admin: "/api/admin",
-            mcp: "/api/mcp"
+            mcp: "/api/mcp", // ✅ MCP endpoint added
         },
         security: {
             rateLimiting: "Enabled",
             helmet: "Enabled",
             cors: "Configured",
-            mcpSecurity: "Enabled"
+            mcpSecurity: "Enabled",
         }
     });
 });
 
-// API routes
+// api routes
 app.use("/api", routes);
-app.use("/api/ai", aiRoutes);
-app.use("/api/ai-feed", aiFeedRoutes);
-app.use("/api/ai/financial", aiFinancialRoutes);
-app.use("/api/ai-legal", aiLegalRoutes);
-app.use("/api/legal", legalRoutes);
-app.use("/api/agents", agentRoutes);
-app.use("/api/performance", performanceRoutes);
-app.use("/api/security", securityRoutes);
-app.use("/api/approvals", approvalRoutes);
-app.use("/api/rollback", rollbackRoutes);
-app.use("/api/copywriter", copywriterRoutes);
-app.use("/api/fraud", fraudRoutes);
+
+// ✅ MCP routes - must be after auth routes but before 404
 app.use("/api/mcp", mcpRoutes);
 
 // 404 handler
@@ -515,10 +514,36 @@ app.use((req, res) => {
     });
 });
 
-// Global error handler
+// Register the extracted global error handler
 app.use(globalErrorHandler(errorLogStream));
 
-setupProcessEventHandlers(errorLogStream);
+// unhandled rejection
+process.on("unhandledRejection", (reason) => {
+    console.error("UNHANDLED REJECTION:", reason);
+    errorLogStream.write(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        type: "UNHANDLED_REJECTION",
+        reason: reason?.message || reason,
+        stack: reason?.stack,
+    }) + "\n");
+    setTimeout(() => {
+        process.exit(1);
+    }, 1000);
+});
+
+// uncaught exception
+process.on("uncaughtException", (error) => {
+    console.error("UNCAUGHT EXCEPTION:", error);
+    errorLogStream.write(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        type: "UNCAUGHT_EXCEPTION",
+        error: error.message,
+        stack: error.stack,
+    }) + "\n");
+    setTimeout(() => {
+        process.exit(1);
+    }, 1000);
+});
 
 // Initialize graceful shutdown logic
 setupGracefulShutdown(server);
@@ -526,12 +551,13 @@ setupGracefulShutdown(server);
 // Graceful shutdown event listeners are already setup inside setupGracefulShutdown
 
 // Start server
+console.log("Reached end of server.js. Starting server on port:", PORT);
 server.listen(PORT, "0.0.0.0", () => {
     logServerStartup({
         port: PORT,
         environment: process.env.NODE_ENV || "development",
         frontendUrl: FRONTEND_URL,
-        logsDir: logsDir,
+        logsDir: logDir,
         healthUrl: `http://localhost:${PORT}/health`,
         mcpSecurity: true,
         rateLimiting: true,

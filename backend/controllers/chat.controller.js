@@ -3,6 +3,7 @@ const {
   getPagination,
   sanitizeString,
   safeNumber,
+  safeUUID,
 } = require("../utils/helpers");
 
 const getConversations = async (req, res) => {
@@ -65,7 +66,7 @@ const getConversations = async (req, res) => {
 
 const getConversationDetails = async (req, res) => {
   try {
-    const id = safeNumber(req.params.id);
+    const id = safeUUID(req.params.id);
     if (!id) {
       return res.status(400).json({
         success: false,
@@ -110,7 +111,7 @@ const getConversationDetails = async (req, res) => {
 
 const updateStatus = async (req, res) => {
   try {
-    const id = safeNumber(req.params.id);
+    const id = safeUUID(req.params.id);
     const { status } = req.body;
 
     const validStatuses = ["open", "pending", "closed", "archived"];
@@ -160,7 +161,7 @@ const updateStatus = async (req, res) => {
 
 const assignAdmin = async (req, res) => {
   try {
-    const id = safeNumber(req.params.id);
+    const id = safeUUID(req.params.id);
     if (!id) {
       return res.status(400).json({
         success: false,

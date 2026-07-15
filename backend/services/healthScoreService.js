@@ -128,15 +128,22 @@ class HealthScoreService extends EventEmitter {
      */
     startHealthChecks() {
         for (const [moduleType, config] of this.healthChecks) {
+            const scheduleNext = () => {
+                const timer = setTimeout(async () => {
+                    await this.performHealthCheck(moduleType);
+                    if (this.isRunning) {
+                        scheduleNext();
+                    }
+                }, config.interval);
+                this.checkTimers.set(moduleType, timer);
+            };
+
             // Initial check
-            this.performHealthCheck(moduleType);
-
-            // Schedule periodic checks
-            const timer = setInterval(() => {
-                this.performHealthCheck(moduleType);
-            }, config.interval);
-
-            this.checkTimers.set(moduleType, timer);
+            this.performHealthCheck(moduleType).then(() => {
+                if (this.isRunning) {
+                    scheduleNext();
+                }
+            });
         }
     }
 
