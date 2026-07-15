@@ -62,15 +62,15 @@ const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 const adrRoutes = require('./routes/adrRoutes');
 const { adrService } = require('./services/adrService');
 
-
-const fitnessRoutes = require('./routes/fitnessRoutes');
-const { architecturalFitnessService } = require('./services/architecturalFitnessService');
+const versionRoutes = require('./routes/versionRoutes');
+const { semanticVersionService } = require('./services/semanticVersionService');
 
 
 const healthRoutes = require('./routes/healthRoutes');
 const { healthScoreService } = require('./services/healthScoreService');
+
 const discoveryRoutes = require('./routes/discoveryRoutes');
-const { capabilityDiscoveryService } = require('./services/capabilityDiscoveryService');
+
 
 
 // Initialize capability discovery
@@ -273,11 +273,12 @@ app.use('/api/performance', performanceRoutes);
 
 
 
-// Initialize ADR service
-await adrService.initialize();
 
-// Add ADR routes
-app.use('/api/adr', adrRoutes);
+// Initialize semantic version service
+await semanticVersionService.initialize();
+
+// Add version routes
+app.use('/api/versions', versionRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
