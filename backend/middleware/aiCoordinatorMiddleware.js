@@ -247,23 +247,34 @@ async function handleApproval(req, res) {
         const { decision, notes } = req.body;
         const approverId = req.user?.id || 'system';
 
-        // Validate inputs
-        const validApprovalId = validateApprovalId(approvalId);
-        const validDecision = validateDecision(decision);
-        const validNotes = validateNotes(notes);
+        if (!approvalId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Approval ID is required'
+            });
+        }
+
+        if (!decision || !['approve', 'reject'].includes(decision)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Decision must be "approve" or "reject"'
+            });
+        }
+
+        const sanitizedNotes = notes ? sanitizeString(notes.trim()) : null;
 
         let result;
-        if (validDecision === 'approve') {
-            result = await coordinator.approveAction(validApprovalId, approverId, validNotes);
+        if (decision === 'approve') {
+            result = await coordinator.approveAction(approvalId, approverId, sanitizedNotes);
         } else {
-            result = await coordinator.rejectAction(validApprovalId, approverId, validNotes);
+            result = await coordinator.rejectAction(approvalId, approverId, sanitizedNotes);
         }
 
         logger.info(`Approval ${decision}d`, {
-            approvalId: validApprovalId,
+            approvalId,
             approverId,
-            decision: validDecision,
-            notes: validNotes
+            decision,
+            notes: sanitizedNotes
         });
 
         res.json({

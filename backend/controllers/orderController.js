@@ -4,8 +4,10 @@ const db =
 const {
     createOrderService,
     validateOrderDataService,
-    generateOrderSummaryService
-} = require("../services/order.service");
+    getOrderSummaryById
+} = require(
+    "../services/order.service"
+);
 
 const {
     safeNumber,
@@ -545,14 +547,15 @@ const cancelUserOrder = async (req, res) => {
     }
 };
 
+// Validate order data
 const validateOrder = async (req, res) => {
     try {
-        const result = validateOrderDataService(req.body);
-        if (!result.isValid) {
+        const validation = validateOrderDataService(req.body);
+        if (!validation || !validation.valid) {
             return res.status(400).json({
                 success: false,
-                errors: result.errors,
-                message: "Order validation failed"
+                message: (validation && validation.message) || "Invalid order data",
+                errors: (validation && validation.errors) || []
             });
         }
         return res.status(200).json({
@@ -561,24 +564,59 @@ const validateOrder = async (req, res) => {
         });
     } catch (error) {
         console.error("VALIDATE ORDER ERROR:", error);
-        return res.status(500).json({ success: false, message: "Server error" });
+        return res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
     }
 };
 
+// Get order summary
 const getOrderSummary = async (req, res) => {
     const id = safeInteger(req.params.id);
     if (!id) {
-        return res.status(400).json({ success: false, message: "Invalid order ID" });
+        return res.status(400).json({
+            success: false,
+            message: "Invalid order ID"
+        });
+    } catch (error) {
+        console.error("GET ORDER SUMMARY ERROR:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
     }
+
+    let connection;
     try {
-        const summary = await generateOrderSummaryService(id);
+        connection = await db.getConnection();
+        const summary = await getOrderSummaryById(connection, id);
+        if (!summary) {
+            return res.status(404).json({
+                success: false,
+                message: "Order summary not found"
+            });
+        }
+        
+        // normal users can only access own order summaries
+        if (req.user.role !== "admin" && summary.userId !== req.user.id) {
+            return res.status(404).json({
+                success: false,
+                message: "Order not found"
+            });
+        }
+
         return res.status(200).json({
             success: true,
             summary
         });
     } catch (error) {
         console.error("GET ORDER SUMMARY ERROR:", error);
-        return res.status(500).json({ success: false, message: "Server error" });
+        return res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
     }
 };
 

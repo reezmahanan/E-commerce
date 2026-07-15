@@ -1,10 +1,8 @@
 const express = require("express");
 const router = express.Router();
-
 const authMiddleware = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/rbacMiddleware");
 const { validateCreateProduct, validateUpdateProduct } = require("../middleware/validators/productValidator");
-const { validateProductReview } = require('../middleware/promptInjectionMiddleware');
 
 const {
     getProducts,
@@ -21,11 +19,6 @@ const {
     deleteProductReview
 } = require("../controllers/reviewController");
 
-// Update POST /api/products/review
-router.post('/products/review', authMiddleware, validateProductReview, async (req, res) => {
-    // Your existing review handler
-    // req.body.review is now sanitized
-});
 
 // --------------------------------------------------------------
 // Validate product ID

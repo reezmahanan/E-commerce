@@ -6,64 +6,51 @@ const authMiddleware = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/rbacMiddleware");
 const wishlistController = require("../controllers/wishlistController");
 const { safeNumber, safeInteger } = require("../utils/helpers");
+const { MAX_WISHLIST_SYNC_LIMIT } = require("../config/constants");
 
-
-// ==================== VALIDATION MIDDLEWARE ====================
 // ==================== SYNC VALIDATION MIDDLEWARE ====================
 const validateSyncPayload = (req, res, next) => {
   const { productIds } = req.body;
 
-  // 1. Array hona chahiye
-  if (!Array.isArray(productIds)) {
+  // 1. Check if array exists and is not empty
+  if (!Array.isArray(productIds) || productIds.length === 0) {
     return res.status(400).json({
       success: false,
-      message: "Invalid payload format. 'productIds' must be an array.",
+      message: "Product IDs array is required and cannot be empty for synchronization.",
     });
   }
 
-  // 2. Non-empty check
-  if (productIds.length === 0) {
+  // 🔥 UPDATED: Use the centralized constant instead of hardcoding 200
+  if (productIds.length > MAX_WISHLIST_SYNC_LIMIT) {
     return res.status(400).json({
       success: false,
-      message: "Product IDs array cannot be empty for synchronization.",
+      message: `Maximum ${MAX_WISHLIST_SYNC_LIMIT} products allowed in a single synchronization request.`,
     });
   }
 
-  // 3. Max limit check (Sync operation heavy hoti hai, isliye 200 limit rakhi hai)
-  const MAX_SYNC_LIMIT = 200;
-  if (productIds.length > MAX_SYNC_LIMIT) {
-    return res.status(400).json({
-      success: false,
-      message: `Maximum ${MAX_SYNC_LIMIT} products allowed in a single synchronization request.`,
-    });
-  }
-
-  // 4. Validate individual IDs aur duplicates check
-  const seenIds = new Set();
+  // 2. Validate individual IDs
   for (const id of productIds) {
-    const validId = safeNumber(id);
-    if (!validId || validId < 1) {
+    if (!safeNumber(id) || id < 1) {
       return res.status(400).json({
         success: false,
-        message: `Invalid product ID provided: ${id}. All IDs must be positive integers.`,
+        message: `Invalid product ID: ${id}`,
       });
     }
-
-    // Duplicate check
-    if (seenIds.has(validId)) {
-      return res.status(400).json({
-        success: false,
-        message: `Duplicate product ID found: ${id}. Synchronization payload must contain unique IDs.`,
-      });
-    }
-    seenIds.add(validId);
   }
-
-  // 5. Validated data ko request mein attach karein (Controller ise use kar sakta hai)
-  req.validatedProductIds = Array.from(seenIds);
 
   next();
 };
+
+const {
+  MAX_WISHLIST_SYNC_LIMIT,
+  SUPPORTED_EXPORT_FORMATS,
+  SHARE_TOKEN_MAX_LENGTH,
+  SHARE_TOKEN_REGEX
+} = require("../config/constants");
+
+const { MAX_WISHLIST_SYNC_LIMIT, SUPPORTED_EXPORT_FORMATS } = require("../config/constants");
+
+// ==================== VALIDATION MIDDLEWARE ====================
 const validateProductId = (req, res, next) => {
   const productId = safeNumber(req.params.productId || req.body.productId);
   if (!productId || productId < 1) {
@@ -118,10 +105,55 @@ const validateBatchProducts = (req, res, next) => {
 
   next();
 };
+// ==================== SHARE TOKEN VALIDATION MIDDLEWARE ====================
+const validateShareToken = (req, res, next) => {
+  const token = req.params.token;
+
+  // 1. Presence check
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      message: "Share token is required.",
+    });
+  }
+
+  // 2. Reject empty or whitespace-only tokens
+  if (token.trim() === '') {
+    return res.status(400).json({
+      success: false,
+      message: "Share token cannot be empty or contain only whitespace.",
+    });
+  }
+
+  // 3. Enforce a reasonable maximum token length
+  if (token.length > SHARE_TOKEN_MAX_LENGTH) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid share token. Maximum length allowed is ${SHARE_TOKEN_MAX_LENGTH} characters.`,
+    });
+  }
+
+const validateExportFormat = (req, res, next) => {
+  const format = req.query.format; 
+
+  if (!format) {
+    req.query.format = 'csv'; // Default to CSV
+    return next();
+  }
+
+  if (!SUPPORTED_EXPORT_FORMATS.includes(format)) {
+    return res.status(400).json({
+      success: false,
+      message: `Unsupported export format: "${format}". Allowed formats are: ${SUPPORTED_EXPORT_FORMATS.join(', ')}.`,
+    });
+  }
+
+  next();
+};
 
 // ==================== PUBLIC ROUTES ====================
 // Get shared wishlist by token (No auth required)
-router.get("/share/:token", wishlistController.getSharedWishlist);
+router.get("/share/:token",validateShareToken, wishlistController.getSharedWishlist);
 
 // ==================== PROTECTED ROUTES (User Only) ====================
 
@@ -151,7 +183,7 @@ router.post(
 router.post("/share", authMiddleware, wishlistController.generateShareLink);
 
 // Sync wishlist (replace entire wishlist)
-router.post("/sync", authMiddleware,validateSyncPayload, wishlistController.syncWishlist);
+router.post("/sync", authMiddleware,validateSyncPayload , wishlistController.syncWishlist);
 
 // Remove from wishlist (using body)
 router.post(

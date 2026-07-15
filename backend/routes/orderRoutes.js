@@ -337,8 +337,8 @@ router.patch("/:id/cancel", authMiddleware, (req, res, next) => {
 
 // ==================== ADMIN ENDPOINTS ====================
 
-// Get all orders with filters
-router.get("/", authMiddleware, authorizeRoles("admin", "support"), (req, res, next) => {
+// Export orders as CSV
+router.get("/export/csv", authMiddleware, authorizeRoles("admin", "support"), (req, res, next) => {
     const errors = [];
 
     // Validate status filter
