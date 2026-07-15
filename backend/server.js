@@ -64,6 +64,10 @@ const debtRoutes = require('./routes/debtRoutes');
 const { technicalDebtService } = require('./services/technicalDebtService');
 
 
+const temporalRoutes = require('./routes/temporalRoutes');
+const { temporalDataService } = require('./services/temporalDataService');
+
+
 const discoveryRoutes = require('./routes/discoveryRoutes');
 const { capabilityDiscoveryService } = require('./services/capabilityDiscoveryService');
 
@@ -215,11 +219,11 @@ app.use('/api/correlation', correlationRoutes);
 
 
 
-// Initialize technical debt service
-await technicalDebtService.initialize();
+// Initialize temporal data service
+await temporalDataService.initialize();
 
-// Add debt routes
-app.use('/api/debt', debtRoutes);
+// Add temporal routes
+app.use('/api/temporal', temporalRoutes);
 // Add with other route imports
 // Add with other imports
 const provenanceRoutes = require('./routes/provenanceRoutes');
