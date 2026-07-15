@@ -59,6 +59,9 @@ const routes = require("./routes/index");
 const { authLimiter } = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
+const adrRoutes = require('./routes/adrRoutes');
+const { adrService } = require('./services/adrService');
+
 
 const fitnessRoutes = require('./routes/fitnessRoutes');
 const { architecturalFitnessService } = require('./services/architecturalFitnessService');
@@ -270,12 +273,11 @@ app.use('/api/performance', performanceRoutes);
 
 
 
+// Initialize ADR service
+await adrService.initialize();
 
-// Initialize fitness service
-await architecturalFitnessService.initialize();
-
-// Add fitness routes
-app.use('/api/fitness', fitnessRoutes);
+// Add ADR routes
+app.use('/api/adr', adrRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
