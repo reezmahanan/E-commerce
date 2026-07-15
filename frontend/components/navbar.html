@@ -1,143 +1,100 @@
 <section id="header">
   <!-- Logo -->
   <a href="index.html">
-    <img
-      src="assets/images/logo.png"
-      class="logo"
-      alt="AnthropicBots Logo"
-      loading="lazy"
-    />
+    <img src="assets/images/logo.png" class="logo" alt="AnthropicBots Logo" loading="lazy" />
   </a>
 
   <!-- Search Autocomplete Container -->
   <div class="search-container" style="position: relative; margin-right: 16px">
-    <input
-      type="text"
-      id="searchInput"
-      placeholder="Search products..."
-      autocomplete="off"
-      class="search-input"
-    />
-    <div
-      id="suggestionsDropdown"
-      class="suggestions-dropdown"
-      style="display: none"
-    ></div>
+    <i class="fas fa-search search-icon" aria-hidden="true"></i>
+    <input type="text" id="searchInput" placeholder="Search products..." autocomplete="off" class="search-input" />
+    <div id="suggestionsDropdown" class="suggestions-dropdown" style="display: none"></div>
   </div>
 
   <!-- Desktop Navigation -->
   <nav class="desktop-nav">
     <ul id="navbar-links" class="nav-links">
-      <li class="category-menu-item">  
-        <button
-          id="category-menu-toggle"
-          class="category-menu-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="category-menu-dropdown"
-        >
+      <li class="category-menu-item">
+        <button id="category-menu-toggle" class="category-menu-toggle" type="button" aria-expanded="false"
+          aria-controls="category-menu-dropdown">
           <i class="fas fa-bars" aria-hidden="true"></i>
           Menu
           <i class="fas fa-chevron-down dropdown-indicator" aria-hidden="true"></i>
         </button>
-     
-        <div
-          id="category-menu-dropdown"
-          class="category-menu-dropdown"
-          aria-label="Product categories"
-        >
+
+        <div id="category-menu-dropdown" class="category-menu-dropdown" aria-label="Product categories">
           <div class="mega-menu-sidebar" aria-label="Categories">
-            <button class="mega-menu-category is-active" type="button" data-mega-category="fashion" aria-expanded="true" aria-controls="mega-panel-fashion">
+            <button class="mega-menu-category is-active" type="button" data-mega-category="fashion" aria-expanded="true"
+              aria-controls="mega-panel-fashion">
               <i class="fas fa-tshirt" aria-hidden="true"></i>
               <span>Fashion</span>
             </button>
-            <button class="mega-menu-category" type="button" data-mega-category="electronics" aria-expanded="false" aria-controls="mega-panel-electronics">
+            <button class="mega-menu-category" type="button" data-mega-category="electronics" aria-expanded="false"
+              aria-controls="mega-panel-electronics">
               <i class="fas fa-laptop" aria-hidden="true"></i>
               <span>Electronics</span>
             </button>
-            <button class="mega-menu-category" type="button" data-mega-category="grocery" aria-expanded="false" aria-controls="mega-panel-grocery">
+            <button class="mega-menu-category" type="button" data-mega-category="grocery" aria-expanded="false"
+              aria-controls="mega-panel-grocery">
               <i class="fas fa-shopping-basket" aria-hidden="true"></i>
               <span>Grocery</span>
             </button>
-            <button class="mega-menu-category" type="button" data-mega-category="toys" aria-expanded="false" aria-controls="mega-panel-toys">
+            <button class="mega-menu-category" type="button" data-mega-category="toys" aria-expanded="false"
+              aria-controls="mega-panel-toys">
               <i class="fas fa-puzzle-piece" aria-hidden="true"></i>
               <span>Toys</span>
             </button>
-            <button class="mega-menu-category" type="button" data-mega-category="stationery" aria-expanded="false" aria-controls="mega-panel-stationery">
+            <button class="mega-menu-category" type="button" data-mega-category="stationery" aria-expanded="false"
+              aria-controls="mega-panel-stationery">
               <i class="fas fa-pencil-alt" aria-hidden="true"></i>
               <span>Stationery</span>
             </button>
-            <button class="mega-menu-category" type="button" data-mega-category="home-kitchen" aria-expanded="false" aria-controls="mega-panel-home-kitchen">
+            <button class="mega-menu-category" type="button" data-mega-category="home-kitchen" aria-expanded="false"
+              aria-controls="mega-panel-home-kitchen">
               <i class="fas fa-home" aria-hidden="true"></i>
               <span>Home &amp; Kitchen</span>
             </button>
-            <button class="mega-menu-category" type="button" data-mega-category="beauty" aria-expanded="false" aria-controls="mega-panel-beauty">
+            <button class="mega-menu-category" type="button" data-mega-category="beauty" aria-expanded="false"
+              aria-controls="mega-panel-beauty">
               <i class="fas fa-spa" aria-hidden="true"></i>
               <span>Beauty</span>
             </button>
-            <button class="mega-menu-category" type="button" data-mega-category="sports" aria-expanded="false" aria-controls="mega-panel-sports">
+            <button class="mega-menu-category" type="button" data-mega-category="sports" aria-expanded="false"
+              aria-controls="mega-panel-sports">
               <i class="fas fa-running" aria-hidden="true"></i>
               <span>Sports</span>
             </button>
-            <button class="mega-menu-category" type="button" data-mega-category="pet-supplies" aria-expanded="false" aria-controls="mega-panel-pet-supplies">
+            <button class="mega-menu-category" type="button" data-mega-category="pet-supplies" aria-expanded="false"
+              aria-controls="mega-panel-pet-supplies">
               <i class="fas fa-paw" aria-hidden="true"></i>
               <span>Pet Supplies</span>
             </button>
-            <button class="mega-menu-category" type="button" data-mega-category="automotive" aria-expanded="false" aria-controls="mega-panel-automotive">
+            <button class="mega-menu-category" type="button" data-mega-category="automotive" aria-expanded="false"
+              aria-controls="mega-panel-automotive">
               <i class="fas fa-car" aria-hidden="true"></i>
               <span>Automotive</span>
             </button>
           </div>
 
           <div class="mega-menu-content">
-            <section id="mega-panel-fashion" class="mega-menu-panel is-active" data-mega-panel="fashion" aria-labelledby="mega-title-fashion">
+            <section id="mega-panel-fashion" class="mega-menu-panel is-active" data-mega-panel="fashion"
+              aria-labelledby="mega-title-fashion">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-fashion">Fashion</h3>
                 <a href="shop.html?category=Fashion">Shop all Fashion</a>
               </div>
-              <div class="mega-menu-grid fashion-mega-grid">
-                <a class="fashion-category-card" href="shop.html?category=Fashion&amp;subcategory=Men%27s%20Clothing">
-                  <div class="fashion-card-img-wrapper">
-                    <img src="assets/images/menscasual.jpg" alt="Men's Clothing" loading="lazy" />
-                  </div>
-                  <span>Men's Clothing</span>
-                </a>
-                <a class="fashion-category-card" href="shop.html?category=Fashion&amp;subcategory=Women%27s%20Clothing">
-                  <div class="fashion-card-img-wrapper">
-                    <img src="assets/images/womensCasual.png" alt="Women's Clothing" loading="lazy" />
-                  </div>
-                  <span>Women's Clothing</span>
-                </a>
-                <a class="fashion-category-card" href="shop.html?category=Fashion&amp;subcategory=Kids%20Wear">
-                  <div class="fashion-card-img-wrapper">
-                    <img src="assets/images/kids_skirt_top.jpg" alt="Kids Wear" loading="lazy" />
-                  </div>
-                  <span>Kids Wear</span>
-                </a>
-                <a class="fashion-category-card" href="shop.html?category=Fashion&amp;subcategory=Footwear">
-                  <div class="fashion-card-img-wrapper">
-                    <img src="assets/images/footwear_preview.png" alt="Footwear" loading="lazy" />
-                  </div>
-                  <span>Footwear</span>
-                </a>
-                <a class="fashion-category-card" href="shop.html?category=Fashion&amp;subcategory=Watches">
-                  <div class="fashion-card-img-wrapper">
-                    <img src="assets/images/watches_preview.png" alt="Watches" loading="lazy" />
-                  </div>
-                  <span>Watches</span>
-                </a>
-                <a class="fashion-category-card" href="shop.html?category=Fashion&amp;subcategory=Bags">
-                  <div class="fashion-card-img-wrapper">
-                    <img src="assets/images/bags_preview.png" alt="Bags" loading="lazy" />
-                  </div>
-                  <span>Bags</span>
-                </a>
-                <a class="fashion-category-card" href="shop.html?category=Fashion&amp;subcategory=Accessories">
-                  <div class="fashion-card-img-wrapper">
-                    <img src="assets/images/accessories_preview.png" alt="Accessories" loading="lazy" />
-                  </div>
-                  <span>Accessories</span>
-                </a>
+              <div class="mega-menu-grid">
+                <a class="category-menu-link" href="shop.html?category=Fashion&amp;subcategory=Men%27s%20Clothing">Men's
+                  Clothing</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Fashion&amp;subcategory=Women%27s%20Clothing">Women's Clothing</a>
+                <a class="category-menu-link" href="shop.html?category=Fashion&amp;subcategory=Kids%20Wear">Kids
+                  Wear</a>
+                <a class="category-menu-link" href="shop.html?category=Fashion&amp;subcategory=Footwear">Footwear</a>
+                <a class="category-menu-link" href="shop.html?category=Fashion&amp;subcategory=Watches">Watches</a>
+                <a class="category-menu-link" href="shop.html?category=Fashion&amp;subcategory=Bags">Bags</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Fashion&amp;subcategory=Accessories">Accessories</a>
               </div>
               <div class="mega-menu-products" data-fashion-products aria-label="Featured Fashion products">
                 <a class="mega-menu-product-card" href="shop.html?category=Fashion&amp;subcategory=Men%27s%20Clothing">
@@ -169,54 +126,22 @@
               </div>
             </section>
 
-            <section id="mega-panel-electronics" class="mega-menu-panel" data-mega-panel="electronics" aria-labelledby="mega-title-electronics">
+            <section id="mega-panel-electronics" class="mega-menu-panel" data-mega-panel="electronics"
+              aria-labelledby="mega-title-electronics">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-electronics">Electronics</h3>
                 <a href="shop.html?category=Electronics">Shop all Electronics</a>
               </div>
-              <div class="mega-menu-grid electronics-mega-grid">
-                <a class="electronics-category-card" href="shop.html?category=Electronics&amp;subcategory=Mobiles">
-                  <div class="electronics-card-img-wrapper">
-                    <img src="assets/images/mobiles_preview.png" alt="Mobiles" loading="lazy" />
-                  </div>
-                  <span>Mobiles</span>
-                </a>
-                <a class="electronics-category-card" href="shop.html?category=Electronics&amp;subcategory=Laptops">
-                  <div class="electronics-card-img-wrapper">
-                    <img src="assets/images/laptops_preview.png" alt="Laptops" loading="lazy" />
-                  </div>
-                  <span>Laptops</span>
-                </a>
-                <a class="electronics-category-card" href="shop.html?category=Electronics&amp;subcategory=Tablets">
-                  <div class="electronics-card-img-wrapper">
-                    <img src="assets/images/tablets_preview.png" alt="Tablets" loading="lazy" />
-                  </div>
-                  <span>Tablets</span>
-                </a>
-                <a class="electronics-category-card" href="shop.html?category=Electronics&amp;subcategory=Smart%20Watches">
-                  <div class="electronics-card-img-wrapper">
-                    <img src="assets/images/smartwatches_preview.png" alt="Smart Watches" loading="lazy" />
-                  </div>
-                  <span>Smart Watches</span>
-                </a>
-                <a class="electronics-category-card" href="shop.html?category=Electronics&amp;subcategory=Headphones">
-                  <div class="electronics-card-img-wrapper">
-                    <img src="assets/images/headphones_preview.png" alt="Headphones" loading="lazy" />
-                  </div>
-                  <span>Headphones</span>
-                </a>
-                <a class="electronics-category-card" href="shop.html?category=Electronics&amp;subcategory=Cameras">
-                  <div class="electronics-card-img-wrapper">
-                    <img src="assets/images/cameras_preview.png" alt="Cameras" loading="lazy" />
-                  </div>
-                  <span>Cameras</span>
-                </a>
-                <a class="electronics-category-card" href="shop.html?category=Electronics&amp;subcategory=Gaming">
-                  <div class="electronics-card-img-wrapper">
-                    <img src="assets/images/gaming_preview.png" alt="Gaming" loading="lazy" />
-                  </div>
-                  <span>Gaming</span>
-                </a>
+              <div class="mega-menu-grid">
+                <a class="category-menu-link" href="shop.html?category=Electronics&amp;subcategory=Mobiles">Mobiles</a>
+                <a class="category-menu-link" href="shop.html?category=Electronics&amp;subcategory=Laptops">Laptops</a>
+                <a class="category-menu-link" href="shop.html?category=Electronics&amp;subcategory=Tablets">Tablets</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Electronics&amp;subcategory=Smart%20Watches">Smart Watches</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Electronics&amp;subcategory=Headphones">Headphones</a>
+                <a class="category-menu-link" href="shop.html?category=Electronics&amp;subcategory=Cameras">Cameras</a>
+                <a class="category-menu-link" href="shop.html?category=Electronics&amp;subcategory=Gaming">Gaming</a>
               </div>
               <div class="mega-menu-products" aria-label="Featured Electronics products">
                 <a class="mega-menu-product-card" href="shop.html?category=Electronics&amp;subcategory=Mobiles">
@@ -248,49 +173,35 @@
               </div>
             </section>
 
-            <section id="mega-panel-grocery" class="mega-menu-panel" data-mega-panel="grocery" aria-labelledby="mega-title-grocery">
+            <section id="mega-panel-grocery" class="mega-menu-panel" data-mega-panel="grocery"
+              aria-labelledby="mega-title-grocery">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-grocery">Grocery</h3>
                 <a href="shop.html?category=Grocery">Shop all Grocery</a>
               </div>
               <div class="mega-menu-grid grocery-mega-menu-grid">
                 <div class="grocery-subcategory-list" aria-label="Grocery subcategories">
-                  <a class="grocery-category-card grocery-subcategory-link is-active" href="shop.html?category=Grocery&amp;subcategory=Fruits%20%26%20Vegetables" data-grocery-subcategory="Fruits &amp; Vegetables" aria-controls="grocery-product-preview">
-                    <div class="grocery-card-img-wrapper">
-                      <img src="assets/images/fruits_veg_preview.png" alt="Fruits &amp; Vegetables" loading="lazy" />
-                    </div>
-                    <span>Fruits &amp; Vegetables</span>
-                  </a>
-                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Dairy" data-grocery-subcategory="Dairy" aria-controls="grocery-product-preview">
-                    <div class="grocery-card-img-wrapper">
-                      <img src="assets/images/dairy_preview.png" alt="Dairy" loading="lazy" />
-                    </div>
-                    <span>Dairy</span>
-                  </a>
-                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Snacks" data-grocery-subcategory="Snacks" aria-controls="grocery-product-preview">
-                    <div class="grocery-card-img-wrapper">
-                      <img src="assets/images/snacks_preview.png" alt="Snacks" loading="lazy" />
-                    </div>
-                    <span>Snacks</span>
-                  </a>
-                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Beverages" data-grocery-subcategory="Beverages" aria-controls="grocery-product-preview">
-                    <div class="grocery-card-img-wrapper">
-                      <img src="assets/images/beverages_preview.png" alt="Beverages" loading="lazy" />
-                    </div>
-                    <span>Beverages</span>
-                  </a>
-                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Cooking%20Essentials" data-grocery-subcategory="Cooking Essentials" aria-controls="grocery-product-preview">
-                    <div class="grocery-card-img-wrapper">
-                      <img src="assets/images/cooking_essentials_preview.png" alt="Cooking Essentials" loading="lazy" />
-                    </div>
-                    <span>Cooking Essentials</span>
-                  </a>
-                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Household%20Supplies" data-grocery-subcategory="Household Supplies" aria-controls="grocery-product-preview">
-                    <div class="grocery-card-img-wrapper">
-                      <img src="assets/images/household_supplies_preview.png" alt="Household Supplies" loading="lazy" />
-                    </div>
-                    <span>Household Supplies</span>
-                  </a>
+                  <a class="category-menu-link grocery-subcategory-link is-active"
+                    href="shop.html?category=Grocery&amp;subcategory=Fruits%20%26%20Vegetables"
+                    data-grocery-subcategory="Fruits &amp; Vegetables" aria-controls="grocery-product-preview">Fruits
+                    &amp; Vegetables</a>
+                  <a class="category-menu-link grocery-subcategory-link"
+                    href="shop.html?category=Grocery&amp;subcategory=Dairy" data-grocery-subcategory="Dairy"
+                    aria-controls="grocery-product-preview">Dairy</a>
+                  <a class="category-menu-link grocery-subcategory-link"
+                    href="shop.html?category=Grocery&amp;subcategory=Snacks" data-grocery-subcategory="Snacks"
+                    aria-controls="grocery-product-preview">Snacks</a>
+                  <a class="category-menu-link grocery-subcategory-link"
+                    href="shop.html?category=Grocery&amp;subcategory=Beverages" data-grocery-subcategory="Beverages"
+                    aria-controls="grocery-product-preview">Beverages</a>
+                  <a class="category-menu-link grocery-subcategory-link"
+                    href="shop.html?category=Grocery&amp;subcategory=Cooking%20Essentials"
+                    data-grocery-subcategory="Cooking Essentials" aria-controls="grocery-product-preview">Cooking
+                    Essentials</a>
+                  <a class="category-menu-link grocery-subcategory-link"
+                    href="shop.html?category=Grocery&amp;subcategory=Household%20Supplies"
+                    data-grocery-subcategory="Household Supplies" aria-controls="grocery-product-preview">Household
+                    Supplies</a>
                 </div>
                 <div id="grocery-product-preview" class="grocery-product-preview" aria-live="polite">
                   <p class="grocery-menu-empty">Loading products...</p>
@@ -298,18 +209,29 @@
               </div>
             </section>
 
-            <section id="mega-panel-toys" class="mega-menu-panel" data-mega-panel="toys" aria-labelledby="mega-title-toys">
+            <section id="mega-panel-toys" class="mega-menu-panel" data-mega-panel="toys"
+              aria-labelledby="mega-title-toys">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-toys">Toys</h3>
                 <a href="shop.html?category=Toys">Shop all Toys</a>
               </div>
               <div class="mega-menu-grid grocery-mega-menu-grid toy-mega-menu-grid">
                 <div class="grocery-subcategory-list toy-subcategory-list" aria-label="Toys subcategories">
-                  <a class="category-menu-link toy-subcategory-link is-active" href="shop.html?category=Toys&amp;subcategory=Educational%20Toys" data-toy-subcategory="Educational Toys" aria-controls="toy-product-preview">Educational Toys</a>
-                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=Building%20Blocks" data-toy-subcategory="Building Blocks" aria-controls="toy-product-preview">Building Blocks</a>
-                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=Dolls" data-toy-subcategory="Dolls" aria-controls="toy-product-preview">Dolls</a>
-                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=RC%20Toys" data-toy-subcategory="RC Toys" aria-controls="toy-product-preview">RC Toys</a>
-                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=Outdoor%20Toys" data-toy-subcategory="Outdoor Toys" aria-controls="toy-product-preview">Outdoor Toys</a>
+                  <a class="category-menu-link toy-subcategory-link is-active"
+                    href="shop.html?category=Toys&amp;subcategory=Educational%20Toys"
+                    data-toy-subcategory="Educational Toys" aria-controls="toy-product-preview">Educational Toys</a>
+                  <a class="category-menu-link toy-subcategory-link"
+                    href="shop.html?category=Toys&amp;subcategory=Building%20Blocks"
+                    data-toy-subcategory="Building Blocks" aria-controls="toy-product-preview">Building Blocks</a>
+                  <a class="category-menu-link toy-subcategory-link"
+                    href="shop.html?category=Toys&amp;subcategory=Dolls" data-toy-subcategory="Dolls"
+                    aria-controls="toy-product-preview">Dolls</a>
+                  <a class="category-menu-link toy-subcategory-link"
+                    href="shop.html?category=Toys&amp;subcategory=RC%20Toys" data-toy-subcategory="RC Toys"
+                    aria-controls="toy-product-preview">RC Toys</a>
+                  <a class="category-menu-link toy-subcategory-link"
+                    href="shop.html?category=Toys&amp;subcategory=Outdoor%20Toys" data-toy-subcategory="Outdoor Toys"
+                    aria-controls="toy-product-preview">Outdoor Toys</a>
                 </div>
                 <div id="toy-product-preview" class="grocery-product-preview toy-product-preview" aria-live="polite">
                   <p class="grocery-menu-empty toy-menu-empty">Loading products...</p>
@@ -317,72 +239,51 @@
               </div>
             </section>
 
-            <section id="mega-panel-stationery" class="mega-menu-panel" data-mega-panel="stationery" aria-labelledby="mega-title-stationery">
+            <section id="mega-panel-stationery" class="mega-menu-panel" data-mega-panel="stationery"
+              aria-labelledby="mega-title-stationery">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-stationery">Stationery</h3>
                 <a href="shop.html?category=Stationery">Shop all Stationery</a>
               </div>
               <div class="mega-menu-grid">
-                <a class="category-menu-link" href="shop.html?category=Stationery&amp;subcategory=Notebooks">Notebooks</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Stationery&amp;subcategory=Notebooks">Notebooks</a>
                 <a class="category-menu-link" href="shop.html?category=Stationery&amp;subcategory=Pens">Pens</a>
                 <a class="category-menu-link" href="shop.html?category=Stationery&amp;subcategory=Pencils">Pencils</a>
-                <a class="category-menu-link" href="shop.html?category=Stationery&amp;subcategory=School%20Bags">School Bags</a>
-                <a class="category-menu-link" href="shop.html?category=Stationery&amp;subcategory=Office%20Supplies">Office Supplies</a>
-                <a class="category-menu-link" href="shop.html?category=Stationery&amp;subcategory=Art%20Supplies">Art Supplies</a>
+                <a class="category-menu-link" href="shop.html?category=Stationery&amp;subcategory=School%20Bags">School
+                  Bags</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Stationery&amp;subcategory=Office%20Supplies">Office Supplies</a>
+                <a class="category-menu-link" href="shop.html?category=Stationery&amp;subcategory=Art%20Supplies">Art
+                  Supplies</a>
               </div>
             </section>
 
-            <section id="mega-panel-home-kitchen" class="mega-menu-panel" data-mega-panel="home-kitchen" aria-labelledby="mega-title-home-kitchen">
+            <section id="mega-panel-home-kitchen" class="mega-menu-panel" data-mega-panel="home-kitchen"
+              aria-labelledby="mega-title-home-kitchen">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-home-kitchen">Home &amp; Kitchen</h3>
                 <a href="shop.html?category=Home%20%26%20Kitchen">Shop all Home &amp; Kitchen</a>
               </div>
-              <div class="mega-menu-grid grocery-mega-menu-grid home-kitchen-mega-menu-grid">
-                <div class="grocery-subcategory-list home-kitchen-subcategory-list" aria-label="Home &amp; Kitchen subcategories">
-                  <a class="home-kitchen-category-card home-kitchen-subcategory-link is-active" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Furniture" data-home-kitchen-subcategory="Furniture" aria-controls="home-kitchen-product-preview">
-                    <div class="home-kitchen-card-img-wrapper">
-                      <img src="assets/images/furniture_preview.png" alt="Furniture" loading="lazy" />
-                    </div>
-                    <span>Furniture</span>
-                  </a>
-                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Cookware" data-home-kitchen-subcategory="Cookware" aria-controls="home-kitchen-product-preview">
-                    <div class="home-kitchen-card-img-wrapper">
-                      <img src="assets/images/cookware_preview.png" alt="Cookware" loading="lazy" />
-                    </div>
-                    <span>Cookware</span>
-                  </a>
-                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Storage" data-home-kitchen-subcategory="Storage" aria-controls="home-kitchen-product-preview">
-                    <div class="home-kitchen-card-img-wrapper">
-                      <img src="assets/images/storage_preview.png" alt="Storage" loading="lazy" />
-                    </div>
-                    <span>Storage</span>
-                  </a>
-                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Home%20Decor" data-home-kitchen-subcategory="Home Decor" aria-controls="home-kitchen-product-preview">
-                    <div class="home-kitchen-card-img-wrapper">
-                      <img src="assets/images/home_decor_preview.png" alt="Home Decor" loading="lazy" />
-                    </div>
-                    <span>Home Decor</span>
-                  </a>
-                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Bedding" data-home-kitchen-subcategory="Bedding" aria-controls="home-kitchen-product-preview">
-                    <div class="home-kitchen-card-img-wrapper">
-                      <img src="assets/images/bedding_preview.png" alt="Bedding" loading="lazy" />
-                    </div>
-                    <span>Bedding</span>
-                  </a>
-                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Kitchen%20Appliances" data-home-kitchen-subcategory="Kitchen Appliances" aria-controls="home-kitchen-product-preview">
-                    <div class="home-kitchen-card-img-wrapper">
-                      <img src="assets/images/kitchen_appliances_preview.png" alt="Kitchen Appliances" loading="lazy" />
-                    </div>
-                    <span>Kitchen Appliances</span>
-                  </a>
-                </div>
-                <div id="home-kitchen-product-preview" class="grocery-product-preview home-kitchen-product-preview" aria-live="polite">
-                  <p class="grocery-menu-empty home-kitchen-menu-empty">Loading products...</p>
-                </div>
+              <div class="mega-menu-grid">
+                <a class="category-menu-link"
+                  href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Furniture">Furniture</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Cookware">Cookware</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Storage">Storage</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Home%20Decor">Home Decor</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Bedding">Bedding</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Kitchen%20Appliances">Kitchen
+                  Appliances</a>
               </div>
             </section>
 
-            <section id="mega-panel-beauty" class="mega-menu-panel" data-mega-panel="beauty" aria-labelledby="mega-title-beauty">
+            <section id="mega-panel-beauty" class="mega-menu-panel" data-mega-panel="beauty"
+              aria-labelledby="mega-title-beauty">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-beauty">Beauty</h3>
                 <a href="shop.html?category=Beauty">Shop all Beauty</a>
@@ -392,11 +293,13 @@
                 <a class="category-menu-link" href="shop.html?category=Beauty&amp;subcategory=Haircare">Haircare</a>
                 <a class="category-menu-link" href="shop.html?category=Beauty&amp;subcategory=Makeup">Makeup</a>
                 <a class="category-menu-link" href="shop.html?category=Beauty&amp;subcategory=Fragrances">Fragrances</a>
-                <a class="category-menu-link" href="shop.html?category=Beauty&amp;subcategory=Personal%20Care">Personal Care</a>
+                <a class="category-menu-link" href="shop.html?category=Beauty&amp;subcategory=Personal%20Care">Personal
+                  Care</a>
               </div>
             </section>
 
-            <section id="mega-panel-sports" class="mega-menu-panel" data-mega-panel="sports" aria-labelledby="mega-title-sports">
+            <section id="mega-panel-sports" class="mega-menu-panel" data-mega-panel="sports"
+              aria-labelledby="mega-title-sports">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-sports">Sports</h3>
                 <a href="shop.html?category=Sports">Shop all Sports</a>
@@ -404,37 +307,50 @@
               <div class="mega-menu-grid">
                 <a class="category-menu-link" href="shop.html?category=Sports&amp;subcategory=Cricket">Cricket</a>
                 <a class="category-menu-link" href="shop.html?category=Sports&amp;subcategory=Football">Football</a>
-                <a class="category-menu-link" href="shop.html?category=Sports&amp;subcategory=Gym%20Equipment">Gym Equipment</a>
+                <a class="category-menu-link" href="shop.html?category=Sports&amp;subcategory=Gym%20Equipment">Gym
+                  Equipment</a>
                 <a class="category-menu-link" href="shop.html?category=Sports&amp;subcategory=Cycling">Cycling</a>
-                <a class="category-menu-link" href="shop.html?category=Sports&amp;subcategory=Outdoor%20Sports">Outdoor Sports</a>
+                <a class="category-menu-link" href="shop.html?category=Sports&amp;subcategory=Outdoor%20Sports">Outdoor
+                  Sports</a>
               </div>
             </section>
 
-            <section id="mega-panel-pet-supplies" class="mega-menu-panel" data-mega-panel="pet-supplies" aria-labelledby="mega-title-pet-supplies">
+            <section id="mega-panel-pet-supplies" class="mega-menu-panel" data-mega-panel="pet-supplies"
+              aria-labelledby="mega-title-pet-supplies">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-pet-supplies">Pet Supplies</h3>
                 <a href="shop.html?category=Pet%20Supplies">Shop all Pet Supplies</a>
               </div>
               <div class="mega-menu-grid">
-                <a class="category-menu-link" href="shop.html?category=Pet%20Supplies&amp;subcategory=Dog%20Food">Dog Food</a>
-                <a class="category-menu-link" href="shop.html?category=Pet%20Supplies&amp;subcategory=Cat%20Food">Cat Food</a>
-                <a class="category-menu-link" href="shop.html?category=Pet%20Supplies&amp;subcategory=Pet%20Toys">Pet Toys</a>
-                <a class="category-menu-link" href="shop.html?category=Pet%20Supplies&amp;subcategory=Grooming">Grooming</a>
-                <a class="category-menu-link" href="shop.html?category=Pet%20Supplies&amp;subcategory=Accessories">Accessories</a>
+                <a class="category-menu-link" href="shop.html?category=Pet%20Supplies&amp;subcategory=Dog%20Food">Dog
+                  Food</a>
+                <a class="category-menu-link" href="shop.html?category=Pet%20Supplies&amp;subcategory=Cat%20Food">Cat
+                  Food</a>
+                <a class="category-menu-link" href="shop.html?category=Pet%20Supplies&amp;subcategory=Pet%20Toys">Pet
+                  Toys</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Pet%20Supplies&amp;subcategory=Grooming">Grooming</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Pet%20Supplies&amp;subcategory=Accessories">Accessories</a>
               </div>
             </section>
 
-            <section id="mega-panel-automotive" class="mega-menu-panel" data-mega-panel="automotive" aria-labelledby="mega-title-automotive">
+            <section id="mega-panel-automotive" class="mega-menu-panel" data-mega-panel="automotive"
+              aria-labelledby="mega-title-automotive">
               <div class="mega-menu-panel-header">
                 <h3 id="mega-title-automotive">Automotive</h3>
                 <a href="shop.html?category=Automotive">Shop all Automotive</a>
               </div>
               <div class="mega-menu-grid">
-                <a class="category-menu-link" href="shop.html?category=Automotive&amp;subcategory=Car%20Accessories">Car Accessories</a>
-                <a class="category-menu-link" href="shop.html?category=Automotive&amp;subcategory=Bike%20Accessories">Bike Accessories</a>
+                <a class="category-menu-link" href="shop.html?category=Automotive&amp;subcategory=Car%20Accessories">Car
+                  Accessories</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Automotive&amp;subcategory=Bike%20Accessories">Bike Accessories</a>
                 <a class="category-menu-link" href="shop.html?category=Automotive&amp;subcategory=Helmets">Helmets</a>
-                <a class="category-menu-link" href="shop.html?category=Automotive&amp;subcategory=Engine%20Oil">Engine Oil</a>
-                <a class="category-menu-link" href="shop.html?category=Automotive&amp;subcategory=Cleaning%20Kits">Cleaning Kits</a>
+                <a class="category-menu-link" href="shop.html?category=Automotive&amp;subcategory=Engine%20Oil">Engine
+                  Oil</a>
+                <a class="category-menu-link"
+                  href="shop.html?category=Automotive&amp;subcategory=Cleaning%20Kits">Cleaning Kits</a>
               </div>
             </section>
           </div>
@@ -464,12 +380,7 @@
         <a href="signin.html" id="auth-link">Sign In</a>
       </li>
       <li class="theme-toggle-item">
-        <button
-          id="theme-toggle"
-          class="theme-toggle-btn"
-          title="Toggle theme"
-          aria-label="Toggle dark/light mode"
-        >
+        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle theme" aria-label="Toggle dark/light mode">
           <span class="theme-icon" id="theme-icon">🌙</span>
         </button>
       </li>
@@ -487,24 +398,12 @@
   <div id="mobile-menu-overlay">
     <!-- Mobile Menu Header -->
     <div class="mobile-menu-header">
-    <a href="index.html">
-        <img
-            src="assets/images/logo.png"
-            class="mobile-logo"
-            alt="Logo"
-            loading="lazy"
-        />
-    </a>
+      <a href="index.html">
+        <img src="assets/images/logo.png" class="mobile-logo" alt="Logo" loading="lazy" />
+      </a>
       <button id="mobile-close-btn" aria-label="Close Menu">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
@@ -520,7 +419,8 @@
           </span>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-fashion">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-fashion">
             <span><i class="fas fa-tshirt" aria-hidden="true"></i> Fashion</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -535,7 +435,8 @@
           </div>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-electronics">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-electronics">
             <span><i class="fas fa-laptop" aria-hidden="true"></i> Electronics</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -550,7 +451,8 @@
           </div>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-grocery">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-grocery">
             <span><i class="fas fa-shopping-basket" aria-hidden="true"></i> Grocery</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -564,7 +466,8 @@
           </div>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-toys">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-toys">
             <span><i class="fas fa-puzzle-piece" aria-hidden="true"></i> Toys</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -577,7 +480,8 @@
           </div>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-stationery">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-stationery">
             <span><i class="fas fa-pencil-alt" aria-hidden="true"></i> Stationery</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -591,7 +495,8 @@
           </div>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-home-kitchen">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-home-kitchen">
             <span><i class="fas fa-home" aria-hidden="true"></i> Home &amp; Kitchen</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -601,11 +506,13 @@
             <a href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Storage">Storage</a>
             <a href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Home%20Decor">Home Decor</a>
             <a href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Bedding">Bedding</a>
-            <a href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Kitchen%20Appliances">Kitchen Appliances</a>
+            <a href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Kitchen%20Appliances">Kitchen
+              Appliances</a>
           </div>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-beauty">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-beauty">
             <span><i class="fas fa-spa" aria-hidden="true"></i> Beauty</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -618,7 +525,8 @@
           </div>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-sports">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-sports">
             <span><i class="fas fa-running" aria-hidden="true"></i> Sports</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -631,7 +539,8 @@
           </div>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-pet-supplies">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-pet-supplies">
             <span><i class="fas fa-paw" aria-hidden="true"></i> Pet Supplies</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -644,7 +553,8 @@
           </div>
         </li>
         <li class="mobile-category-accordion">
-          <button class="mobile-category-toggle" type="button" aria-expanded="false" aria-controls="mobile-category-automotive">
+          <button class="mobile-category-toggle" type="button" aria-expanded="false"
+            aria-controls="mobile-category-automotive">
             <span><i class="fas fa-car" aria-hidden="true"></i> Automotive</span>
             <i class="fas fa-chevron-down" aria-hidden="true"></i>
           </button>
@@ -658,46 +568,30 @@
         </li>
         <li class="mobile-divider"></li>
         <li>
-          <a href="index.html" class="mobile-link"
-            ><i class="fas fa-home"></i> Home</a
-          >
+          <a href="index.html" class="mobile-link"><i class="fas fa-home"></i> Home</a>
         </li>
         <li>
-          <a href="shop.html" class="mobile-link"
-            ><i class="fas fa-store"></i> Shop</a
-          >
+          <a href="shop.html" class="mobile-link"><i class="fas fa-store"></i> Shop</a>
         </li>
         <li>
-          <a href="blog.html" class="mobile-link"
-            ><i class="fas fa-blog"></i> Blog</a
-          >
+          <a href="blog.html" class="mobile-link"><i class="fas fa-blog"></i> Blog</a>
         </li>
         <li>
-          <a href="about.html" class="mobile-link"
-            ><i class="fas fa-info-circle"></i> About</a
-          >
+          <a href="about.html" class="mobile-link"><i class="fas fa-info-circle"></i> About</a>
         </li>
         <li>
-          <a href="contact.html" class="mobile-link"
-            ><i class="fas fa-envelope"></i> Contact</a
-          >
+          <a href="contact.html" class="mobile-link"><i class="fas fa-envelope"></i> Contact</a>
         </li>
         <li class="mobile-divider"></li>
         <li>
-          <a href="wishlist.html" class="mobile-link"
-            ><i class="far fa-heart"></i> Wishlist</a
-          >
+          <a href="wishlist.html" class="mobile-link"><i class="far fa-heart"></i> Wishlist</a>
         </li>
         <li>
-          <a href="cart.html" class="mobile-link"
-            ><i class="fas fa-shopping-bag"></i> Cart
-            <span id="mobile-cart-badge" class="mobile-badge">0</span></a
-          >
+          <a href="cart.html" class="mobile-link"><i class="fas fa-shopping-bag"></i> Cart
+            <span id="mobile-cart-badge" class="mobile-badge">0</span></a>
         </li>
         <li>
-          <a href="signin.html" class="mobile-link"
-            ><i class="fas fa-user"></i> Sign In</a
-          >
+          <a href="signin.html" class="mobile-link"><i class="fas fa-user"></i> Sign In</a>
         </li>
       </ul>
     </nav>
