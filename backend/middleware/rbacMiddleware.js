@@ -4,7 +4,7 @@
  * Includes security checks: user existence, account status, email verification, and logging.
  */
 
-const { User } = require("../models");
+const User = require("../models/User");
 const logger = require("../utils/logger");
 
 // =====================
