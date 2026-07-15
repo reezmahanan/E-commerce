@@ -385,87 +385,91 @@ router.get("/", authMiddleware, authorizeRoles("admin", "support"), (req, res, n
         if (!statusValidation.valid) {
             errors.push(...statusValidation.errors);
         }
-    }
 
-    // Validate pagination
-    const paginationValidation = validatePagination(req.query.page, req.query.limit);
-    if (!paginationValidation.valid) {
-        errors.push(...paginationValidation.errors);
-    }
+        next();
+    },
+    orderController.createOrder
+);
 
-    // Validate date filters
-    if (req.query.date_from) {
-        const dateValidation = validateDate(req.query.date_from);
-        if (!dateValidation.valid) {
-            errors.push(dateValidation.error);
-        }
-    }
+// get current user orders
+router.get(
+    "/my-orders",
+    authMiddleware,
+    orderController.getUserOrders
+);
 
-    if (req.query.date_to) {
-        const dateValidation = validateDate(req.query.date_to);
-        if (!dateValidation.valid) {
-            errors.push(dateValidation.error);
-        }
-    }
+// get single order
+router.get(
+    "/:id",
+    authMiddleware,
+    orderController.getOrderById
+);
 
-    if (errors.length > 0) {
-        return res.status(400).json({
-            success: false,
-            message: "Validation failed",
-            details: errors
-        });
-    }
+// ========================================
+// GET ORDER STATUS (Issue #778)
+// ========================================
+router.get(
+    "/:id/status",
+    authMiddleware,
+    orderController.getOrderStatus
+);
 
-    req.pagination = {
-        page: paginationValidation.page,
-        limit: paginationValidation.limit
-    };
+// get all orders (admin)
+router.get(
+    "/",
+    authMiddleware,
+    authorizeRoles(
+        "admin"
+    ),
+    orderController.getAllOrders
+);
 
-    next();
-}, orderController.getAllOrders);
+// update order status
+router.put(
+    "/:id/status",
+    authMiddleware,
+    authorizeRoles(
+        "admin"
+    ),
+    (
+        req,
+        res,
+        next
+    ) => {
 
-// Update order status with reason
-router.put("/:id/status", authMiddleware, authorizeRoles("admin", "support"), (req, res, next) => {
-    const errors = [];
+        const {
+            status
+        } = req.body;
 
-    // Validate status
-    const statusValidation = validateStatus(req.body.status);
-    if (!statusValidation.valid) {
-        errors.push(...statusValidation.errors);
-    }
+        const allowedStatuses = [
 
-    // Validate reason
-    const reasonValidation = validateReason(req.body.reason);
-    if (!reasonValidation.valid) {
-        errors.push(...reasonValidation.errors);
-    }
+            "pending",
 
-    if (errors.length > 0) {
-        return res.status(400).json({
-            success: false,
-            message: "Validation failed",
-            details: errors
-        });
-    }
+            "processing",
 
-    next();
-}, orderController.updateOrderStatus);
+            "shipped",
 
-// ==================== BULK OPERATIONS ====================
+            "delivered",
 
-// Bulk update order status (Admin only)
-router.patch("/bulk/status", authMiddleware, authorizeRoles("admin"), async (req, res) => {
-    try {
-        const { orderIds, status } = req.body;
+            "cancelled"
+        ];
 
-        // Validate order IDs
-        const orderIdsValidation = validateOrderIds(orderIds);
-        if (!orderIdsValidation.valid) {
-            return res.status(400).json({
-                success: false,
-                message: "Validation failed",
-                details: orderIdsValidation.errors
-            });
+        if (
+            !allowedStatuses.includes(
+                sanitizeString(
+                    status
+                ).toLowerCase()
+            )
+        ) {
+
+            return res.status(400)
+                .json({
+
+                    success: false,
+
+                    message:
+                        "Invalid order status"
+                });
         }
 
         // Validate status
