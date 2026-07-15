@@ -60,12 +60,8 @@ const routes = require("./routes/index");
 const { authLimiter } = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
-const ownershipRoutes = require('./routes/ownershipRoutes');
-const { dataOwnershipService } = require('./services/dataOwnershipService');
-
-
-const fallbackRoutes = require('./routes/fallbackRoutes');
-const { fallbackManager } = require('./services/fallbackManagerService');
+const debtRoutes = require('./routes/debtRoutes');
+const { technicalDebtService } = require('./services/technicalDebtService');
 
 
 const discoveryRoutes = require('./routes/discoveryRoutes');
@@ -219,11 +215,11 @@ app.use('/api/correlation', correlationRoutes);
 
 
 
-// Initialize data ownership service
-await dataOwnershipService.initialize();
+// Initialize technical debt service
+await technicalDebtService.initialize();
 
-// Add ownership routes
-app.use('/api/ownership', ownershipRoutes);
+// Add debt routes
+app.use('/api/debt', debtRoutes);
 // Add with other route imports
 // Add with other imports
 const provenanceRoutes = require('./routes/provenanceRoutes');
