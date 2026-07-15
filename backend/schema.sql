@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS users (
     login_count INT DEFAULT 0,
     failed_login_attempts INT DEFAULT 0,
     locked_until DATETIME,
+    totp_secret VARCHAR(255),
+    is_2fa_enabled TINYINT(1) DEFAULT 0,
     created_by INT,
     updated_by INT,
     deleted_by INT,
