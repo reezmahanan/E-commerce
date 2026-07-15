@@ -8,10 +8,15 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const db = require("../config/db");
 const { sanitizeString, safeArray } = require("../utils/helpers");
-const cookieOptions = require("../config/cookieOptions");
+const { getClearCookieOptions } = require("../config/cookieConfig");
 
 // Appwrite SDK
 const { Client, Account, ID, Databases } = require('node-appwrite');
+
+// 2FA dependencies
+const { authenticator } = require('otplib');
+const qrcode = require('qrcode');
+const { encrypt, decrypt } = require('../utils/encryption');
 
 // ==================== CONSTANTS ====================
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES) || 10;
@@ -320,6 +325,21 @@ const login = async (req, res) => {
         // Reset login attempts on success
         resetLoginAttempts(cleanEmail);
 
+        // Check if 2FA is enabled
+        if (user.is_2fa_enabled === 1) {
+            const tempToken = jwt.sign(
+                { id: user.id, email: user.email, role: user.role, is2FA: true },
+                process.env.JWT_SECRET,
+                { expiresIn: "5m" }
+            );
+            return res.status(200).json({
+                success: true,
+                requires2FA: true,
+                tempToken,
+                message: "2FA verification required"
+            });
+        }
+
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken();
 
@@ -353,9 +373,9 @@ const logout = async (req, res) => {
             );
         }
 
-        // Clear cookies using shared cookieOptions
-        res.clearCookie('accessToken', cookieOptions);
-        res.clearCookie('refreshToken', cookieOptions);
+        // Clear cookies using shared cookie options
+        res.clearCookie('accessToken', getClearCookieOptions());
+        res.clearCookie('refreshToken', getClearCookieOptions('/api/auth/refresh'));
 
         console.log(`🔓 User ${userId} logged out successfully`);
 
@@ -672,6 +692,41 @@ const getFraudStatus = async (req, res) => {
     }
 };
 
+/**
+ * Get current authenticated user details
+ */
+const getMe = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized access"
+            });
+        }
+        const [rows] = await db.query(
+            "SELECT id, name, email, role, created_at FROM users WHERE id = ?",
+            [userId]
+        );
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            user: rows[0]
+        });
+    } catch (error) {
+        console.error("Error in getMe:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
 
 // ==================== EXPORTS ====================
 module.exports = {
@@ -686,5 +741,6 @@ module.exports = {
     getStatus,      
     validateToken,  
     getSecurityAudit, 
-    getFraudStatus
+    getFraudStatus,
+    getMe
 };

@@ -431,8 +431,9 @@ PRODUCT VARIANTS
     color: #088178;
 }
 
-#share-btn{
-    background: #444;
+#share-btn,
+#whatsapp-share-btn,
+#copy-link-btn{
     color: #fff;
     border: none;
     padding: 14px 22px;
@@ -441,7 +442,21 @@ PRODUCT VARIANTS
     transition: 0.3s ease;
 }
 
-#share-btn:hover{
+#share-btn{
+    background: #444;
+}
+
+#whatsapp-share-btn{
+    background: #25D366;
+}
+
+#copy-link-btn{
+    background: #2563eb;
+}
+
+#share-btn:hover,
+#whatsapp-share-btn:hover,
+#copy-link-btn:hover{
     opacity: 0.9;
     transform: translateY(-2px);
 }
@@ -468,7 +483,9 @@ PRODUCT VARIANTS
     }
 
     .product-buttons button,
-    #share-btn{
+    #share-btn,
+    #whatsapp-share-btn,
+    #copy-link-btn{
         width: 100%;
     }
 

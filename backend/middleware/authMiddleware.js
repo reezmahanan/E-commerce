@@ -1,6 +1,12 @@
 // backend/middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 
+// JWT_SECRET must be set in environment - throw error if missing
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error('FATAL: JWT_SECRET environment variable is required but not set. Application cannot start without a secure JWT secret.');
+}
+
 /**
  * Verify JWT token from Authorization header
  */
@@ -107,4 +113,8 @@ function optionalAuth(req, res, next) {
     next();
 }
 
-module.exports = { authMiddleware, optionalAuth };
+// Export as a function directly (supporting direct require)
+module.exports = authMiddleware;
+// Also attach them as properties (supporting destructuring require)
+module.exports.authMiddleware = authMiddleware;
+module.exports.optionalAuth = optionalAuth;

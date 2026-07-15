@@ -13,6 +13,53 @@ const Recommendations = (() => {
     }
   };
 
+  const initCarousel = (containerSelector) => {
+    const container = document.querySelector(containerSelector);
+    if (!container) return;
+    const wrapper = container.closest('.carousel-wrapper');
+    if (!wrapper) return;
+
+    const prevBtn = wrapper.querySelector('.carousel-btn.prev');
+    const nextBtn = wrapper.querySelector('.carousel-btn.next');
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            container.scrollBy({ left: -300, behavior: 'smooth' });
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            container.scrollBy({ left: 300, behavior: 'smooth' });
+        });
+    }
+
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    container.addEventListener('mousedown', (e) => {
+        isDown = true;
+        container.style.cursor = 'grabbing';
+        startX = e.pageX - container.offsetLeft;
+        scrollLeft = container.scrollLeft;
+    });
+    container.addEventListener('mouseleave', () => {
+        isDown = false;
+        container.style.cursor = 'grab';
+    });
+    container.addEventListener('mouseup', () => {
+        isDown = false;
+        container.style.cursor = 'grab';
+    });
+    container.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        const walk = (x - startX) * 2;
+        container.scrollLeft = scrollLeft - walk;
+    });
+  };
+
   const loadRecommendations = async (
     containerId = "recommended-products-container"
   ) => {
@@ -28,6 +75,10 @@ const Recommendations = (() => {
     }
 
     try {
+      if (typeof window.renderSkeletonCards === "function") {
+        window.renderSkeletonCards(containerId, 4);
+      }
+      
       const response = await window.AppUtils.apiRequest(
         "/recommendations?limit=8"
       );
@@ -48,15 +99,19 @@ const Recommendations = (() => {
           if (typeof window.addProductCardAnimations === "function") {
             window.addProductCardAnimations(`#${containerId}`);
           }
+          
+          initCarousel(`#${containerId}`);
         } else if (typeof window.renderProducts === "function") {
           // script.js defines: renderProducts(container, products)
           window.renderProducts(container, response.data);
+          initCarousel(`#${containerId}`);
         } else if (typeof window.renderProductCard === "function") {
           // product-render.js defines: renderProductCard(product, container)
           container.innerHTML = "";
           response.data.forEach((product) =>
             window.renderProductCard(product, container)
           );
+          initCarousel(`#${containerId}`);
         } else {
           console.warn(
             "No compatible product renderer found, skipping render."
