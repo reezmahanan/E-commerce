@@ -60,13 +60,8 @@ const routes = require("./routes/index");
 const { authLimiter } = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
-const debtRoutes = require('./routes/debtRoutes');
-const { technicalDebtService } = require('./services/technicalDebtService');
-
-
-const temporalRoutes = require('./routes/temporalRoutes');
-const { temporalDataService } = require('./services/temporalDataService');
-
+const slaRoutes = require('./routes/slaRoutes');
+const { slaService } = require('./services/businessSLAService');
 
 const discoveryRoutes = require('./routes/discoveryRoutes');
 const { capabilityDiscoveryService } = require('./services/capabilityDiscoveryService');
@@ -219,11 +214,11 @@ app.use('/api/correlation', correlationRoutes);
 
 
 
-// Initialize temporal data service
-await temporalDataService.initialize();
+// Initialize SLA service
+await slaService.initialize();
 
-// Add temporal routes
-app.use('/api/temporal', temporalRoutes);
+// Add SLA routes
+app.use('/api/sla', slaRoutes);
 // Add with other route imports
 // Add with other imports
 const provenanceRoutes = require('./routes/provenanceRoutes');
