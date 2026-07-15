@@ -232,6 +232,61 @@ navLinks.forEach(link => {
         link.setAttribute('aria-current', 'page');
     }
 });
+// ===== NAVBAR SEARCH =====
+    const navSearchInput = document.getElementById("searchInput");
+    if (navSearchInput) {
+        navSearchInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                const query = navSearchInput.value.trim();
+                if (query) {
+                    window.location.href = `shop.html?search=${encodeURIComponent(query)}`;
+                }
+            }
+        });
+
+        navSearchInput.addEventListener("input", () => {
+            const query = navSearchInput.value.trim();
+            const dropdown = document.getElementById("suggestionsDropdown");
+            if (!dropdown) return;
+
+            if (!query) {
+                dropdown.style.display = "none";
+                dropdown.innerHTML = "";
+                return;
+            }
+
+            const allProducts = window.allProducts || [];
+            const matches = allProducts
+                .filter(p => p.name?.toLowerCase().includes(query.toLowerCase()))
+                .slice(0, 5);
+
+            if (!matches.length) {
+                dropdown.style.display = "none";
+                return;
+            }
+
+            dropdown.innerHTML = matches.map(p => `
+                <div class="suggestion-item" style="padding:8px;cursor:pointer;border-bottom:1px solid #eee;">
+                    ${p.name}
+                </div>
+            `).join("");
+
+            dropdown.style.display = "block";
+
+            dropdown.querySelectorAll(".suggestion-item").forEach((item, i) => {
+                item.addEventListener("click", () => {
+                    window.location.href = `shop.html?search=${encodeURIComponent(matches[i].name)}`;
+                });
+            });
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!e.target.closest(".search-container")) {
+                const dropdown = document.getElementById("suggestionsDropdown");
+                if (dropdown) dropdown.style.display = "none";
+            }
+        });
+    }
 
 const categoryMenuItem = document.querySelector(".category-menu-item");
 const categoryMenuToggle = document.getElementById("category-menu-toggle");
@@ -243,7 +298,7 @@ const megaMenuPanels = Array.from(
     document.querySelectorAll(".mega-menu-panel")
 );
 const categoryMenuLinks = document.querySelectorAll(
-    ".category-menu-link, .mega-menu-panel-header a, .mobile-subcategory-panel a"
+    ".category-menu-link, .grocery-category-card, .mega-menu-panel-header a, .mobile-subcategory-panel a"
 );
 const mobileCategoryAccordions = Array.from(
     document.querySelectorAll(".mobile-category-accordion")
@@ -251,247 +306,716 @@ const mobileCategoryAccordions = Array.from(
 const currentUrl = new URL(window.location.href);
 const currentCategory = currentUrl.searchParams.get("category");
 const currentSubcategory = currentUrl.searchParams.get("subcategory");
-const fashionMenuFallbackProducts = {
-    "Men's Clothing": [
-        {
-            id: "fashion-men-shirt",
-            name: "Tailored Casual Shirt",
-            price: 1299,
-            image: "assets/images/mensShirt.jpg",
-            category: "Fashion",
-            subcategory: "Men's Clothing",
-            brand: "Cara Men",
-            rating: 4,
-            featured: 1
-        },
-        {
-            id: "fashion-men-jeans",
-            name: "Slim Fit Denim Jeans",
-            price: 1899,
-            image: "assets/images/mensJeans.avif",
-            category: "Fashion",
-            subcategory: "Men's Clothing",
-            brand: "Urban Loom",
-            rating: 5
-        }
+const grocerySubcategoryLinks = Array.from(
+    document.querySelectorAll(".grocery-subcategory-link")
+);
+const groceryProductPreview = document.getElementById(
+    "grocery-product-preview"
+);
+const toySubcategoryLinks = Array.from(
+    document.querySelectorAll(".toy-subcategory-link")
+);
+const toyProductPreview = document.getElementById(
+    "toy-product-preview"
+);
+const homeKitchenSubcategoryLinks = Array.from(
+    document.querySelectorAll(".home-kitchen-subcategory-link")
+);
+const homeKitchenProductPreview = document.getElementById(
+    "home-kitchen-product-preview"
+);
+
+const grocerySubcategoryKeywords = {
+    "Fruits & Vegetables": [
+        "fruit",
+        "fruits",
+        "vegetable",
+        "vegetables",
+        "apple",
+        "banana",
+        "orange",
+        "tomato",
+        "potato",
+        "onion",
+        "leafy",
+        "greens"
     ],
-    "Women's Clothing": [
-        {
-            id: "fashion-women-kurti",
-            name: "Embroidered Red Kurti",
-            price: 1499,
-            image: "assets/images/RedKurti.webp",
-            category: "Fashion",
-            subcategory: "Women's Clothing",
-            brand: "Cara Women",
-            rating: 5,
-            featured: 1
-        },
-        {
-            id: "fashion-women-jeans",
-            name: "High Rise Denim Jeans",
-            price: 1799,
-            image: "assets/images/womensJeans.webp",
-            category: "Fashion",
-            subcategory: "Women's Clothing",
-            brand: "Denim Lane",
-            rating: 4
-        }
+    Dairy: [
+        "dairy",
+        "milk",
+        "curd",
+        "yogurt",
+        "cheese",
+        "butter",
+        "paneer",
+        "cream"
     ],
-    "Kids Wear": [
-        {
-            id: "fashion-kids-frock",
-            name: "Floral Kids Frock",
-            price: 899,
-            image: "assets/images/girl_dress.webp",
-            category: "Fashion",
-            subcategory: "Kids Wear",
-            brand: "Little Cara",
-            rating: 4
-        },
-        {
-            id: "fashion-kids-traditional",
-            name: "Traditional Boys Set",
-            price: 1199,
-            image: "assets/images/BoyTraditional.jpg",
-            category: "Fashion",
-            subcategory: "Kids Wear",
-            brand: "Festive Juniors",
-            rating: 5
-        }
+    Snacks: [
+        "snack",
+        "snacks",
+        "chips",
+        "biscuit",
+        "cookies",
+        "namkeen",
+        "cracker",
+        "popcorn"
     ],
-    Footwear: [
-        {
-            id: "fashion-footwear-sneakers",
-            name: "Everyday White Sneakers",
-            price: 1599,
-            image: "assets/images/n4.jpg",
-            category: "Fashion",
-            subcategory: "Footwear",
-            brand: "StepWay",
-            rating: 4,
-            featured: 1
-        },
-        {
-            id: "fashion-footwear-casual",
-            name: "Casual Walking Shoes",
-            price: 1399,
-            image: "assets/images/n5.jpg",
-            category: "Fashion",
-            subcategory: "Footwear",
-            brand: "Stride Co.",
-            rating: 4
-        }
+    Beverages: [
+        "beverage",
+        "beverages",
+        "juice",
+        "tea",
+        "coffee",
+        "drink",
+        "water",
+        "soda"
     ],
-    Watches: [
-        {
-            id: "fashion-watch-analog",
-            name: "Classic Analog Watch",
-            price: 2199,
-            image: "assets/images/n6.jpg",
-            category: "Fashion",
-            subcategory: "Watches",
-            brand: "Timecraft",
-            rating: 5
-        },
-        {
-            id: "fashion-watch-minimal",
-            name: "Minimal Strap Watch",
-            price: 1799,
-            image: "assets/images/n7.jpg",
-            category: "Fashion",
-            subcategory: "Watches",
-            brand: "Mode Time",
-            rating: 4
-        }
+    "Cooking Essentials": [
+        "cooking",
+        "oil",
+        "rice",
+        "flour",
+        "atta",
+        "dal",
+        "spice",
+        "masala",
+        "salt",
+        "sugar"
     ],
-    Bags: [
-        {
-            id: "fashion-bag-tote",
-            name: "Structured Tote Bag",
-            price: 1699,
-            image: "assets/images/a2.jpg",
-            category: "Fashion",
-            subcategory: "Bags",
-            brand: "Carry Co.",
-            rating: 4,
-            featured: 1
-        },
-        {
-            id: "fashion-bag-sling",
-            name: "Compact Sling Bag",
-            price: 999,
-            image: "assets/images/a5.jpg",
-            category: "Fashion",
-            subcategory: "Bags",
-            brand: "Urban Pack",
-            rating: 4
-        }
-    ],
-    Accessories: [
-        {
-            id: "fashion-accessory-scarf",
-            name: "Printed Satin Scarf",
-            price: 599,
-            image: "assets/images/f11.jpg",
-            category: "Fashion",
-            subcategory: "Accessories",
-            brand: "Style Notes",
-            rating: 5
-        },
-        {
-            id: "fashion-accessory-belt",
-            name: "Classic Buckle Belt",
-            price: 799,
-            image: "assets/images/f12.jpg",
-            category: "Fashion",
-            subcategory: "Accessories",
-            brand: "Fit & Finish",
-            rating: 4
-        }
+    "Household Supplies": [
+        "household",
+        "cleaner",
+        "detergent",
+        "soap",
+        "dishwash",
+        "tissue",
+        "toilet",
+        "floor",
+        "laundry"
     ]
 };
 
-const getFashionFallbackProducts = () =>
-    Object.values(fashionMenuFallbackProducts).flat();
+const toySubcategoryKeywords = {
+    "Educational Toys": [
+        "educational",
+        "learning",
+        "stem",
+        "science",
+        "math",
+        "puzzle",
+        "flash",
+        "activity"
+    ],
+    "Building Blocks": [
+        "building",
+        "blocks",
+        "block",
+        "brick",
+        "bricks",
+        "construction",
+        "lego",
+        "stack"
+    ],
+    Dolls: [
+        "doll",
+        "dolls",
+        "plush",
+        "figure",
+        "figurine",
+        "pretend",
+        "playset"
+    ],
+    "RC Toys": [
+        "rc",
+        "remote",
+        "control",
+        "controlled",
+        "car",
+        "drone",
+        "robot",
+        "vehicle"
+    ],
+    "Outdoor Toys": [
+        "outdoor",
+        "scooter",
+        "ball",
+        "frisbee",
+        "water",
+        "garden",
+        "sports",
+        "ride"
+    ]
+};
+
+const homeKitchenSubcategoryKeywords = {
+    Furniture: [
+        "furniture",
+        "chair",
+        "sofa",
+        "table",
+        "desk",
+        "cabinet",
+        "bookshelf",
+        "bed",
+        "stool"
+    ],
+    Cookware: [
+        "cookware",
+        "pan",
+        "pot",
+        "saucepan",
+        "skillet",
+        "lid",
+        "dutch",
+        "oven",
+        "bakeware",
+        "spatula"
+    ],
+    Storage: [
+        "storage",
+        "basket",
+        "box",
+        "container",
+        "organizer",
+        "rack",
+        "shelf",
+        "bin",
+        "holder"
+    ],
+    "Home Decor": [
+        "decor",
+        "vase",
+        "lamp",
+        "frame",
+        "mirror",
+        "candle",
+        "rug",
+        "cushion",
+        "art",
+        "clock"
+    ],
+    Bedding: [
+        "bedding",
+        "pillow",
+        "sheet",
+        "comforter",
+        "blanket",
+        "duvet",
+        "mattress",
+        "cover"
+    ],
+    "Kitchen Appliances": [
+        "appliance",
+        "appliances",
+        "toaster",
+        "blender",
+        "mixer",
+        "kettle",
+        "juicer",
+        "cooker",
+        "microwave",
+        "coffee"
+    ]
+};
+
+const normalizeMenuValue = (value) =>
+    String(value || "")
+        .toLowerCase()
+        .replace(/&/g, "and")
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+
+const stringifyProductValue = (value) => {
+    if (!value) {
+        return "";
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(stringifyProductValue).join(" ");
+    }
+
+    if (typeof value === "object") {
+        return Object.values(value).map(stringifyProductValue).join(" ");
+    }
+
+    return String(value);
+};
+
+const escapeMenuHTML = (value) =>
+    window.AppUtils?.escapeHTML
+        ? AppUtils.escapeHTML(value)
+        : String(value || "");
+
+const getProductSearchText = (product) =>
+    [
+        product?.name,
+        product?.description,
+        product?.category,
+        product?.subcategory,
+        product?.sub_category,
+        product?.brand,
+        stringifyProductValue(product?.tags),
+        stringifyProductValue(product?.specifications)
+    ].join(" ");
 
 const getProductSubcategory = (product) =>
     product?.subcategory ||
+    product?.sub_category ||
     product?.subCategory ||
-    product?.category ||
     "";
 
-const normalizeFashionText = (value) =>
-    String(value || "").trim().toLowerCase();
+const matchesGrocerySubcategory = (product, subcategory) => {
+    const normalizedSubcategory = normalizeMenuValue(subcategory);
+    const category = normalizeMenuValue(product?.category);
+    const productSubcategory = normalizeMenuValue(
+        getProductSubcategory(product)
+    );
+    const searchText = normalizeMenuValue(
+        getProductSearchText(product)
+    );
+    const keywords = grocerySubcategoryKeywords[subcategory] || [];
 
-const getFashionProducts = async () => {
-    const existingProducts = Array.isArray(window.allProducts)
-        ? window.allProducts.filter((product) => {
-            const category = normalizeFashionText(product.category);
-            return category === "fashion" ||
-                Object.keys(fashionMenuFallbackProducts)
-                    .some((subcategory) =>
-                        normalizeFashionText(subcategory) === category
-                    );
-        })
+    if (productSubcategory) {
+        return productSubcategory === normalizedSubcategory;
+    }
+
+    if (category === normalizedSubcategory) {
+        return true;
+    }
+
+    if (
+        category !== "grocery" &&
+        !searchText.includes("grocery")
+    ) {
+        return false;
+    }
+
+    return keywords.some((keyword) =>
+        searchText.includes(normalizeMenuValue(keyword))
+    );
+};
+
+const matchesToySubcategory = (product, subcategory) => {
+    const normalizedSubcategory = normalizeMenuValue(subcategory);
+    const category = normalizeMenuValue(product?.category);
+    const productSubcategory = normalizeMenuValue(
+        getProductSubcategory(product)
+    );
+    const searchText = normalizeMenuValue(
+        getProductSearchText(product)
+    );
+    const keywords = toySubcategoryKeywords[subcategory] || [];
+
+    if (productSubcategory) {
+        return productSubcategory === normalizedSubcategory;
+    }
+
+    if (category === normalizedSubcategory) {
+        return true;
+    }
+
+    if (
+        category !== "toys" &&
+        !searchText.includes("toy")
+    ) {
+        return false;
+    }
+
+    return keywords.some((keyword) =>
+        searchText.includes(normalizeMenuValue(keyword))
+    );
+};
+
+const matchesHomeKitchenSubcategory = (product, subcategory) => {
+    const normalizedSubcategory = normalizeMenuValue(subcategory);
+    const category = normalizeMenuValue(product?.category);
+    const productSubcategory = normalizeMenuValue(
+        getProductSubcategory(product)
+    );
+    const searchText = normalizeMenuValue(
+        getProductSearchText(product)
+    );
+    const keywords = homeKitchenSubcategoryKeywords[subcategory] || [];
+
+    if (productSubcategory) {
+        return productSubcategory === normalizedSubcategory;
+    }
+
+    if (category === normalizedSubcategory) {
+        return true;
+    }
+
+    if (
+        category !== "home and kitchen" &&
+        category !== "home & kitchen" &&
+        !searchText.includes("home") &&
+        !searchText.includes("kitchen")
+    ) {
+        return false;
+    }
+
+    return keywords.some((keyword) =>
+        searchText.includes(normalizeMenuValue(keyword))
+    );
+};
+
+const getProductLink = (
+    product,
+    fallbackCategory,
+    fallbackSubcategory
+) => {
+    if (product?.id !== undefined && product?.id !== null) {
+        return `product.html?id=${encodeURIComponent(product.id)}`;
+    }
+
+    return `shop.html?category=${encodeURIComponent(
+        fallbackCategory
+    )}&subcategory=${encodeURIComponent(
+        fallbackSubcategory
+    )}`;
+};
+
+const renderMenuRating = (rating) => {
+    const normalizedRating = Number(rating);
+
+    if (!Number.isFinite(normalizedRating) || normalizedRating <= 0) {
+        return "";
+    }
+
+    const starCount = Math.max(
+        1,
+        Math.min(5, Math.round(normalizedRating))
+    );
+    const stars = Array.from(
+        { length: starCount },
+        () => `<i class="fas fa-star" aria-hidden="true"></i>`
+    ).join("");
+
+    return `
+        <span class="grocery-menu-product-rating toy-menu-product-rating" aria-label="${starCount} out of 5 stars">
+            ${stars}
+        </span>
+    `;
+};
+
+const renderGroceryProducts = (products, subcategory) => {
+    if (!groceryProductPreview) {
+        return;
+    }
+
+    const safeProducts = Array.isArray(products)
+        ? products
         : [];
 
-    const fallbackProducts = getFashionFallbackProducts();
-    const existingProductIds =
-        new Set(existingProducts.map((product) => String(product.id)));
-
-    return [
-        ...existingProducts,
-        ...fallbackProducts.filter(
-            (product) => !existingProductIds.has(String(product.id))
-        )
-    ];
-};
-
-const getProductsForFashionSubcategory = (products, subcategory) => {
-    const normalizedSubcategory = normalizeFashionText(subcategory);
-    const matchingProducts = products.filter(
-        (product) =>
-            normalizeFashionText(getProductSubcategory(product)) === normalizedSubcategory
-    );
-
-    return matchingProducts.length
-        ? matchingProducts
-        : fashionMenuFallbackProducts[subcategory] || [];
-};
-
-const ensureProductCardFactory = () => {
-    if (typeof window.createProductCard === "function") {
-        return Promise.resolve();
+    if (!safeProducts.length) {
+        groceryProductPreview.innerHTML =
+            `<p class="grocery-menu-empty">No products available.</p>`;
+        return;
     }
 
-    const productCardScript =
-        document.querySelector('script[src="scripts/product-cards-home.js"]');
+    groceryProductPreview.innerHTML = safeProducts
+        .slice(0, 4)
+        .map((product) => {
+            const name = product?.name || "Product";
+            const escapedName = AppUtils.escapeHTML(name);
+            const image = AppUtils.defaultImage(product?.image);
+            const price = AppUtils.formatPrice(product?.price || 0);
+            const href = getProductLink(product, "Grocery", subcategory);
 
-    if (!productCardScript) {
-        return loadScript("scripts/product-cards-home.js");
+            return `
+                <a class="grocery-menu-product" href="${href}">
+                    <img
+                        src="${AppUtils.escapeHTML(image)}"
+                        alt="${escapedName}"
+                        loading="lazy"
+                    />
+                    <span class="grocery-menu-product-info">
+                        <span class="grocery-menu-product-name">${escapedName}</span>
+                        <span class="grocery-menu-product-price">${price}</span>
+                    </span>
+                </a>
+            `;
+        })
+        .join("");
+};
+
+const renderToyProducts = (products, subcategory) => {
+    if (!toyProductPreview) {
+        return;
     }
 
-    return new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-            if (typeof window.createProductCard === "function") {
-                resolve();
-                return;
+    const safeProducts = Array.isArray(products)
+        ? products
+        : [];
+
+    if (!safeProducts.length) {
+        toyProductPreview.innerHTML =
+            `<p class="grocery-menu-empty toy-menu-empty">No toys available for ${escapeMenuHTML(subcategory)} yet.</p>`;
+        return;
+    }
+
+    toyProductPreview.innerHTML = safeProducts
+        .slice(0, 4)
+        .map((product) => {
+            const name = product?.name || "Toy";
+            const escapedName = AppUtils.escapeHTML(name);
+            const image = AppUtils.defaultImage(product?.image);
+            const price = AppUtils.formatPrice(product?.price || 0);
+            const href = getProductLink(product, "Toys", subcategory);
+            const rating = renderMenuRating(product?.rating);
+
+            return `
+                <a class="grocery-menu-product toy-menu-product" href="${href}">
+                    <img
+                        src="${AppUtils.escapeHTML(image)}"
+                        alt="${escapedName}"
+                        loading="lazy"
+                    />
+                    <span class="grocery-menu-product-info toy-menu-product-info">
+                        <span class="grocery-menu-product-name toy-menu-product-name">${escapedName}</span>
+                        <span class="grocery-menu-product-price toy-menu-product-price">${price}</span>
+                        ${rating}
+                    </span>
+                </a>
+            `;
+        })
+        .join("");
+};
+
+const setActiveGrocerySubcategory = (activeLink) => {
+    grocerySubcategoryLinks.forEach((link) => {
+        const isActive = link === activeLink;
+
+        link.classList.toggle("is-active", isActive);
+    });
+};
+
+const setActiveToySubcategory = (activeLink) => {
+    toySubcategoryLinks.forEach((link) => {
+        const isActive = link === activeLink;
+
+        link.classList.toggle("is-active", isActive);
+    });
+};
+
+const renderHomeKitchenProducts = (products, subcategory) => {
+    if (!homeKitchenProductPreview) {
+        return;
+    }
+
+    const safeProducts = Array.isArray(products)
+        ? products
+        : [];
+
+    if (!safeProducts.length) {
+        homeKitchenProductPreview.innerHTML =
+            `<p class="grocery-menu-empty home-kitchen-menu-empty">No products available for ${escapeMenuHTML(subcategory)} yet.</p>`;
+        return;
+    }
+
+    homeKitchenProductPreview.innerHTML = safeProducts
+        .slice(0, 4)
+        .map((product) => {
+            const name = product?.name || "Product";
+            const escapedName = AppUtils.escapeHTML(name);
+            const image = AppUtils.defaultImage(product?.image);
+            const price = AppUtils.formatPrice(product?.price || 0);
+            const href = getProductLink(product, "Home & Kitchen", subcategory);
+            const rating = renderMenuRating(product?.rating);
+
+            return `
+                <a class="grocery-menu-product toy-menu-product home-kitchen-menu-product" href="${href}">
+                    <img
+                        src="${AppUtils.escapeHTML(image)}"
+                        alt="${escapedName}"
+                        loading="lazy"
+                    />
+                    <span class="grocery-menu-product-info toy-menu-product-info home-kitchen-menu-product-info">
+                        <span class="grocery-menu-product-name toy-menu-product-name home-kitchen-menu-product-name">${escapedName}</span>
+                        <span class="grocery-menu-product-price toy-menu-product-price home-kitchen-menu-product-price">${price}</span>
+                        ${rating}
+                    </span>
+                </a>
+            `;
+        })
+        .join("");
+};
+
+const setActiveHomeKitchenSubcategory = (activeLink) => {
+    homeKitchenSubcategoryLinks.forEach((link) => {
+        const isActive = link === activeLink;
+
+        link.classList.toggle("is-active", isActive);
+    });
+};
+
+let megaMenuProductsCache;
+
+const fetchMegaMenuProducts = async () => {
+    if (!window.AppUtils) {
+        return [];
+    }
+
+    if (megaMenuProductsCache) {
+        return megaMenuProductsCache;
+    }
+
+    try {
+        const requestedLimit = 200;
+        const firstPage = await AppUtils.apiRequest(
+            `/products?page=1&limit=${requestedLimit}`
+        );
+        const products = firstPage.success && Array.isArray(firstPage.products)
+            ? [...firstPage.products]
+            : [];
+        const pageLimit = Number(firstPage.limit) || products.length || 50;
+        const totalPages = Number(firstPage.totalPages) || 1;
+        const pagesToFetch = Math.min(
+            totalPages,
+            Math.ceil(requestedLimit / pageLimit)
+        );
+
+        for (let page = 2; page <= pagesToFetch; page += 1) {
+            if (products.length >= requestedLimit) {
+                break;
             }
 
-            reject(new Error("Product card component did not load"));
-        }, 3000);
+            const data = await AppUtils.apiRequest(
+                `/products?page=${page}&limit=${requestedLimit}`
+            );
 
-        productCardScript.addEventListener("load", () => {
-            clearTimeout(timeoutId);
-            resolve();
-        }, { once: true });
+            if (data.success && Array.isArray(data.products)) {
+                products.push(...data.products);
+            }
+        }
 
-        productCardScript.addEventListener("error", () => {
-            clearTimeout(timeoutId);
-            reject(new Error("Product card component failed to load"));
-        }, { once: true });
+        megaMenuProductsCache = products.slice(0, requestedLimit);
+    } catch (error) {
+        console.error(
+            "MEGA MENU PRODUCTS FETCH ERROR:",
+            error
+        );
+        megaMenuProductsCache = [];
+    }
+
+    return megaMenuProductsCache;
+};
+
+const initializeGroceryMegaMenu = async () => {
+    if (!grocerySubcategoryLinks.length || !groceryProductPreview) {
+        return;
+    }
+
+    let groceryProducts = [];
+
+    const showSubcategoryProducts = (link) => {
+        const subcategory =
+            link.dataset.grocerySubcategory ||
+            link.textContent.trim();
+        const products = groceryProducts.filter((product) =>
+            matchesGrocerySubcategory(product, subcategory)
+        );
+
+        setActiveGrocerySubcategory(link);
+        renderGroceryProducts(products, subcategory);
+    };
+
+    grocerySubcategoryLinks.forEach((link) => {
+        link.addEventListener("mouseenter", () => {
+            showSubcategoryProducts(link);
+        });
+
+        link.addEventListener("focus", () => {
+            showSubcategoryProducts(link);
+        });
     });
+
+    groceryProducts = await fetchMegaMenuProducts();
+
+    const defaultLink =
+        grocerySubcategoryLinks.find((link) =>
+            link.dataset.grocerySubcategory === currentSubcategory
+        ) || grocerySubcategoryLinks[0];
+
+    showSubcategoryProducts(defaultLink);
+};
+
+const initializeToyMegaMenu = async () => {
+    if (!toySubcategoryLinks.length || !toyProductPreview) {
+        return;
+    }
+
+    let toyProducts = [];
+
+    const showSubcategoryProducts = (link) => {
+        const subcategory =
+            link.dataset.toySubcategory ||
+            link.textContent.trim();
+        const products = toyProducts.filter((product) =>
+            matchesToySubcategory(product, subcategory)
+        );
+
+        setActiveToySubcategory(link);
+        renderToyProducts(products, subcategory);
+    };
+
+    toySubcategoryLinks.forEach((link) => {
+        link.addEventListener("mouseenter", () => {
+            showSubcategoryProducts(link);
+        });
+
+        link.addEventListener("focus", () => {
+            showSubcategoryProducts(link);
+        });
+    });
+
+    toyProducts = await fetchMegaMenuProducts();
+
+    const defaultLink =
+        toySubcategoryLinks.find((link) =>
+            link.dataset.toySubcategory === currentSubcategory
+        ) || toySubcategoryLinks[0];
+
+    showSubcategoryProducts(defaultLink);
+};
+
+const initializeHomeKitchenMegaMenu = async () => {
+    if (!homeKitchenSubcategoryLinks.length || !homeKitchenProductPreview) {
+        return;
+    }
+
+    let homeKitchenProducts = [];
+
+    const showSubcategoryProducts = (link) => {
+        const subcategory =
+            link.dataset.homeKitchenSubcategory ||
+            link.textContent.trim();
+        const products = homeKitchenProducts.filter((product) =>
+            matchesHomeKitchenSubcategory(product, subcategory)
+        );
+
+        setActiveHomeKitchenSubcategory(link);
+        renderHomeKitchenProducts(products, subcategory);
+    };
+
+    homeKitchenSubcategoryLinks.forEach((link) => {
+        link.addEventListener("mouseenter", () => {
+            showSubcategoryProducts(link);
+        });
+
+        link.addEventListener("focus", () => {
+            showSubcategoryProducts(link);
+        });
+    });
+
+    homeKitchenProducts = await fetchMegaMenuProducts();
+
+    const defaultLink =
+        homeKitchenSubcategoryLinks.find((link) =>
+            link.dataset.homeKitchenSubcategory === currentSubcategory
+        ) || homeKitchenSubcategoryLinks[0];
+
+    showSubcategoryProducts(defaultLink);
 };
 
 const setCategoryMenuOpen = (isOpen) => {
@@ -738,6 +1262,9 @@ mobileCategoryAccordions.forEach((accordion) => {
         toggle.setAttribute("aria-expanded", String(isOpen));
     });
 });
+    await initializeGroceryMegaMenu();
+    await initializeToyMegaMenu();
+    await initializeHomeKitchenMegaMenu();
     // notify components ready
     document.dispatchEvent(new CustomEvent("componentsLoaded"));
 }

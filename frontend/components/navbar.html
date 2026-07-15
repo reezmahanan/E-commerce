@@ -28,7 +28,7 @@
   <!-- Desktop Navigation -->
   <nav class="desktop-nav">
     <ul id="navbar-links" class="nav-links">
-      <li class="category-menu-item">
+      <li class="category-menu-item">  
         <button
           id="category-menu-toggle"
           class="category-menu-toggle"
@@ -38,7 +38,9 @@
         >
           <i class="fas fa-bars" aria-hidden="true"></i>
           Menu
+          <i class="fas fa-chevron-down dropdown-indicator" aria-hidden="true"></i>
         </button>
+     
         <div
           id="category-menu-dropdown"
           class="category-menu-dropdown"
@@ -102,7 +104,34 @@
                 <a class="category-menu-link" href="shop.html?category=Fashion&amp;subcategory=Bags">Bags</a>
                 <a class="category-menu-link" href="shop.html?category=Fashion&amp;subcategory=Accessories">Accessories</a>
               </div>
-              <div class="mega-menu-products" data-fashion-products aria-live="polite"></div>
+              <div class="mega-menu-products" aria-label="Featured Fashion products">
+                <a class="mega-menu-product-card" href="shop.html?category=Fashion&amp;subcategory=Men%27s%20Clothing">
+                  <span class="mega-menu-product-badge">Featured</span>
+                  <img src="assets/images/mensShirt.jpg" alt="Tailored casual shirt" loading="lazy" />
+                  <span class="mega-menu-product-brand">cara men</span>
+                  <span class="mega-menu-product-name">tailored casual shirt</span>
+                  <span class="mega-menu-product-rating" aria-label="4 out of 5 stars">
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                  </span>
+                  <span class="mega-menu-product-price">₹1299.00</span>
+                </a>
+                <a class="mega-menu-product-card" href="shop.html?category=Fashion&amp;subcategory=Men%27s%20Clothing">
+                  <img src="assets/images/mensJeans.avif" alt="Slim fit denim jeans" loading="lazy" />
+                  <span class="mega-menu-product-brand">urban loom</span>
+                  <span class="mega-menu-product-name">slim fit denim jeans</span>
+                  <span class="mega-menu-product-rating" aria-label="5 out of 5 stars">
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                  </span>
+                  <span class="mega-menu-product-price">₹1899.00</span>
+                </a>
+              </div>
             </section>
 
             <section id="mega-panel-electronics" class="mega-menu-panel" data-mega-panel="electronics" aria-labelledby="mega-title-electronics">
@@ -119,6 +148,34 @@
                 <a class="category-menu-link" href="shop.html?category=Electronics&amp;subcategory=Cameras">Cameras</a>
                 <a class="category-menu-link" href="shop.html?category=Electronics&amp;subcategory=Gaming">Gaming</a>
               </div>
+              <div class="mega-menu-products" aria-label="Featured Electronics products">
+                <a class="mega-menu-product-card" href="shop.html?category=Electronics&amp;subcategory=Mobiles">
+                  <span class="mega-menu-product-badge">New</span>
+                  <img src="assets/images/mega-smartphone.svg" alt="Edge display smartphone" loading="lazy" />
+                  <span class="mega-menu-product-brand">nova tech</span>
+                  <span class="mega-menu-product-name">edge display smartphone</span>
+                  <span class="mega-menu-product-rating" aria-label="5 out of 5 stars">
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                  </span>
+                  <span class="mega-menu-product-price">₹24999.00</span>
+                </a>
+                <a class="mega-menu-product-card" href="shop.html?category=Electronics&amp;subcategory=Laptops">
+                  <img src="assets/images/mega-laptop.svg" alt="Silver ultrabook laptop" loading="lazy" />
+                  <span class="mega-menu-product-brand">bytebook</span>
+                  <span class="mega-menu-product-name">silver ultrabook laptop</span>
+                  <span class="mega-menu-product-rating" aria-label="4 out of 5 stars">
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                    <i class="fas fa-star" aria-hidden="true"></i>
+                  </span>
+                  <span class="mega-menu-product-price">₹54999.00</span>
+                </a>
+              </div>
             </section>
 
             <section id="mega-panel-grocery" class="mega-menu-panel" data-mega-panel="grocery" aria-labelledby="mega-title-grocery">
@@ -126,13 +183,48 @@
                 <h3 id="mega-title-grocery">Grocery</h3>
                 <a href="shop.html?category=Grocery">Shop all Grocery</a>
               </div>
-              <div class="mega-menu-grid">
-                <a class="category-menu-link" href="shop.html?category=Grocery&amp;subcategory=Fruits%20%26%20Vegetables">Fruits &amp; Vegetables</a>
-                <a class="category-menu-link" href="shop.html?category=Grocery&amp;subcategory=Dairy">Dairy</a>
-                <a class="category-menu-link" href="shop.html?category=Grocery&amp;subcategory=Snacks">Snacks</a>
-                <a class="category-menu-link" href="shop.html?category=Grocery&amp;subcategory=Beverages">Beverages</a>
-                <a class="category-menu-link" href="shop.html?category=Grocery&amp;subcategory=Cooking%20Essentials">Cooking Essentials</a>
-                <a class="category-menu-link" href="shop.html?category=Grocery&amp;subcategory=Household%20Supplies">Household Supplies</a>
+              <div class="mega-menu-grid grocery-mega-menu-grid">
+                <div class="grocery-subcategory-list" aria-label="Grocery subcategories">
+                  <a class="grocery-category-card grocery-subcategory-link is-active" href="shop.html?category=Grocery&amp;subcategory=Fruits%20%26%20Vegetables" data-grocery-subcategory="Fruits &amp; Vegetables" aria-controls="grocery-product-preview">
+                    <div class="grocery-card-img-wrapper">
+                      <img src="assets/images/fruits_veg_preview.png" alt="Fruits &amp; Vegetables" loading="lazy" />
+                    </div>
+                    <span>Fruits &amp; Vegetables</span>
+                  </a>
+                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Dairy" data-grocery-subcategory="Dairy" aria-controls="grocery-product-preview">
+                    <div class="grocery-card-img-wrapper">
+                      <img src="assets/images/dairy_preview.png" alt="Dairy" loading="lazy" />
+                    </div>
+                    <span>Dairy</span>
+                  </a>
+                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Snacks" data-grocery-subcategory="Snacks" aria-controls="grocery-product-preview">
+                    <div class="grocery-card-img-wrapper">
+                      <img src="assets/images/snacks_preview.png" alt="Snacks" loading="lazy" />
+                    </div>
+                    <span>Snacks</span>
+                  </a>
+                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Beverages" data-grocery-subcategory="Beverages" aria-controls="grocery-product-preview">
+                    <div class="grocery-card-img-wrapper">
+                      <img src="assets/images/beverages_preview.png" alt="Beverages" loading="lazy" />
+                    </div>
+                    <span>Beverages</span>
+                  </a>
+                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Cooking%20Essentials" data-grocery-subcategory="Cooking Essentials" aria-controls="grocery-product-preview">
+                    <div class="grocery-card-img-wrapper">
+                      <img src="assets/images/cooking_essentials_preview.png" alt="Cooking Essentials" loading="lazy" />
+                    </div>
+                    <span>Cooking Essentials</span>
+                  </a>
+                  <a class="grocery-category-card grocery-subcategory-link" href="shop.html?category=Grocery&amp;subcategory=Household%20Supplies" data-grocery-subcategory="Household Supplies" aria-controls="grocery-product-preview">
+                    <div class="grocery-card-img-wrapper">
+                      <img src="assets/images/household_supplies_preview.png" alt="Household Supplies" loading="lazy" />
+                    </div>
+                    <span>Household Supplies</span>
+                  </a>
+                </div>
+                <div id="grocery-product-preview" class="grocery-product-preview" aria-live="polite">
+                  <p class="grocery-menu-empty">Loading products...</p>
+                </div>
               </div>
             </section>
 
@@ -141,12 +233,17 @@
                 <h3 id="mega-title-toys">Toys</h3>
                 <a href="shop.html?category=Toys">Shop all Toys</a>
               </div>
-              <div class="mega-menu-grid">
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=Educational%20Toys">Educational Toys</a>
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=Building%20Blocks">Building Blocks</a>
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=Dolls">Dolls</a>
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=RC%20Toys">RC Toys</a>
-                <a class="category-menu-link" href="shop.html?category=Toys&amp;subcategory=Outdoor%20Toys">Outdoor Toys</a>
+              <div class="mega-menu-grid grocery-mega-menu-grid toy-mega-menu-grid">
+                <div class="grocery-subcategory-list toy-subcategory-list" aria-label="Toys subcategories">
+                  <a class="category-menu-link toy-subcategory-link is-active" href="shop.html?category=Toys&amp;subcategory=Educational%20Toys" data-toy-subcategory="Educational Toys" aria-controls="toy-product-preview">Educational Toys</a>
+                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=Building%20Blocks" data-toy-subcategory="Building Blocks" aria-controls="toy-product-preview">Building Blocks</a>
+                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=Dolls" data-toy-subcategory="Dolls" aria-controls="toy-product-preview">Dolls</a>
+                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=RC%20Toys" data-toy-subcategory="RC Toys" aria-controls="toy-product-preview">RC Toys</a>
+                  <a class="category-menu-link toy-subcategory-link" href="shop.html?category=Toys&amp;subcategory=Outdoor%20Toys" data-toy-subcategory="Outdoor Toys" aria-controls="toy-product-preview">Outdoor Toys</a>
+                </div>
+                <div id="toy-product-preview" class="grocery-product-preview toy-product-preview" aria-live="polite">
+                  <p class="grocery-menu-empty toy-menu-empty">Loading products...</p>
+                </div>
               </div>
             </section>
 
@@ -170,13 +267,48 @@
                 <h3 id="mega-title-home-kitchen">Home &amp; Kitchen</h3>
                 <a href="shop.html?category=Home%20%26%20Kitchen">Shop all Home &amp; Kitchen</a>
               </div>
-              <div class="mega-menu-grid">
-                <a class="category-menu-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Furniture">Furniture</a>
-                <a class="category-menu-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Cookware">Cookware</a>
-                <a class="category-menu-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Storage">Storage</a>
-                <a class="category-menu-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Home%20Decor">Home Decor</a>
-                <a class="category-menu-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Bedding">Bedding</a>
-                <a class="category-menu-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Kitchen%20Appliances">Kitchen Appliances</a>
+              <div class="mega-menu-grid grocery-mega-menu-grid home-kitchen-mega-menu-grid">
+                <div class="grocery-subcategory-list home-kitchen-subcategory-list" aria-label="Home &amp; Kitchen subcategories">
+                  <a class="home-kitchen-category-card home-kitchen-subcategory-link is-active" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Furniture" data-home-kitchen-subcategory="Furniture" aria-controls="home-kitchen-product-preview">
+                    <div class="home-kitchen-card-img-wrapper">
+                      <img src="assets/images/furniture_preview.png" alt="Furniture" loading="lazy" />
+                    </div>
+                    <span>Furniture</span>
+                  </a>
+                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Cookware" data-home-kitchen-subcategory="Cookware" aria-controls="home-kitchen-product-preview">
+                    <div class="home-kitchen-card-img-wrapper">
+                      <img src="assets/images/cookware_preview.png" alt="Cookware" loading="lazy" />
+                    </div>
+                    <span>Cookware</span>
+                  </a>
+                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Storage" data-home-kitchen-subcategory="Storage" aria-controls="home-kitchen-product-preview">
+                    <div class="home-kitchen-card-img-wrapper">
+                      <img src="assets/images/storage_preview.png" alt="Storage" loading="lazy" />
+                    </div>
+                    <span>Storage</span>
+                  </a>
+                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Home%20Decor" data-home-kitchen-subcategory="Home Decor" aria-controls="home-kitchen-product-preview">
+                    <div class="home-kitchen-card-img-wrapper">
+                      <img src="assets/images/home_decor_preview.png" alt="Home Decor" loading="lazy" />
+                    </div>
+                    <span>Home Decor</span>
+                  </a>
+                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Bedding" data-home-kitchen-subcategory="Bedding" aria-controls="home-kitchen-product-preview">
+                    <div class="home-kitchen-card-img-wrapper">
+                      <img src="assets/images/bedding_preview.png" alt="Bedding" loading="lazy" />
+                    </div>
+                    <span>Bedding</span>
+                  </a>
+                  <a class="home-kitchen-category-card home-kitchen-subcategory-link" href="shop.html?category=Home%20%26%20Kitchen&amp;subcategory=Kitchen%20Appliances" data-home-kitchen-subcategory="Kitchen Appliances" aria-controls="home-kitchen-product-preview">
+                    <div class="home-kitchen-card-img-wrapper">
+                      <img src="assets/images/kitchen_appliances_preview.png" alt="Kitchen Appliances" loading="lazy" />
+                    </div>
+                    <span>Kitchen Appliances</span>
+                  </a>
+                </div>
+                <div id="home-kitchen-product-preview" class="grocery-product-preview home-kitchen-product-preview" aria-live="polite">
+                  <p class="grocery-menu-empty home-kitchen-menu-empty">Loading products...</p>
+                </div>
               </div>
             </section>
 
