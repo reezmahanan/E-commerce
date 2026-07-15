@@ -18,7 +18,19 @@ const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 
 // Add with other route imports
+// Add with other imports
+const provenanceRoutes = require('./routes/provenanceRoutes');
+const { provenanceService } = require('./services/provenanceService');
+const { provenanceMiddleware } = require('./middleware/provenanceMiddleware');
 
+// Initialize provenance service
+await provenanceService.initialize();
+
+// Add provenance middleware
+app.use(provenanceMiddleware);
+
+// Add provenance routes
+app.use('/api/provenance', provenanceRoutes);
 const copywriterRoutes = require('./routes/copywriterRoutes');
 
 // Add copywriter routes
