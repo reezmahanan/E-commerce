@@ -16,7 +16,15 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other imports
+const fallbackRoutes = require('./routes/fallbackRoutes');
+const { fallbackManager } = require('./services/fallbackManagerService');
 
+// Initialize fallback manager
+await fallbackManager.initialize();
+
+// Add fallback routes
+app.use('/api/fallback', fallbackRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
