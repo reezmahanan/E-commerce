@@ -16,7 +16,15 @@ const corsMiddleware = require("./middleware/corsMiddleware");
 const routes = require("./routes/index");
 const authLimiter = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
+// Add with other imports
+const ownershipRoutes = require('./routes/ownershipRoutes');
+const { dataOwnershipService } = require('./services/dataOwnershipService');
 
+// Initialize data ownership service
+await dataOwnershipService.initialize();
+
+// Add ownership routes
+app.use('/api/ownership', ownershipRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
