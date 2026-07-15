@@ -4,11 +4,6 @@ const authMiddleware = require("../middleware/authMiddleware");
 const { authorizeRoles } = require("../middleware/rbacMiddleware");
 const { validateCreateProduct, validateUpdateProduct } = require("../middleware/validators/productValidator");
 
-const authMiddleware = require("../middleware/authMiddleware");
-const { authorizeRoles } = require("../middleware/rbacMiddleware");
-const { validateCreateProduct, validateUpdateProduct } = require("../middleware/validators/productValidator");
-const { validateProductReview } = require('../middleware/promptInjectionMiddleware');
-
 const {
     getProducts,
     getSingleProduct,

@@ -147,12 +147,12 @@ async function initializeComponents() {
     const loadTasks = [
         loadComponent(
             "navbar",
-            "./components/navbar.html"
+            "./components/navbar.html?v=" + new Date().getTime()
         ),
 
         loadComponent(
             "footer",
-            "./components/footer.html"
+            "./components/footer.html?v=" + new Date().getTime()
         )
     ];
 
@@ -185,7 +185,7 @@ async function initializeComponents() {
         loadTasks.push(
             loadComponent(
                 "cart-drawer-host",
-                "./components/cart-drawer.html"
+                "./components/cart-drawer.html?v=" + new Date().getTime()
             )
         );
     }
@@ -298,7 +298,7 @@ const megaMenuPanels = Array.from(
     document.querySelectorAll(".mega-menu-panel")
 );
 const categoryMenuLinks = document.querySelectorAll(
-    ".category-menu-link, .fashion-category-card, .mega-menu-panel-header a, .mobile-subcategory-panel a"
+    ".category-menu-link, .fashion-category-card, .electronics-category-card, .mega-menu-panel-header a, .mobile-subcategory-panel a"
 );
 const mobileCategoryAccordions = Array.from(
     document.querySelectorAll(".mobile-category-accordion")
