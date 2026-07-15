@@ -1050,3 +1050,40 @@ INSERT INTO serviceable_pincodes (pincode, city, state, eta_days, cod_available)
 ('411001', 'Pune', 'Maharashtra', 3, 1),
 ('226001', 'Lucknow', 'Uttar Pradesh', 5, 1)
 ON DUPLICATE KEY UPDATE eta_days = VALUES(eta_days);
+
+-- ============================================
+-- SUBSCRIPTION MANAGEMENT (New)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS billing_plans (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    interval ENUM('daily', 'weekly', 'monthly', 'yearly') NOT NULL,
+    interval_count INT DEFAULT 1,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    plan_id INT NOT NULL,
+    status ENUM('active', 'past_due', 'canceled', 'paused') DEFAULT 'active',
+    current_period_start DATETIME NOT NULL,
+    current_period_end DATETIME NOT NULL,
+    cancel_at_period_end TINYINT(1) DEFAULT 0,
+    canceled_at DATETIME,
+    dunning_retry_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (plan_id) REFERENCES billing_plans(id) ON DELETE RESTRICT,
+    
+    INDEX idx_subscriptions_user (user_id),
+    INDEX idx_subscriptions_status (status),
+    INDEX idx_subscriptions_end (current_period_end)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
