@@ -7,6 +7,9 @@ const {
     buildPaginationMeta
 } = require("../utils/helpers");
 const logger = require("../utils/logger");
+const { validateUserStatus } = require("../utils/userStatusValidator");
+
+const { validateDateRange } = require("../utils/dateRangeValidator");
 
 // =====================
 // DASHBOARD STATS
@@ -90,10 +93,20 @@ const updateUserStatus = async (req, res) => {
         const status = sanitizeString(req.body.status);
 
         // validation
-        if (!targetId || !["active", "blocked", "inactive"].includes(status)) {
+        // validation using helper
+        if (!targetId) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid payload. Status must be: active, blocked, or inactive"
+                message: "Invalid payload. Target user ID is required."
+            });
+        }
+
+        try {
+            validateUserStatus(status);
+        } catch (validationError) {
+            return res.status(400).json({
+                success: false,
+                message: validationError.message
             });
         }
 
@@ -144,10 +157,19 @@ const bulkUpdateUserStatus = async (req, res) => {
 
         const status = sanitizeString(req.body.status);
 
-        if (!targetIds.length || !["active", "blocked", "inactive"].includes(status)) {
+        if (!targetIds.length) {
             return res.status(400).json({
                 success: false,
-                message: "Invalid payload. Provide at least one valid user ID and valid status"
+                message: "Invalid payload. Provide at least one valid user ID."
+            });
+        }
+
+        try {
+            validateUserStatus(status);
+        } catch (validationError) {
+            return res.status(400).json({
+                success: false,
+                message: validationError.message
             });
         }
 
@@ -427,11 +449,22 @@ const getAdminLogs = async (req, res) => {
             50
         );
 
+        let startDate = req.query.startDate;
+        let endDate = req.query.endDate;
+        try {
+            validateDateRange(startDate, endDate, { maxRangeDays: 365 });
+        } catch (validationError) {
+            return res.status(400).json({
+                success: false,
+                message: validationError.message
+            });
+        }
+
         const filters = {
             action: sanitizeString(req.query.action),
             userId: req.query.userId ? safeNumber(req.query.userId) : undefined,
-            startDate: req.query.startDate,
-            endDate: req.query.endDate
+            startDate: startDate, 
+            endDate: endDate      
         };
 
         const result = await adminService.getAdminLogs(
@@ -440,7 +473,6 @@ const getAdminLogs = async (req, res) => {
             page,
             limit
         );
-
         return res.status(200).json({
             success: true,
             logs: result.logs,

@@ -34,9 +34,7 @@ exports.getPendingApprovals = async (req, res) => {
   }
 };
 
-/**
- * Approve or reject discount (Admin only)
- */
+
 exports.decideApproval = async (req, res) => {
   try {
     if (req.user.role !== 'admin') {

@@ -36,23 +36,32 @@ function createProductCard(product, wishlistIds = null, options = {}) {
     ? wishlistIds.has(String(product.id))
     : AppUtils.getWishlist().some((item) => String(item.id) === String(product.id));
 
+  const badgeHtml = product.featured
+    ? `<span class="product-badge">Featured</span>`
+    : product.sale
+    ? `<span class="product-badge badge-sale">Sale</span>`
+    : product.new
+    ? `<span class="product-badge badge-new">New</span>`
+    : product.trending
+    ? `<span class="product-badge badge-trending">Trending</span>`
+    : "";
+
   return `
         <div class="pro fade-in${compactClass}" data-id="${product.id}">
-            ${
-              product.featured
-                ? `
-                        <span class="product-badge">
-                            Featured
-                        </span>
-                    `
-                : ""
-            }
+            ${badgeHtml}
 
-            <img
-                src="${defaultImage(product.image)}"
-                alt="${safeText(product.name, "Product")}"
-                loading="lazy"
-            >
+            <div class="product-image-wrapper">
+                <img
+                    src="${defaultImage(product.image)}"
+                    alt="${safeText(product.name, "Product")}"
+                    loading="lazy"
+                >
+                <div class="product-overlay">
+                    <button class="quick-view-btn" data-id="${product.id}">
+                        <i class="far fa-eye"></i> Quick View
+                    </button>
+                </div>
+            </div>
 
             <div class="des">
                 <span>
@@ -111,6 +120,28 @@ function createProductCard(product, wishlistIds = null, options = {}) {
                 }
             </div>
         </div>`;
+}
+
+// render skeleton cards
+function renderSkeletonCards(containerId, count = 4) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let skeletons = "";
+    for (let i = 0; i < count; i++) {
+        skeletons += `
+        <div class="pro skeleton-wrapper">
+            <div class="skeleton skeleton-img"></div>
+            <div class="des">
+                <div class="skeleton skeleton-text short"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text"></div>
+                <div class="skeleton skeleton-text price"></div>
+            </div>
+        </div>
+        `;
+    }
+    container.innerHTML = skeletons;
 }
 
 // render featured products

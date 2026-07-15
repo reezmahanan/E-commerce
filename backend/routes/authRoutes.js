@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const cookieOptions = require("../config/cookieOptions");
+const cookieOptions = require("../config/cookieConfig");
 // ======================== CONTROLLERS ========================
 const {
     signup,
@@ -15,7 +15,11 @@ const {
     validateToken,
     changePassword,
     getSecurityAudit,
-    getFraudStatus
+    getFraudStatus,
+    verify2FA,
+    generate2FA,
+    enable2FA,
+    disable2FA
 } = require("../controllers/authController");
 // ======================== MIDDLEWARE ========================
 const authMiddleware = require("../middleware/authMiddleware");
@@ -52,29 +56,7 @@ if (!process.env.JWT_SECRET) {
 // ❌ `validateRequiredFields` helper removed completely
 // ❌ `sanitizeString` import removed because it's now handled in the middleware
 
-/**
- * Apply behavioral CAPTCHA check (Kept exactly as it was, untouched)
- */
-function applyCaptchaCheck(req, res, next) {
-    if (process.env.ENABLE_BEHAVIORAL_CAPTCHA === 'true') {
-        const captchaResult = verifyHumanChallenge(req);
-
-        if (!captchaResult.passed) {
-            console.warn(`🛡️ CAPTCHA failed for ${req.ip} on ${req.path}: ${captchaResult.reason}`);
-
-            const statusCode = captchaResult.reason === 'rate_limit_exceeded' ? 429 : 403;
-            return res.status(statusCode).json({
-                success: false,
-                message: captchaResult.reason === 'rate_limit_exceeded'
-                    ? 'Too many requests. Please slow down.'
-                    : 'Automated access detected. Please verify you are human.',
-                retryAfter: captchaResult.retryAfter || 60,
-                score: captchaResult.score
-            });
-        }
-    }
-    next();
-}
+// Inline applyCaptchaCheck removed to resolve duplicate declaration
 
 // ======================== ROUTES ========================
 
@@ -312,6 +294,49 @@ router.get(
             });
         }
     }
+);
+
+// ======================== 2FA ROUTES ========================
+
+/**
+ * POST /api/auth/verify-2fa
+ * Complete login using 2FA TOTP code
+ */
+router.post(
+    "/verify-2fa",
+    loginLimiter,
+    applyCaptchaCheck,
+    verify2FA
+);
+
+/**
+ * POST /api/auth/2fa/generate
+ * Generate 2FA secret (admins only)
+ */
+router.post(
+    "/2fa/generate",
+    authMiddleware,
+    generate2FA
+);
+
+/**
+ * POST /api/auth/2fa/enable
+ * Enable 2FA after scanning QR code
+ */
+router.post(
+    "/2fa/enable",
+    authMiddleware,
+    enable2FA
+);
+
+/**
+ * POST /api/auth/2fa/disable
+ * Disable 2FA
+ */
+router.post(
+    "/2fa/disable",
+    authMiddleware,
+    disable2FA
 );
 
 // ======================== ROUTE FALLBACK ========================
