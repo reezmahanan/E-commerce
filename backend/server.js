@@ -1,5 +1,5 @@
 const express = require("express");
-const helmetMiddleware = require("./middleware/helmetMiddleware");
+const { helmetMiddleware } = require("./middleware/helmetMiddleware");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
@@ -9,8 +9,7 @@ const morgan = require("morgan");
 const timeout = require("connect-timeout");
 const fs = require("fs");
 const path = require("path");
-const setupProcessEventHandlers = require('./src/utils/processEventHandlers');
-const setupGracefulShutdown = require('./src/utils/gracefulShutdown');
+const setupGracefulShutdown = require('./utils/gracefulShutdown');
 
 const { apiLimiter, adminLimiter, mcpLimiter } = require('./config/rateLimiters');
 const dotenv = require("dotenv");
@@ -18,6 +17,9 @@ const helmet = require("helmet");
 const corsMiddleware = require("./middleware/corsMiddleware");
 
 // Add with other imports
+// init app early so route and middleware registration can safely use it
+const app = express();
+
 const responseExampleRoutes = require('./routes/responseExampleRoutes');
 const { standardizeResponse } = require('./middleware/responseStandardizer');
 
@@ -30,9 +32,6 @@ app.use('/api/response-example', responseExampleRoutes);
 const { buildHealthResponse } = require("./utils/healthResponseBuilder");
 const { logServerStartup } = require("./utils/serverStartupLogger");
 const { errorLogStream } = require("./utils/logstreams");
-
-// init app early so route and middleware registration can safely use it
-const app = express();
 
 const logDir = path.join(process.cwd(), "logs");
 // Add with other route imports
@@ -51,9 +50,36 @@ app.use('/api/agents', agentRoutes);
 app.use('/api/ai-feed', aiFeedRoutes);
 
 const routes = require("./routes/index");
-const authLimiter = require("./middleware/authLimiter");
+const { authLimiter } = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
+
+const dependencyRoutes = require('./routes/dependencyRoutes');
+const { dependencyGraphService } = require('./services/dependencyGraphService');
+
+
+const healthRoutes = require('./routes/healthRoutes');
+const { healthScoreService } = require('./services/healthScoreService');
+
+const discoveryRoutes = require('./routes/discoveryRoutes');
+const { capabilityDiscoveryService } = require('./services/capabilityDiscoveryService');
+
+// Initialize capability discovery
+await capabilityDiscoveryService.initialize();
+
+// Add discovery routes
+app.use('/api/discovery', discoveryRoutes);
+
+const metricsRoutes = require('./routes/metricsRoutes');
+const { metricsAggregationService } = require('./services/metricsAggregationService');
+
+// Initialize metrics service
+await metricsAggregationService.initialize();
+
+// Add metrics routes
+app.use('/api/metrics', metricsRoutes);
+
+
 const notificationBrokerRoutes = require('./routes/notificationBrokerRoutes');
 const { 
     notificationBroker, 
@@ -69,6 +95,7 @@ notificationBroker.registerChannel('webhook', webhookChannel.handler);
 
 // Initialize notification broker
 await notificationBroker.initialize();
+
 
 // Add notification routes
 app.use('/api/notifications', notificationBrokerRoutes);
@@ -124,7 +151,7 @@ const { outboxService } = require('./services/outboxService');
 
 
 // Initialize outbox service
-await outboxService.initialize();
+outboxService.initialize().catch(err => console.error('Outbox initialization failed:', err));
 
 // Add outbox routes
 app.use('/api/outbox', outboxRoutes);
@@ -161,7 +188,7 @@ const flagRoutes = require('./routes/flagRoutes');
 const { featureFlagService } = require('./services/featureFlagService');
 
 // Initialize feature flag service
-await featureFlagService.initialize();
+featureFlagService.initialize().catch(err => console.error('Feature flag initialization failed:', err));
 
 // Add flag routes
 app.use('/api/flags', flagRoutes);
@@ -197,7 +224,7 @@ const pluginRoutes = require('./routes/pluginRoutes');
 const { pluginSystem } = require('./services/pluginSystemService');
 
 // Initialize plugin system
-await pluginSystem.initialize();
+pluginSystem.initialize().catch(err => console.error('Plugin system initialization failed:', err));
 
 // Add plugin routes
 app.use('/api/plugins', pluginRoutes);
@@ -227,6 +254,11 @@ app.use('/api/performance', performanceRoutes);
 
 
 
+// Initialize dependency graph service
+await dependencyGraphService.initialize();
+
+// Add dependency routes
+app.use('/api/dependencies', dependencyRoutes);
 // Add with other route imports
 
 const copywriterRoutes = require('./routes/copywriterRoutes');
@@ -385,8 +417,8 @@ app.use(
     }),
 );
 
-// Security headers for MCP endpoints
-app.use('/api/mcp/*', (req, res, next) => {
+// ✅ Security headers for MCP endpoints
+app.use('/api/mcp', (req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -487,10 +519,8 @@ setupProcessEventHandlers(errorLogStream);
 // Initialize graceful shutdown logic
 setupGracefulShutdown(server);
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
-
-// Start server
+// start server
+// start server
 server.listen(PORT, "0.0.0.0", () => {
     logServerStartup({
         port: PORT,

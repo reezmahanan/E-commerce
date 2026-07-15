@@ -232,6 +232,61 @@ navLinks.forEach(link => {
         link.setAttribute('aria-current', 'page');
     }
 });
+// ===== NAVBAR SEARCH =====
+    const navSearchInput = document.getElementById("searchInput");
+    if (navSearchInput) {
+        navSearchInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                const query = navSearchInput.value.trim();
+                if (query) {
+                    window.location.href = `shop.html?search=${encodeURIComponent(query)}`;
+                }
+            }
+        });
+
+        navSearchInput.addEventListener("input", () => {
+            const query = navSearchInput.value.trim();
+            const dropdown = document.getElementById("suggestionsDropdown");
+            if (!dropdown) return;
+
+            if (!query) {
+                dropdown.style.display = "none";
+                dropdown.innerHTML = "";
+                return;
+            }
+
+            const allProducts = window.allProducts || [];
+            const matches = allProducts
+                .filter(p => p.name?.toLowerCase().includes(query.toLowerCase()))
+                .slice(0, 5);
+
+            if (!matches.length) {
+                dropdown.style.display = "none";
+                return;
+            }
+
+            dropdown.innerHTML = matches.map(p => `
+                <div class="suggestion-item" style="padding:8px;cursor:pointer;border-bottom:1px solid #eee;">
+                    ${p.name}
+                </div>
+            `).join("");
+
+            dropdown.style.display = "block";
+
+            dropdown.querySelectorAll(".suggestion-item").forEach((item, i) => {
+                item.addEventListener("click", () => {
+                    window.location.href = `shop.html?search=${encodeURIComponent(matches[i].name)}`;
+                });
+            });
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!e.target.closest(".search-container")) {
+                const dropdown = document.getElementById("suggestionsDropdown");
+                if (dropdown) dropdown.style.display = "none";
+            }
+        });
+    }
 
 const categoryMenuItem = document.querySelector(".category-menu-item");
 const categoryMenuToggle = document.getElementById("category-menu-toggle");
@@ -243,7 +298,7 @@ const megaMenuPanels = Array.from(
     document.querySelectorAll(".mega-menu-panel")
 );
 const categoryMenuLinks = document.querySelectorAll(
-    ".category-menu-link, .mega-menu-panel-header a, .mobile-subcategory-panel a"
+    ".category-menu-link, .grocery-category-card, .mega-menu-panel-header a, .mobile-subcategory-panel a"
 );
 const mobileCategoryAccordions = Array.from(
     document.querySelectorAll(".mobile-category-accordion")
@@ -262,6 +317,12 @@ const toySubcategoryLinks = Array.from(
 );
 const toyProductPreview = document.getElementById(
     "toy-product-preview"
+);
+const homeKitchenSubcategoryLinks = Array.from(
+    document.querySelectorAll(".home-kitchen-subcategory-link")
+);
+const homeKitchenProductPreview = document.getElementById(
+    "home-kitchen-product-preview"
 );
 
 const grocerySubcategoryKeywords = {
@@ -386,6 +447,77 @@ const toySubcategoryKeywords = {
     ]
 };
 
+const homeKitchenSubcategoryKeywords = {
+    Furniture: [
+        "furniture",
+        "chair",
+        "sofa",
+        "table",
+        "desk",
+        "cabinet",
+        "bookshelf",
+        "bed",
+        "stool"
+    ],
+    Cookware: [
+        "cookware",
+        "pan",
+        "pot",
+        "saucepan",
+        "skillet",
+        "lid",
+        "dutch",
+        "oven",
+        "bakeware",
+        "spatula"
+    ],
+    Storage: [
+        "storage",
+        "basket",
+        "box",
+        "container",
+        "organizer",
+        "rack",
+        "shelf",
+        "bin",
+        "holder"
+    ],
+    "Home Decor": [
+        "decor",
+        "vase",
+        "lamp",
+        "frame",
+        "mirror",
+        "candle",
+        "rug",
+        "cushion",
+        "art",
+        "clock"
+    ],
+    Bedding: [
+        "bedding",
+        "pillow",
+        "sheet",
+        "comforter",
+        "blanket",
+        "duvet",
+        "mattress",
+        "cover"
+    ],
+    "Kitchen Appliances": [
+        "appliance",
+        "appliances",
+        "toaster",
+        "blender",
+        "mixer",
+        "kettle",
+        "juicer",
+        "cooker",
+        "microwave",
+        "coffee"
+    ]
+};
+
 const normalizeMenuValue = (value) =>
     String(value || "")
         .toLowerCase()
@@ -485,6 +617,39 @@ const matchesToySubcategory = (product, subcategory) => {
     if (
         category !== "toys" &&
         !searchText.includes("toy")
+    ) {
+        return false;
+    }
+
+    return keywords.some((keyword) =>
+        searchText.includes(normalizeMenuValue(keyword))
+    );
+};
+
+const matchesHomeKitchenSubcategory = (product, subcategory) => {
+    const normalizedSubcategory = normalizeMenuValue(subcategory);
+    const category = normalizeMenuValue(product?.category);
+    const productSubcategory = normalizeMenuValue(
+        getProductSubcategory(product)
+    );
+    const searchText = normalizeMenuValue(
+        getProductSearchText(product)
+    );
+    const keywords = homeKitchenSubcategoryKeywords[subcategory] || [];
+
+    if (productSubcategory) {
+        return productSubcategory === normalizedSubcategory;
+    }
+
+    if (category === normalizedSubcategory) {
+        return true;
+    }
+
+    if (
+        category !== "home and kitchen" &&
+        category !== "home & kitchen" &&
+        !searchText.includes("home") &&
+        !searchText.includes("kitchen")
     ) {
         return false;
     }
@@ -633,6 +798,57 @@ const setActiveToySubcategory = (activeLink) => {
     });
 };
 
+const renderHomeKitchenProducts = (products, subcategory) => {
+    if (!homeKitchenProductPreview) {
+        return;
+    }
+
+    const safeProducts = Array.isArray(products)
+        ? products
+        : [];
+
+    if (!safeProducts.length) {
+        homeKitchenProductPreview.innerHTML =
+            `<p class="grocery-menu-empty home-kitchen-menu-empty">No products available for ${escapeMenuHTML(subcategory)} yet.</p>`;
+        return;
+    }
+
+    homeKitchenProductPreview.innerHTML = safeProducts
+        .slice(0, 4)
+        .map((product) => {
+            const name = product?.name || "Product";
+            const escapedName = AppUtils.escapeHTML(name);
+            const image = AppUtils.defaultImage(product?.image);
+            const price = AppUtils.formatPrice(product?.price || 0);
+            const href = getProductLink(product, "Home & Kitchen", subcategory);
+            const rating = renderMenuRating(product?.rating);
+
+            return `
+                <a class="grocery-menu-product toy-menu-product home-kitchen-menu-product" href="${href}">
+                    <img
+                        src="${AppUtils.escapeHTML(image)}"
+                        alt="${escapedName}"
+                        loading="lazy"
+                    />
+                    <span class="grocery-menu-product-info toy-menu-product-info home-kitchen-menu-product-info">
+                        <span class="grocery-menu-product-name toy-menu-product-name home-kitchen-menu-product-name">${escapedName}</span>
+                        <span class="grocery-menu-product-price toy-menu-product-price home-kitchen-menu-product-price">${price}</span>
+                        ${rating}
+                    </span>
+                </a>
+            `;
+        })
+        .join("");
+};
+
+const setActiveHomeKitchenSubcategory = (activeLink) => {
+    homeKitchenSubcategoryLinks.forEach((link) => {
+        const isActive = link === activeLink;
+
+        link.classList.toggle("is-active", isActive);
+    });
+};
+
 let megaMenuProductsCache;
 
 const fetchMegaMenuProducts = async () => {
@@ -759,6 +975,45 @@ const initializeToyMegaMenu = async () => {
         toySubcategoryLinks.find((link) =>
             link.dataset.toySubcategory === currentSubcategory
         ) || toySubcategoryLinks[0];
+
+    showSubcategoryProducts(defaultLink);
+};
+
+const initializeHomeKitchenMegaMenu = async () => {
+    if (!homeKitchenSubcategoryLinks.length || !homeKitchenProductPreview) {
+        return;
+    }
+
+    let homeKitchenProducts = [];
+
+    const showSubcategoryProducts = (link) => {
+        const subcategory =
+            link.dataset.homeKitchenSubcategory ||
+            link.textContent.trim();
+        const products = homeKitchenProducts.filter((product) =>
+            matchesHomeKitchenSubcategory(product, subcategory)
+        );
+
+        setActiveHomeKitchenSubcategory(link);
+        renderHomeKitchenProducts(products, subcategory);
+    };
+
+    homeKitchenSubcategoryLinks.forEach((link) => {
+        link.addEventListener("mouseenter", () => {
+            showSubcategoryProducts(link);
+        });
+
+        link.addEventListener("focus", () => {
+            showSubcategoryProducts(link);
+        });
+    });
+
+    homeKitchenProducts = await fetchMegaMenuProducts();
+
+    const defaultLink =
+        homeKitchenSubcategoryLinks.find((link) =>
+            link.dataset.homeKitchenSubcategory === currentSubcategory
+        ) || homeKitchenSubcategoryLinks[0];
 
     showSubcategoryProducts(defaultLink);
 };
@@ -1009,6 +1264,7 @@ mobileCategoryAccordions.forEach((accordion) => {
 });
     await initializeGroceryMegaMenu();
     await initializeToyMegaMenu();
+    await initializeHomeKitchenMegaMenu();
     // notify components ready
     document.dispatchEvent(new CustomEvent("componentsLoaded"));
 }
