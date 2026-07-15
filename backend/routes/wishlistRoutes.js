@@ -41,6 +41,14 @@ const validateSyncPayload = (req, res, next) => {
   next();
 };
 
+const {
+  MAX_WISHLIST_SYNC_LIMIT,
+  SUPPORTED_EXPORT_FORMATS,
+  SHARE_TOKEN_MAX_LENGTH,
+  SHARE_TOKEN_REGEX
+} = require("../config/constants");
+
+// ==================== VALIDATION MIDDLEWARE ====================
 const validateProductId = (req, res, next) => {
   const productId = safeNumber(req.params.productId || req.body.productId);
   if (!productId || productId < 1) {
@@ -95,10 +103,50 @@ const validateBatchProducts = (req, res, next) => {
 
   next();
 };
+// ==================== SHARE TOKEN VALIDATION MIDDLEWARE ====================
+const validateShareToken = (req, res, next) => {
+  const token = req.params.token;
 
+  // 1. Presence check
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      message: "Share token is required.",
+    });
+  }
+
+  // 2. Reject empty or whitespace-only tokens
+  if (token.trim() === '') {
+    return res.status(400).json({
+      success: false,
+      message: "Share token cannot be empty or contain only whitespace.",
+    });
+  }
+
+  // 3. Enforce a reasonable maximum token length
+  if (token.length > SHARE_TOKEN_MAX_LENGTH) {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid share token. Maximum length allowed is ${SHARE_TOKEN_MAX_LENGTH} characters.`,
+    });
+  }
+
+  // 4. Validate token against expected format (UUID)
+  if (!SHARE_TOKEN_REGEX.test(token)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid share token format. Please provide a valid UUID (e.g., 123e4567-e89b-12d3-a456-426614174000).",
+    });
+  }
+
+  // 5. Attach validated token to request (optional, good practice)
+  req.validatedShareToken = token.trim();
+
+  next();
+};
 // ==================== PUBLIC ROUTES ====================
 // Get shared wishlist by token (No auth required)
-router.get("/share/:token", wishlistController.getSharedWishlist);
+router.get("/share/:token",validateShareToken, wishlistController.getSharedWishlist);
 
 // ==================== PROTECTED ROUTES (User Only) ====================
 
