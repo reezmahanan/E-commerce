@@ -17,19 +17,36 @@
 
 .search-box input{
     width: 100%;
-    padding: 15px 50px 15px 18px;
+    padding: 15px 18px 15px 50px;
     border: 1px solid #ddd;
     border-radius: 10px;
     outline: none;
     font-size: 15px;
+    transition: all 0.3s ease;
+}
+
+.search-box input:hover {
+    border-color: #088178;
+}
+
+.search-box input:focus {
+    border-color: #088178;
+    box-shadow: 0 0 0 4px rgba(8, 129, 120, 0.1);
 }
 
 .search-box i{
     position: absolute;
-    right: 18px;
+    left: 18px;
     top: 50%;
     transform: translateY(-50%);
-    color: #777;
+    color: #088178;
+    transition: color 0.3s ease;
+    pointer-events: none;
+}
+
+.search-box input:hover + i,
+.search-box input:focus + i {
+    color: #065f57;
 }
 
 .sort-box select{
@@ -44,8 +61,8 @@
     margin-top: 20px;
     border: 1px solid rgba(255, 255, 255, .3);
     background: rgba(255, 255, 255, .08);
-    backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
+    backdrop-filter: blur(15px);
     border-radius: 14px;
     overflow: hidden;
     cursor: pointer;
@@ -54,7 +71,7 @@
     box-shadow: 0 8px 25px rgba(0, 0, 0, .15);
 }
 
-.banner-btn a {
+.banner-btn, .banner-btn a {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -176,7 +193,7 @@
 
 @media(max-width:768px) {
 
-    .banner-btn a {
+    .banner-btn, .banner-btn a {
         padding: 14px 24px;
         font-size: 14px;
     }
@@ -185,7 +202,7 @@
 
 @media(max-width:480px) {
 
-    .banner-btn a {
+    .banner-btn, .banner-btn a {
         padding: 12px 20px;
         font-size: 13px;
     }
@@ -315,6 +332,25 @@
 
 #password-strength-text.strength-strong {
     color: #27ae60 !important;
+}
+
+
+.category-menu-toggle .dropdown-indicator {
+    margin-left: 8px;
+    font-size: 11px;
+    color: #666;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.category-menu-toggle[aria-expanded="true"] .dropdown-indicator {
+    transform: rotate(180deg);
+}
+/* About Section Hover Animation - CSS Classes */
+.about-section {
+    transition: transform 0.3s ease;
+}
+
+.about-section:hover {
+    transform: translateY(-5px);
 }
 
 /* =============================
