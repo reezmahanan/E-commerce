@@ -195,6 +195,50 @@
         ],
         outdoortoys: [
             "Outdoor Toys"
+        ],
+        notebooks: [
+            "Notebooks",
+            "Notebook",
+            "Exercise Books",
+            "Journals",
+            "Diaries"
+        ],
+        pens: [
+            "Pens",
+            "Pen",
+            "Ball Pens",
+            "Gel Pens",
+            "Fountain Pens"
+        ],
+        pencils: [
+            "Pencils",
+            "Pencil",
+            "Color Pencils",
+            "Colored Pencils",
+            "Mechanical Pencils"
+        ],
+        schoolbags: [
+            "School Bags",
+            "School Bag",
+            "Backpacks",
+            "Backpack",
+            "Bags"
+        ],
+        officesupplies: [
+            "Office Supplies",
+            "Office Supply",
+            "Files",
+            "Folders",
+            "Staplers",
+            "Desk Organizers"
+        ],
+        artsupplies: [
+            "Art Supplies",
+            "Art Supply",
+            "Paints",
+            "Brushes",
+            "Sketchbooks",
+            "Drawing Supplies"
         ]
     };
 
