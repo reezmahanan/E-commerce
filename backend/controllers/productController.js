@@ -21,6 +21,15 @@ const TOYS_CATEGORY_VALUES = [
     "RC Toys",
     "Outdoor Toys"
 ];
+const STATIONERY_CATEGORY_VALUES = [
+    "Stationery",
+    "Notebooks",
+    "Pens",
+    "Pencils",
+    "School Bags",
+    "Office Supplies",
+    "Art Supplies"
+];
 
 function parsePaginationValue(value, defaultValue, fieldName) {
     if (value === undefined || value === null || value === "") {
@@ -68,14 +77,22 @@ const getProducts = async (req, res) => {
                 sanitizedCategory
                     .toLowerCase()
                     .replace(/[-\s]+/g, "") === "toys";
+            const isStationeryCategory =
+                sanitizedCategory
+                    .toLowerCase()
+                    .replace(/[-\s]+/g, "") === "stationery";
 
-            if (isToysCategory) {
+            if (isToysCategory || isStationeryCategory) {
+                const categoryValues = isToysCategory
+                    ? TOYS_CATEGORY_VALUES
+                    : STATIONERY_CATEGORY_VALUES;
+
                 conditions.push(
-                    `${NORMALIZED_CATEGORY_SQL} IN (${TOYS_CATEGORY_VALUES.map(
+                    `${NORMALIZED_CATEGORY_SQL} IN (${categoryValues.map(
                         () => "LOWER(REPLACE(REPLACE(?, '-', ''), ' ', ''))"
                     ).join(", ")})`
                 );
-                params.push(...TOYS_CATEGORY_VALUES);
+                params.push(...categoryValues);
             } else {
                 conditions.push(
                     `${NORMALIZED_CATEGORY_SQL} = LOWER(REPLACE(REPLACE(?, '-', ''), ' ', ''))`

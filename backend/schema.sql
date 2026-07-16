@@ -1048,3 +1048,23 @@ INSERT INTO serviceable_pincodes (pincode, city, state, eta_days, cod_available)
 ('411001', 'Pune', 'Maharashtra', 3, 1),
 ('226001', 'Lucknow', 'Uttar Pradesh', 5, 1)
 ON DUPLICATE KEY UPDATE eta_days = VALUES(eta_days);
+
+-- ============================================
+-- INVENTORY LOCKS (New)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS inventory_locks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    
+    INDEX idx_inventory_locks_user (user_id),
+    INDEX idx_inventory_locks_product (product_id),
+    INDEX idx_inventory_locks_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

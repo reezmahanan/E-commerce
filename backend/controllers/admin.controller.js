@@ -59,8 +59,8 @@ const getUsers = async (req, res) => {
             search: sanitizeString(req.query.search),
             status: sanitizeString(req.query.status),
             role: sanitizeString(req.query.role),
-            emailVerified: req.query.emailVerified === 'true' ? true : 
-                          req.query.emailVerified === 'false' ? false : undefined
+            emailVerified: req.query.emailVerified === 'true' ? true :
+                req.query.emailVerified === 'false' ? false : undefined
         };
 
         const result = await adminService.getUsers(filters, page, limit);
@@ -152,9 +152,13 @@ const updateUserStatus = async (req, res) => {
 // =====================
 const bulkUpdateUserStatus = async (req, res) => {
     try {
-        const targetIds = safeArray(req.body.userIds)
-            .map(id => safeUUID(id))
-            .filter(id => id && id !== req.user.id);
+        const targetIds = [
+            ...new Set(
+                safeArray(req.body.userIds)
+                    .map(id => safeUUID(id))
+                    .filter(id => id && id !== req.user.id)
+            )
+        ];
 
         const status = sanitizeString(req.body.status);
 
@@ -464,8 +468,8 @@ const getAdminLogs = async (req, res) => {
         const filters = {
             action: sanitizeString(req.query.action),
             userId: req.query.userId ? safeUUID(req.query.userId) : undefined,
-            startDate: startDate, 
-            endDate: endDate      
+            startDate: startDate,
+            endDate: endDate
         };
 
         const result = await adminService.getAdminLogs(
