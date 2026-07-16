@@ -28,7 +28,15 @@ const fallbackProducts = [
     { id: 'fj2', name: 'Denim Jacket', description: 'Classic denim jacket.', price: 69.99, image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS742gOUs3PYj6pGiEL7vxtCYtcdntbkSzg1Q&s', category: 'Jackets', stock: 15, rating: 5 },
     { id: 'fj3', name: 'Leather Jacket', description: 'Stylish faux-leather jacket.', price: 119.99, image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3Zm904oGz9FyfDetC1LY41uK35Udmgl01bQ&s', category: 'Jackets', stock: 8, rating: 5 },
     { id: 'fj4', name: 'Bomber Jacket', description: 'Classic bomber jacket.', price: 89.99, image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTT_Z8bOxgvwY4ahNxGg4TkryUn2gowHQL51w&s', category: 'Jackets', stock: 11, rating: 4 },
-    { id: 'fj5', name: 'Denim Trucker', description: 'Lightweight trucker jacket.', price: 74.99, image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOazqR3Pt7KgK3iTwtReHvCLpQaIKhphOTjA&s', category: 'Jackets', stock: 6, rating: 4 }
+    { id: 'fj5', name: 'Denim Trucker', description: 'Lightweight trucker jacket.', price: 74.99, image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOazqR3Pt7KgK3iTwtReHvCLpQaIKhphOTjA&s', category: 'Jackets', stock: 6, rating: 4 },
+
+    // STATIONERY
+    { id: 'st1', name: 'Classic Ruled Notebook', description: 'Durable ruled notebook for everyday class notes.', price: 4.99, image: '', category: 'Notebooks', stock: 60, rating: 4, tags: ['Stationery', 'Notebooks'] },
+    { id: 'st2', name: 'Smooth Gel Pen Set', description: 'Quick-dry gel pens for clean writing.', price: 6.99, image: '', category: 'Pens', stock: 45, rating: 5, tags: ['Stationery', 'Pens'] },
+    { id: 'st3', name: 'Graphite Pencil Pack', description: 'HB pencils for writing, sketching, and exams.', price: 3.49, image: '', category: 'Pencils', stock: 80, rating: 4, tags: ['Stationery', 'Pencils'] },
+    { id: 'st4', name: 'Ergonomic School Backpack', description: 'Lightweight school bag with padded straps.', price: 24.99, image: '', category: 'School Bags', stock: 25, rating: 4, tags: ['Stationery', 'School Bags'] },
+    { id: 'st5', name: 'Desk Office Supplies Kit', description: 'Stapler, clips, sticky notes, and organizer essentials.', price: 12.99, image: '', category: 'Office Supplies', stock: 35, rating: 4, tags: ['Stationery', 'Office Supplies'] },
+    { id: 'st6', name: 'Watercolor Art Supplies Set', description: 'Paints, brushes, and sketch sheets for art projects.', price: 18.99, image: '', category: 'Art Supplies', stock: 28, rating: 5, tags: ['Stationery', 'Art Supplies'] }
 ];
 
 const SEARCH_HISTORY_KEY =
@@ -341,7 +349,8 @@ function createProductCard(
                     )}
                     <span class="rating-count">
                         ${AppUtils.escapeHTML(getRatingLabel(product))}
-                                <i class="${isWishlisted ? 'fas' : 'far'} fa-heart"></i>
+                        <i class="${wishlistIconClass} fa-heart"></i>
+                    </span>
                 </div>
                 <h4>
                     ${AppUtils.formatPrice(
