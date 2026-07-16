@@ -113,12 +113,26 @@ exports.decideApproval = async (req, res) => {
 
     try {
       // Step 1: Update the approval request status
-      await connection.query(
-        `UPDATE admin_approval_requests 
-               SET status = ?, admin_id = ?, admin_notes = ?
-               WHERE id = ? AND status = 'pending'`,
-        [action === 'approve' ? 'approved' : 'rejected', req.user.id, sanitizedNotes, id]
+      const [updateResult] = await connection.query(
+        `UPDATE admin_approval_requests
+     SET status = ?, admin_id = ?, admin_notes = ?
+     WHERE id = ? AND status = 'pending'`,
+        [
+          status,
+          req.user.id,
+          adminNotes,
+          id
+        ]
       );
+
+      if (updateResult.affectedRows === 0) {
+        await connection.rollback();
+
+        return res.status(409).json({
+          success: false,
+          message: "This approval request has already been processed by another administrator."
+        });
+      }
 
       // Step 2: If approved, proceed with associated business logic within the SAME transaction
       if (action === 'approve') {
