@@ -60,9 +60,8 @@ const routes = require("./routes/index");
 const { authLimiter } = require("./middleware/authLimiter");
 const mcpRoutes = require("./routes/mcpRoutes"); // ✅ MCP Routes added
 // Add with other imports
-
-const graphRoutes = require('./routes/graphRoutes');
-const { knowledgeGraphService } = require('./services/knowledgeGraphService');
+const maturityRoutes = require('./routes/maturityRoutes');
+const { moduleMaturityService } = require('./services/moduleMaturityService');
 
 
 const slaRoutes = require('./routes/slaRoutes');
@@ -220,11 +219,11 @@ app.use('/api/correlation', correlationRoutes);
 
 
 
-// Initialize knowledge graph service
-await knowledgeGraphService.initialize();
+// Initialize maturity service
+await moduleMaturityService.initialize();
 
-// Add graph routes
-app.use('/api/graph', graphRoutes);
+// Add maturity routes
+app.use('/api/maturity', maturityRoutes);
 
 // Initialize SLA service
 await slaService.initialize();
